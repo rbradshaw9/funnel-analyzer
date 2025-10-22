@@ -34,9 +34,12 @@ COPY backend/ ./backend
 # Ensure Python can resolve the backend package
 ENV PYTHONPATH=/app
 
+# Copy entrypoint script
+COPY backend/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # Expose the default port used by the backend server
 EXPOSE 8080
 
-# Start the FastAPI application with Gunicorn
-# Railway will set the PORT environment variable, so we use a shell form to expand it
-CMD gunicorn backend.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8080} --timeout 120
+# Start the FastAPI application using entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]
