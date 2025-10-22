@@ -1,0 +1,27 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "npm install",
+  "buildCommand": "npm run build",
+  "outputDirectory": "out",
+  "devCommand": "npm run dev",
+  "env": {
+    "OPENAI_API_KEY": "@openai_api_key",
+    "DATABASE_URL": "@database_url",
+    "JWT_SECRET": "@jwt_secret"
+  },
+  "preview": {
+    "env": {
+      "OPENAI_API_KEY": "@openai_api_key",
+      "DATABASE_URL": "@database_url",
+      "JWT_SECRET": "@jwt_secret"
+    }
+  },
+  "production": {
+    "env": {
+      "OPENAI_API_KEY": "@openai_api_key",
+      "DATABASE_URL": "@database_url",
+      "JWT_SECRET": "@jwt_secret"
+    }
+  }
+}
