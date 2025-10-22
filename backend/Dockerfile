@@ -27,8 +27,8 @@ COPY backend/requirements.txt ./requirements.txt
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright browsers (optional, for screenshot functionality)
-# RUN playwright install chromium && playwright install-deps
+# Install Playwright browsers for screenshot functionality
+RUN playwright install chromium && playwright install-deps
 
 # Copy the rest of the backend source code
 COPY backend/ ./backend
