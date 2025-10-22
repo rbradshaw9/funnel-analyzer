@@ -84,9 +84,8 @@ funnel-analyzer/
 
 - **Node.js 18.x** (LTS)
 - **Python 3.11+**
-- **Docker** (optional, for backend container testing)
-- **OpenAI API Key** (for AI analysis)
-- **PostgreSQL database** (Neon recommended)
+- **OpenAI API Key** (for AI analysis - get from https://platform.openai.com)
+- **PostgreSQL database** (optional - SQLite used by default for local dev)
 
 ### 1. Clone & Environment Setup
 
@@ -104,34 +103,33 @@ cp .env.example .env
 Edit `.env` with your credentials:
 
 ```bash
-# Required
-OPENAI_API_KEY=sk-your-actual-openai-key
-DATABASE_URL=postgresql://user:pass@host:5432/dbname
+# Backend (.env in project root or backend/.env)
+OPENAI_API_KEY=sk-your-actual-openai-key-here
+DATABASE_URL=sqlite:///./funnel_analyzer.db  # SQLite for local dev
 JWT_SECRET=your-secret-minimum-32-characters
-
-# Development
 ENVIRONMENT=development
 FRONTEND_URL=http://localhost:3001
+
+# Frontend (.env.local in frontend/)
 NEXT_PUBLIC_API_URL=http://localhost:3000
+NEXT_PUBLIC_ENV=development
 ```
 
 ### 3. Backend Setup & Run
 
 ```bash
+# From project root, activate virtual environment
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install dependencies (if not already installed)
 cd backend
-
-# Create virtual environment (recommended)
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
 pip install -r requirements.txt
 
-# Run development server (auto-reload enabled)
-python main.py
+# Run development server
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 3000
 
-# Or use uvicorn directly
-uvicorn main:app --reload --host 0.0.0.0 --port 3000
+# Or run in background
+nohup uvicorn backend.main:app --host 0.0.0.0 --port 3000 > /tmp/funnel-backend.log 2>&1 &
 ```
 
 The backend API will be available at: `http://localhost:3000`
@@ -183,29 +181,36 @@ The frontend will be available at: `http://localhost:3001`
 | `/dashboard` | Main analysis interface |
 | `/embed` | Minimal UI for iframe embedding |
 
-### Mock Data
+### Real Analysis
 
-Currently, the application uses **mock data** for analysis. The backend returns realistic dummy scores and feedback without calling OpenAI. This allows you to develop and test the UI/UX flow.
+The application now includes:
+- ✅ **Web scraping** with BeautifulSoup + requests
+- ✅ **OpenAI GPT-4o integration** for AI analysis  
+- ✅ **Database persistence** with SQLite (local) or PostgreSQL (production)
 
-**To implement real analysis:**
-1. Update `backend/services/analyzer.py`
-2. Add web scraping (Playwright or BeautifulSoup)
-3. Call OpenAI API with scraped content
-4. Parse structured response into scores
+**Analysis flow:**
+1. Scrapes URLs to extract titles, headings, content, CTAs
+2. Sends content to GPT-4o for analysis
+3. Generates scores (clarity, value, proof, design, flow)
+4. Creates actionable feedback and executive summary
+5. Stores results in database
 
-### Database Setup (Optional)
+**Without OpenAI API key:** Falls back to intelligent placeholder scores based on scraped content.
 
-The application includes SQLAlchemy models but currently uses mock data. To enable database:
+### Database Setup
 
-```bash
-# Install alembic for migrations
-pip install alembic
+The application automatically creates the database on first run.
 
-# Initialize database
-alembic init alembic
-alembic revision --autogenerate -m "Initial migration"
-alembic upgrade head
-```
+**Local Development (SQLite):**
+- Database file: `funnel_analyzer.db` in project root
+- No setup required - auto-created on startup
+- Tables: `users`, `analyses`, `analysis_pages`
+- Demo user created automatically: `demo@funnelanalyzer.pro`
+
+**Production (PostgreSQL):**
+- Set `DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/dbname`
+- Database schema created automatically on deployment
+- Use Railway PostgreSQL or Neon for hosting
 
 ## 🐳 Docker Development
 

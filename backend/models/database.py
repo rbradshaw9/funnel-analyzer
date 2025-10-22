@@ -1,11 +1,8 @@
-"""
-Database models using SQLAlchemy with async support.
-"""
+"""Database models using SQLAlchemy with async support."""
 
-from sqlalchemy import Column, Integer, String, JSON, DateTime, Text, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
-from datetime import datetime
 
 Base = declarative_base()
 
@@ -22,6 +19,8 @@ class User(Base):
     is_active = Column(Integer, default=1)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    analyses = relationship("Analysis", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User {self.email}>"
@@ -51,6 +50,9 @@ class Analysis(Base):
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", back_populates="analyses")
+    pages = relationship("AnalysisPage", back_populates="analysis", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Analysis {self.id} - Score: {self.overall_score}>"
@@ -77,6 +79,8 @@ class AnalysisPage(Base):
     page_feedback = Column(Text, nullable=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    analysis = relationship("Analysis", back_populates="pages")
     
     def __repr__(self):
         return f"<AnalysisPage {self.url}>"

@@ -1,67 +1,87 @@
-"""
-Reports service for retrieving past analyses.
-"""
+"""Reports service for retrieving persisted analyses."""
 
-from datetime import datetime, timedelta
-from typing import List
-import random
+from __future__ import annotations
+
+from typing import Optional
+
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from ..models.database import Analysis
 
 
-async def get_user_reports_mock(user_id: int, limit: int = 10, offset: int = 0) -> dict:
-    """
-    Mock function to retrieve user's past reports.
-    
-    TODO: Replace with real database query using SQLAlchemy.
-    """
-    
-    # Generate mock reports
-    reports = []
-    total = random.randint(3, 15)
-    
-    if offset >= total:
-        return {
-            "reports": [],
-            "total": total
+async def get_user_reports(
+    session: AsyncSession,
+    user_id: int,
+    limit: int = 10,
+    offset: int = 0,
+) -> dict:
+    """Return paginated analyses for a given user."""
+
+    total_stmt = select(func.count()).select_from(Analysis).where(Analysis.user_id == user_id)
+    total = await session.scalar(total_stmt) or 0
+
+    if total == 0:
+        return {"reports": [], "total": 0}
+
+    stmt = (
+        select(Analysis)
+        .where(Analysis.user_id == user_id)
+        .order_by(Analysis.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    result = await session.execute(stmt)
+    analyses = result.scalars().all()
+
+    reports = [
+        {
+            "analysis_id": analysis.id,
+            "overall_score": analysis.overall_score,
+            "urls": analysis.urls,
+            "created_at": analysis.created_at,
         }
-
-    available = max(total - offset, 0)
-
-    for i in range(min(limit, available)):
-        created_at = datetime.utcnow() - timedelta(days=random.randint(1, 30))
-        
-        reports.append({
-            "analysis_id": 1000 + offset + i,
-            "overall_score": random.randint(70, 95),
-            "urls": [
-                f"https://example.com/page{random.randint(1, 5)}",
-                f"https://example.com/checkout",
-            ],
-            "created_at": created_at.isoformat()
-        })
-    
-    return {
-        "reports": reports,
-        "total": total
-    }
-
-
-async def get_report_by_id_mock(analysis_id: int) -> dict:
-    """
-    Mock function to retrieve detailed report by ID.
-    
-    TODO: Replace with real database query.
-    """
-    
-    from .analyzer import analyze_funnel_mock
-    
-    # Generate mock detailed report
-    mock_urls = [
-        "https://example.com/sales",
-        "https://example.com/checkout",
-        "https://example.com/upsell"
+        for analysis in analyses
     ]
-    
-    result = await analyze_funnel_mock(mock_urls)
-    result["analysis_id"] = analysis_id
-    
-    return result
+
+    return {"reports": reports, "total": total}
+
+
+async def get_report_by_id(
+    session: AsyncSession,
+    analysis_id: int,
+    user_id: Optional[int] = None,
+) -> Optional[dict]:
+    """Retrieve a single analysis with its detail pages."""
+
+    stmt = select(Analysis).options(selectinload(Analysis.pages)).where(Analysis.id == analysis_id)
+
+    if user_id is not None:
+        stmt = stmt.where(Analysis.user_id == user_id)
+
+    result = await session.execute(stmt)
+    analysis = result.scalar_one_or_none()
+
+    if analysis is None:
+        return None
+
+    return {
+        "analysis_id": analysis.id,
+        "overall_score": analysis.overall_score,
+        "scores": analysis.scores,
+        "summary": analysis.summary,
+        "pages": [
+            {
+                "url": page.url,
+                "page_type": page.page_type,
+                "title": page.title,
+                "scores": page.page_scores,
+                "feedback": page.page_feedback,
+                "screenshot_url": page.screenshot_url,
+            }
+            for page in analysis.pages
+        ],
+        "created_at": analysis.created_at,
+        "analysis_duration_seconds": analysis.analysis_duration_seconds,
+    }

@@ -1,74 +1,142 @@
-"""
-Funnel analyzer service with mock data.
-This will be replaced with real OpenAI + scraping logic.
-"""
+"""Funnel analyzer service for processing and analyzing marketing funnels."""
 
-from datetime import datetime
-from typing import List
-import random
+from __future__ import annotations
+
+import logging
+import time
+from typing import List, Optional
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..models.database import Analysis, AnalysisPage, User
+from ..models.schemas import AnalysisResponse
+from ..services.openai_service import get_openai_service
+from ..services.scraper import scrape_funnel
+from ..utils.config import settings
+
+logger = logging.getLogger(__name__)
 
 
-async def analyze_funnel_mock(urls: List[str]) -> dict:
-    """
-    Mock funnel analysis that returns realistic dummy data.
+async def analyze_funnel(urls: List[str], session: AsyncSession, user_id: Optional[int] = None) -> AnalysisResponse:
+    """Generate analysis results, persist them, and return a response payload."""
     
-    TODO: Replace with:
-    1. Scrape each URL using Playwright or requests+BeautifulSoup
-    2. Extract text content and take screenshots
-    3. Send to OpenAI GPT-4o for analysis
-    4. Parse structured response into scores
-    5. Store in database
-    """
+    start_time = time.time()
     
-    # Simulate processing time
-    import asyncio
-    await asyncio.sleep(1)
+    # Step 1: Scrape all pages
+    logger.info(f"Starting analysis for {len(urls)} URLs")
+    page_contents = await scrape_funnel(urls)
     
-    # Generate mock scores
-    base_score = random.randint(70, 95)
-    scores = {
-        "clarity": base_score + random.randint(-10, 10),
-        "value": base_score + random.randint(-10, 10),
-        "proof": base_score + random.randint(-10, 10),
-        "design": base_score + random.randint(-10, 10),
-        "flow": base_score + random.randint(-10, 10),
-    }
+    # Step 2: Analyze each page with OpenAI
+    openai_service = get_openai_service()
+    page_analyses = []
     
-    # Ensure scores are within 0-100
-    scores = {k: max(0, min(100, v)) for k, v in scores.items()}
-    overall_score = sum(scores.values()) // len(scores)
-    
-    # Generate mock page analyses
-    page_types = ["sales_page", "order_form", "upsell", "downsell", "thank_you"]
-    pages = []
-    
-    for idx, url in enumerate(urls):
-        page_type = page_types[idx] if idx < len(page_types) else "additional_page"
-        
-        page_scores = {
-            "clarity": scores["clarity"] + random.randint(-5, 5),
-            "value": scores["value"] + random.randint(-5, 5),
-            "proof": scores["proof"] + random.randint(-5, 5),
-            "design": scores["design"] + random.randint(-5, 5),
-            "flow": scores["flow"] + random.randint(-5, 5),
-        }
-        page_scores = {k: max(0, min(100, v)) for k, v in page_scores.items()}
-        
-        pages.append({
-            "url": url,
-            "page_type": page_type,
-            "title": f"Example Page {idx + 1}",
-            "scores": page_scores,
-            "feedback": f"This {page_type.replace('_', ' ')} demonstrates strong visual hierarchy and clear messaging. The headline effectively communicates the core value proposition. Consider enhancing social proof elements and streamlining the call-to-action placement.",
-            "screenshot_url": f"https://via.placeholder.com/1200x800/4F46E5/FFFFFF?text=Page+{idx+1}"
+    for i, page_content in enumerate(page_contents):
+        analysis_result = await openai_service.analyze_page(
+            page_content, page_number=i + 1, total_pages=len(urls)
+        )
+        page_analyses.append({
+            "url": page_content.url,
+            "title": page_content.title,
+            "page_type": analysis_result.get("page_type", "unknown"),
+            "scores": analysis_result["scores"],
+            "feedback": analysis_result["feedback"],
         })
     
-    return {
-        "analysis_id": random.randint(1000, 9999),
+    # Step 3: Calculate overall scores
+    all_scores = {"clarity": [], "value": [], "proof": [], "design": [], "flow": []}
+    for page_analysis in page_analyses:
+        for key in all_scores:
+            all_scores[key].append(page_analysis["scores"][key])
+    
+    avg_scores = {key: sum(values) // len(values) for key, values in all_scores.items()}
+    overall_score = sum(avg_scores.values()) // len(avg_scores)
+    
+    # Step 4: Generate executive summary
+    summary = await openai_service.analyze_funnel_summary(page_analyses, overall_score)
+    
+    duration = int(time.time() - start_time)
+    logger.info(f"Analysis completed in {duration}s with overall score: {overall_score}")
+    
+    # Step 5: Persist to database
+    resolved_user_id = await _resolve_user_id(session, user_id)
+    
+    analysis_result = {
+        "urls": urls,
+        "scores": avg_scores,
         "overall_score": overall_score,
-        "scores": scores,
-        "summary": f"Your funnel demonstrates strong performance with an overall score of {overall_score}/100. The value proposition is clear and compelling, with excellent visual design throughout. Key strengths include consistent branding, logical flow between pages, and effective use of urgency triggers. Areas for improvement: enhance social proof elements on the sales page, simplify the checkout process, and add more specific benefits to the upsell offer. The funnel maintains good momentum and reduces friction at critical decision points.",
-        "pages": pages,
-        "created_at": datetime.utcnow().isoformat(),
-        "analysis_duration_seconds": random.randint(15, 45)
+        "summary": summary,
+        "pages": page_analyses,
+        "analysis_duration_seconds": duration,
     }
+
+    analysis = Analysis(
+        user_id=resolved_user_id,
+        urls=analysis_result["urls"],
+        scores=analysis_result["scores"],
+        overall_score=analysis_result["overall_score"],
+        summary=analysis_result["summary"],
+        detailed_feedback=analysis_result["pages"],
+        analysis_duration_seconds=analysis_result.get("analysis_duration_seconds"),
+    )
+
+    analysis.pages = [
+        AnalysisPage(
+            url=page["url"],
+            page_type=page.get("page_type"),
+            title=page.get("title"),
+            screenshot_url=page.get("screenshot_url"),
+            page_scores=page["scores"],
+            page_feedback=page["feedback"],
+        )
+        for page in analysis_result["pages"]
+    ]
+
+    session.add(analysis)
+    await session.flush()
+    await session.commit()
+    await session.refresh(analysis, attribute_names=["pages"])
+
+    response_payload = {
+        "analysis_id": analysis.id,
+        "overall_score": analysis.overall_score,
+        "scores": analysis.scores,
+        "summary": analysis.summary,
+        "pages": [
+            {
+                "url": page.url,
+                "page_type": page.page_type,
+                "title": page.title,
+                "scores": page.page_scores,
+                "feedback": page.page_feedback,
+                "screenshot_url": page.screenshot_url,
+            }
+            for page in analysis.pages
+        ],
+        "created_at": analysis.created_at,
+        "analysis_duration_seconds": analysis.analysis_duration_seconds,
+    }
+
+    return AnalysisResponse.model_validate(response_payload)
+
+
+async def _resolve_user_id(session: AsyncSession, provided_user_id: Optional[int]) -> int:
+    """Return the user ID to use for the analysis, creating the default user if necessary."""
+
+    if provided_user_id is not None:
+        return provided_user_id
+
+    query = select(User).where(User.email == settings.DEFAULT_USER_EMAIL)
+    result = await session.execute(query)
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        user = User(
+            email=settings.DEFAULT_USER_EMAIL,
+            full_name=settings.DEFAULT_USER_NAME,
+            is_active=1,
+        )
+        session.add(user)
+        await session.flush()
+
+    return user.id

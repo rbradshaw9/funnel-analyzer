@@ -58,3 +58,5 @@ screenshots/
 
 # Old README backup
 README_OLD.md
+funnel_analyzer.db
+.env

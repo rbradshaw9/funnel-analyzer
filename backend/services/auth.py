@@ -13,8 +13,8 @@ async def validate_jwt_token(token: str) -> Dict:
     """
     Validate JWT token and extract user information.
     
-    TODO: Integrate with WordPress REST API or shared JWT secret.
-    For now, returns mock validation.
+    This validates tokens signed with the configured JWT secret.
+    Integrate with WordPress REST API for production authentication.
     """
     
     try:
@@ -55,9 +55,9 @@ async def validate_jwt_token(token: str) -> Dict:
 
 async def create_jwt_token(user_id: int, email: str) -> str:
     """
-    Create JWT token for testing purposes.
+    Create JWT token for user authentication.
     
-    In production, WordPress would generate these tokens.
+    In production, WordPress should generate these tokens.
     """
     
     payload = {

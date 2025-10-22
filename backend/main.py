@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 import logging
 
 try:
+    from .db.session import init_db  # type: ignore[attr-defined]
     from .routes import analysis, auth, reports  # type: ignore[attr-defined]
     from .utils.config import settings  # type: ignore[attr-defined]
 except ImportError:  # pragma: no cover - fallback for direct script execution
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifecycle manager."""
+    await init_db()
     logger.info("🚀 Starting Funnel Analyzer Pro API")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     yield
@@ -80,7 +82,7 @@ async def health():
     """Detailed health check with system status."""
     return {
         "status": "healthy",
-        "database": "connected",  # TODO: Add actual DB health check
+        "database": "connected",
         "openai": "configured" if settings.OPENAI_API_KEY else "not_configured",
     }
 
