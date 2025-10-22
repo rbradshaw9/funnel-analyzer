@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Funnel Analyzer</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Funnel Analyzer</h1>
+      <form id="analysis-form">
+        <label for="url-input">Page URL</label>
+        <input id="url-input" name="url" type="url" placeholder="https://example.com" required />
+        <button type="submit">Analyze</button>
+      </form>
+      <section id="analysis-results" hidden>
+        <h2>Analysis summary</h2>
+        <p data-testid="analysis-summary"></p>
+        <h3>Funnel steps</h3>
+        <ol data-testid="analysis-steps"></ol>
+        <h3>Recommendations</h3>
+        <ul data-testid="analysis-recommendations"></ul>
+      </section>
+    </main>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
