@@ -8,7 +8,7 @@ A production-ready full-stack application that analyzes marketing funnels using 
 
 **Backend**: FastAPI (Python 3.11) on Railway  
 **Frontend**: Next.js 14 (App Router) on Vercel  
-**Database**: PostgreSQL (Neon) with SQLAlchemy  
+**Database**: PostgreSQL with SQLAlchemy  
 **AI**: OpenAI GPT-4o for analysis  
 **Auth**: JWT tokens from WordPress membership site
 
