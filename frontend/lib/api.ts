@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { AnalysisResult, AuthResponse } from '@/types'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.smarttoolclub.com'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://funnel-analyzer-production-b6b4.up.railway.app'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
