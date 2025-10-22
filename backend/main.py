@@ -8,8 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
 
-from .routes import analysis, auth, reports
-from .utils.config import settings
+try:
+    from .routes import analysis, auth, reports  # type: ignore[attr-defined]
+    from .utils.config import settings  # type: ignore[attr-defined]
+except ImportError:  # pragma: no cover - fallback for direct script execution
+    from routes import analysis, auth, reports
+    from utils.config import settings
 
 # Configure logging
 logging.basicConfig(
