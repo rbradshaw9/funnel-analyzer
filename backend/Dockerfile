@@ -20,7 +20,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy requirements first for layer caching
-COPY requirements.txt ./
+COPY backend/requirements.txt ./requirements.txt
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
@@ -29,7 +29,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # RUN playwright install chromium && playwright install-deps
 
 # Copy the rest of the backend source code
-COPY . .
+COPY backend/ ./
 
 # Expose the default port used by the backend server
 EXPOSE 3000
