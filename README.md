@@ -1,134 +1,373 @@
-# Funnel Analyzer
+# Funnel Analyzer Pro
 
-A two-part application for experimenting with conversion funnel analytics. The backend exposes the ingestion, storage, and embedding generation APIs while the frontend provides a dashboard for exploring funnels. This repository now includes deployment-ready configuration for Railway (backend) and Vercel (frontend).
+**AI-Powered Marketing Funnel Analysis SaaS MVP**
 
-## Project structure
+A production-ready full-stack application that analyzes marketing funnels using GPT-4o. Users can input multiple funnel URLs (sales pages, order forms, upsells, thank-you pages) and receive comprehensive AI-powered analysis with scores for clarity, value, proof, design, and flow.
+
+## 🎯 Overview
+
+**Backend**: FastAPI (Python 3.11) on Railway  
+**Frontend**: Next.js 14 (App Router) on Vercel  
+**Database**: PostgreSQL (Neon) with SQLAlchemy  
+**AI**: OpenAI GPT-4o for analysis  
+**Auth**: JWT tokens from WordPress membership site
+
+### Key Features
+
+- 🎨 Clean, Apple-like UI with Tailwind CSS + Framer Motion
+- 🤖 AI-powered analysis of funnel pages
+- 📊 Comprehensive scoring: Clarity, Value, Proof, Design, Flow
+- 📱 Responsive dashboard with iframe embedding support
+- 🔐 JWT authentication for WordPress integration
+- 📄 PDF export capability (coming soon)
+- ⚡ Real-time analysis with loading animations
+
+## 📁 Project Structure
 
 ```
-.
-├── backend/              # Backend application source & Dockerfile
-├── frontend/             # Frontend application source & Vercel configuration
-├── .github/workflows/    # Continuous integration and deployment workflow
-├── .env.example          # Example environment configuration for local use
-├── railway.json          # Railway service definition for the backend
-└── README.md
+funnel-analyzer/
+├── backend/                    # FastAPI Python backend
+│   ├── main.py                # Application entry point
+│   ├── routes/                # API route handlers
+│   │   ├── analysis.py       # POST /api/analyze
+│   │   ├── auth.py           # POST /api/auth/validate
+│   │   └── reports.py        # GET /api/reports/{user_id}
+│   ├── models/               # Database models & Pydantic schemas
+│   │   ├── database.py       # SQLAlchemy models (User, Analysis, AnalysisPage)
+│   │   └── schemas.py        # Request/response validation
+│   ├── services/             # Business logic
+│   │   ├── analyzer.py       # Funnel analysis service (currently mock)
+│   │   ├── auth.py           # JWT validation
+│   │   └── reports.py        # Report retrieval
+│   ├── utils/                # Utilities
+│   │   └── config.py         # Settings management
+│   ├── requirements.txt      # Python dependencies
+│   ├── package.json          # For Railway compatibility
+│   └── Dockerfile            # Production Docker build
+│
+├── frontend/                  # Next.js 14 frontend
+│   ├── app/                  # App Router pages
+│   │   ├── page.tsx         # Landing page (/)
+│   │   ├── dashboard/       # Main app (/dashboard)
+│   │   ├── embed/           # iframe version (/embed)
+│   │   ├── layout.tsx       # Root layout
+│   │   └── globals.css      # Global styles
+│   ├── components/          # React components
+│   │   ├── URLInputForm.tsx        # Multi-URL input
+│   │   ├── LoadingAnimation.tsx    # Analysis progress
+│   │   ├── ResultsDashboard.tsx    # Results display
+│   │   ├── ScoreCard.tsx          # Individual score cards
+│   │   └── PageAnalysisCard.tsx   # Per-page analysis
+│   ├── lib/                 # Utilities
+│   │   └── api.ts          # API client (Axios)
+│   ├── store/              # State management
+│   │   └── analysisStore.ts # Zustand store
+│   ├── types/              # TypeScript types
+│   │   └── index.ts       # Shared interfaces
+│   ├── package.json       # Node dependencies
+│   ├── next.config.js     # Next.js config (static export)
+│   ├── tailwind.config.js # Tailwind setup
+│   └── vercel.json        # Vercel deployment config
+│
+├── .github/
+│   ├── workflows/
+│   │   └── deploy.yml      # CI/CD pipeline
+│   └── copilot-instructions.md  # AI agent guidelines
+├── .env.example            # Environment template
+├── railway.json            # Railway deployment config
+└── README.md              # This file
 ```
 
-## Prerequisites
+## 🚀 Quick Start
 
-- Node.js 18.x (LTS) and npm
-- Docker (for container builds and local parity with Railway)
-- Optional CLIs for manual deployments:
-  - [Railway CLI](https://docs.railway.app/develop/cli)
-  - [Vercel CLI](https://vercel.com/docs/cli)
+### Prerequisites
 
-## Environment setup
+- **Node.js 18.x** (LTS)
+- **Python 3.11+**
+- **Docker** (optional, for backend container testing)
+- **OpenAI API Key** (for AI analysis)
+- **PostgreSQL database** (Neon recommended)
 
-1. Copy `.env.example` to `.env` and fill in the values:
-   ```bash
-   cp .env.example .env
-   ```
-2. Ensure the following secrets are available:
-   - `OPENAI_API_KEY` – required for generating embeddings.
-   - `DATABASE_URL` – connection string for the primary application database.
-   - `JWT_SECRET` – used to sign and verify access tokens.
-   - `VERCEL_TOKEN` – used by CI to authenticate with Vercel.
-   - `RAILWAY_TOKEN` – used by CI to authenticate with Railway.
-3. When running locally, export the variables into your shell or use a tool such as [`direnv`](https://direnv.net/) or [`dotenv`](https://github.com/motdotla/dotenv).
+### 1. Clone & Environment Setup
 
-## Local development
+```bash
+# Clone the repository
+git clone https://github.com/rbradshaw9/funnel-analyzer.git
+cd funnel-analyzer
 
-### Backend
+# Copy environment template
+cp .env.example .env
+```
+
+### 2. Configure Environment Variables
+
+Edit `.env` with your credentials:
+
+```bash
+# Required
+OPENAI_API_KEY=sk-your-actual-openai-key
+DATABASE_URL=postgresql://user:pass@host:5432/dbname
+JWT_SECRET=your-secret-minimum-32-characters
+
+# Development
+ENVIRONMENT=development
+FRONTEND_URL=http://localhost:3001
+NEXT_PUBLIC_API_URL=http://localhost:3000
+```
+
+### 3. Backend Setup & Run
 
 ```bash
 cd backend
-npm install
-npm run dev
+
+# Create virtual environment (recommended)
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run development server (auto-reload enabled)
+python main.py
+
+# Or use uvicorn directly
+uvicorn main:app --reload --host 0.0.0.0 --port 3000
 ```
 
-The backend defaults to port `3000`. Update `npm run dev` in the backend `package.json` when implementing the service to invoke your preferred framework (Express, Fastify, etc.).
+The backend API will be available at: `http://localhost:3000`
 
-### Frontend
+**API Documentation**: `http://localhost:3000/docs` (Swagger UI)
+
+### 4. Frontend Setup & Run
+
+Open a new terminal:
 
 ```bash
 cd frontend
+
+# Install dependencies
 npm install
+
+# Run development server
 npm run dev
 ```
 
-Configure the frontend to proxy API requests to the backend (e.g., via `NEXT_PUBLIC_API_URL`). The provided `frontend/vercel.json` exposes the same variables for preview and production deployments.
+The frontend will be available at: `http://localhost:3001`
 
-### Using Docker for the backend
+### 5. Test the Application
 
-The `backend/Dockerfile` mirrors the environment used on Railway. To run locally:
+1. Open browser to `http://localhost:3001`
+2. Click "Get Started" or navigate to `/dashboard`
+3. Enter funnel URLs (e.g., `https://example.com/sales`)
+4. Click "Analyze Funnel"
+5. View AI-generated results with scores and feedback
+
+## 🔧 Development
+
+### Backend API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | Health check |
+| GET | `/health` | Detailed system status |
+| POST | `/api/analyze` | Analyze funnel URLs (returns scores + feedback) |
+| POST | `/api/auth/validate` | Validate JWT token |
+| GET | `/api/reports/{user_id}` | Get user's past reports |
+| GET | `/api/reports/detail/{analysis_id}` | Get detailed report |
+
+### Frontend Routes
+
+| Route | Description |
+|-------|-------------|
+| `/` | Marketing landing page |
+| `/dashboard` | Main analysis interface |
+| `/embed` | Minimal UI for iframe embedding |
+
+### Mock Data
+
+Currently, the application uses **mock data** for analysis. The backend returns realistic dummy scores and feedback without calling OpenAI. This allows you to develop and test the UI/UX flow.
+
+**To implement real analysis:**
+1. Update `backend/services/analyzer.py`
+2. Add web scraping (Playwright or BeautifulSoup)
+3. Call OpenAI API with scraped content
+4. Parse structured response into scores
+
+### Database Setup (Optional)
+
+The application includes SQLAlchemy models but currently uses mock data. To enable database:
 
 ```bash
+# Install alembic for migrations
+pip install alembic
+
+# Initialize database
+alembic init alembic
+alembic revision --autogenerate -m "Initial migration"
+alembic upgrade head
+```
+
+## 🐳 Docker Development
+
+Test the backend in a production-like environment:
+
+```bash
+# Build Docker image
 docker build -t funnel-analyzer-backend ./backend
+
+# Run container
 docker run --rm -p 3000:3000 --env-file .env funnel-analyzer-backend
 ```
 
-## Testing and linting
+## 🚢 Deployment
 
-Each project should define `lint` and `test` scripts within its respective `package.json`. GitHub Actions will invoke these commands automatically, but you can run them locally:
+### Backend → Railway
 
+1. Create Railway project: `railway.app`
+2. Add environment variables in Railway dashboard:
+   - `OPENAI_API_KEY`
+   - `DATABASE_URL`
+   - `JWT_SECRET`
+   - `ENVIRONMENT=production`
+   - `FRONTEND_URL=https://your-vercel-app.vercel.app`
+
+3. Railway will automatically:
+   - Detect `Dockerfile`
+   - Build and deploy
+   - Use `railway.json` configuration
+
+**Manual deployment:**
 ```bash
-npm run lint
-npm run test
+npm install -g @railway/cli
+railway login
+railway link  # Link to existing project
+railway up
 ```
 
-## Continuous integration & deployment
+### Frontend → Vercel
 
-The workflow defined in `.github/workflows/deploy.yml` executes on pushes to the `main` branch and can be triggered manually. It performs the following steps:
+1. Import project in Vercel dashboard
+2. Set environment variables:
+   - `NEXT_PUBLIC_API_URL=https://your-railway-app.railway.app`
 
-1. Installs dependencies for both the backend and frontend, then runs their `lint` and `test` scripts (when present).
-2. Deploys the backend to Railway using the provided `RAILWAY_TOKEN` secret.
-3. Deploys the frontend to Vercel using the provided `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` secrets.
+3. Vercel will automatically:
+   - Detect Next.js
+   - Build static export
+   - Deploy to CDN
 
-Ensure the corresponding GitHub repository secrets are configured before enabling automated deployments. The workflow conditionally skips the deployment steps if the required tokens are absent.
+**Manual deployment:**
+```bash
+npm install -g vercel
+cd frontend
+vercel --prod
+```
 
-### Manual deployments
+### Automated CI/CD
 
-You can also deploy manually from your workstation:
+GitHub Actions workflow (`.github/workflows/deploy.yml`) automatically:
+
+1. **On push to `main`:**
+   - Runs Python linting (flake8) on backend
+   - Runs Next.js linting on frontend
+   - Deploys backend to Railway (if `RAILWAY_TOKEN` secret exists)
+   - Deploys frontend to Vercel (if `VERCEL_TOKEN` secrets exist)
+
+2. **Required GitHub Secrets:**
+   - `RAILWAY_TOKEN`
+   - `VERCEL_TOKEN`
+   - `VERCEL_ORG_ID`
+   - `VERCEL_PROJECT_ID`
+
+## 🔌 WordPress Integration
+
+This is a **standalone application**, not a WordPress plugin. It integrates via JWT tokens:
+
+### Setup
+
+1. Install JWT plugin on WordPress (e.g., JWT Authentication for WP REST API)
+2. Configure shared `JWT_SECRET` in both WordPress and Funnel Analyzer
+3. Pass token to app via URL parameter:
+   ```
+   https://app.smarttoolclub.com/dashboard?token=abc123
+   ```
+
+### Embedding in WordPress
+
+Use iframe:
+
+```html
+<iframe 
+  src="https://app.smarttoolclub.com/embed?token=USER_JWT_TOKEN"
+  width="100%" 
+  height="800"
+  frameborder="0"
+></iframe>
+```
+
+## 🎨 Customization
+
+### Styling
+
+- Edit `frontend/tailwind.config.js` for colors/themes
+- Primary color: `primary-600` (#4f46e5 indigo)
+- Modify `frontend/app/globals.css` for global styles
+
+### Analysis Criteria
+
+Modify scoring criteria in `backend/services/analyzer.py`:
+- Clarity: Message understanding
+- Value: Value proposition strength
+- Proof: Social proof elements
+- Design: Visual quality
+- Flow: User journey smoothness
+
+## 🧪 Testing
 
 ```bash
 # Backend
-railway login --token $RAILWAY_TOKEN
-railway up --service funnel-analyzer-backend
+cd backend
+pip install pytest pytest-asyncio
+pytest
 
 # Frontend
 cd frontend
-vercel pull --environment=production --yes
-vercel deploy --prod --yes
+npm test
 ```
 
-## Embedding workflow
+## 📝 Next Steps
 
-To generate embeddings for funnel events or other textual data:
+### To Complete Production Setup:
 
-1. Ensure `OPENAI_API_KEY` is set in your environment.
-2. Choose an embedding model (e.g., `text-embedding-3-small`).
-3. Call the OpenAI Embeddings API from the backend when ingesting new data. A minimal Node.js example:
-   ```ts
-   import OpenAI from "openai";
+1. **Implement Real Analysis:**
+   - Add Playwright for web scraping
+   - Integrate OpenAI GPT-4o API
+   - Parse and structure AI responses
 
-   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+2. **Enable Database:**
+   - Set up Neon PostgreSQL
+   - Run database migrations
+   - Update services to use real database
 
-   export async function embedEventDescription(description: string) {
-     const response = await client.embeddings.create({
-       input: description,
-       model: "text-embedding-3-small"
-     });
+3. **Add Authentication:**
+   - Integrate WordPress JWT validation
+   - Add user session management
+   - Implement report history
 
-     return response.data[0]?.embedding ?? [];
-   }
-   ```
-4. Store embeddings alongside funnel entities in your database (e.g., PostgreSQL with the `vector` extension, Pinecone, or another vector store).
-5. Use similarity search to surface related events, marketing assets, or user sessions within the frontend dashboard.
+4. **PDF Export:**
+   - Integrate jsPDF + html2canvas
+   - Style report templates
+   - Add download functionality
 
-## Deployment configuration references
+5. **Advanced Features:**
+   - Screenshot capture with Playwright
+   - Comparison reports
+   - Historical trend analysis
+   - Team collaboration
 
-- `backend/Dockerfile` – Production Docker build used by Railway.
-- `railway.json` – Railway configuration with environment variable bindings and start command.
-- `frontend/vercel.json` – Vercel configuration including build commands and required environment variables.
+## 🤝 Contributing
 
-These files should be updated in tandem with any changes to the build or runtime requirements of the respective applications.
+This is a private MVP. For questions or issues, contact the development team.
+
+## 📄 License
+
+Proprietary - Smart Tool Club © 2025
