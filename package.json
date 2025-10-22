@@ -1,0 +1,10 @@
+{
+  "name": "funnel-analyzer",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "python -m pytest",
+    "test:frontend": "npm --prefix frontend run test:e2e"
+  }
+}
