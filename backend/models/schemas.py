@@ -2,7 +2,7 @@
 Pydantic schemas for request/response validation.
 """
 
-from pydantic import BaseModel, HttpUrl, Field, field_validator, EmailStr
+from pydantic import BaseModel, HttpUrl, Field, field_validator, EmailStr, ConfigDict
 from typing import List, Optional, Dict
 from datetime import datetime
 
@@ -32,7 +32,9 @@ class ScoreBreakdown(BaseModel):
 
 
 class CTARecommendation(BaseModel):
-    copy: str
+    model_config = ConfigDict(populate_by_name=True)
+
+    cta_copy: str = Field(..., alias="copy", serialization_alias="copy")
     location: Optional[str] = None
     reason: Optional[str] = None
 
@@ -115,6 +117,8 @@ class PageAnalysis(BaseModel):
 class AnalysisResponse(BaseModel):
     """Response body for completed analysis."""
     
+    model_config = ConfigDict(from_attributes=True)
+
     analysis_id: int
     overall_score: int = Field(..., ge=0, le=100)
     scores: ScoreBreakdown
@@ -124,9 +128,6 @@ class AnalysisResponse(BaseModel):
     analysis_duration_seconds: Optional[int] = None
     recipient_email: Optional[EmailStr] = None
     
-    class Config:
-        from_attributes = True
-
 
 class AnalysisEmailRequest(BaseModel):
     """Payload for requesting an email delivery of an analysis."""
@@ -152,13 +153,12 @@ class AuthValidateResponse(BaseModel):
 class ReportListItem(BaseModel):
     """Summary of a single analysis report."""
     
+    model_config = ConfigDict(from_attributes=True)
+
     analysis_id: int
     overall_score: int
     urls: List[str]
     created_at: datetime
-    
-    class Config:
-        from_attributes = True
 
 
 class ReportListResponse(BaseModel):

@@ -3,16 +3,22 @@ Configuration management using Pydantic settings.
 Loads environment variables with validation.
 """
 
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore",
+    )
     
     # Core settings
     ENVIRONMENT: str = "development"
-    DEBUG: bool = True
+    DEBUG: bool = False
     
     # API Keys
     OPENAI_API_KEY: str = ""
@@ -60,10 +66,5 @@ class Settings(BaseSettings):
     MAX_URLS_PER_ANALYSIS: int = 10
     SCRAPE_TIMEOUT_SECONDS: int = 30
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-        extra = "ignore"  # Ignore extra fields from .env (like frontend vars)
-
 
 settings = Settings()
