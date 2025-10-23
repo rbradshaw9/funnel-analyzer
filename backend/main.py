@@ -8,13 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
 
-try:
-    from .db.session import init_db  # type: ignore[attr-defined]
-    from .routes import analysis, auth, reports, webhooks  # type: ignore[attr-defined]
-    from .utils.config import settings  # type: ignore[attr-defined]
-except ImportError:  # pragma: no cover - fallback for direct script execution
-    from routes import analysis, auth, reports, webhooks
-    from utils.config import settings
+from .db.session import init_db
+from .routes import analysis, auth, reports, webhooks
+from .utils.config import settings
 
 # Configure logging
 logging.basicConfig(
