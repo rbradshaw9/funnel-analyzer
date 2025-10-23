@@ -77,10 +77,12 @@ async def root():
 @app.get("/health")
 async def health():
     """Detailed health check with system status."""
+    openai_status = "configured" if (settings.OPENAI_API_KEY or "").strip() else "not_configured"
+
     return {
         "status": "healthy",
         "database": "connected",
-        "openai": "configured" if settings.     OPENAI_API_KEY else "not_configured",
+        "openai": openai_status,
     }
 
 
