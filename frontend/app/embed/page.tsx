@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { FiAlertTriangle } from 'react-icons/fi'
 import URLInputForm from '@/components/URLInputForm'
 import ResultsDashboard from '@/components/ResultsDashboard'
@@ -8,7 +9,7 @@ import { TopNav } from '@/components/TopNav'
 import { useAnalysisStore } from '@/store/analysisStore'
 import { useAuthValidation } from '@/hooks/useAuthValidation'
 
-export default function Embed() {
+function EmbedContent() {
   const { currentAnalysis, isAnalyzing } = useAnalysisStore()
   const {
     token,
@@ -24,7 +25,7 @@ export default function Embed() {
 
   // Iframe-optimized version - minimal chrome
   return (
-  <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
       <TopNav
         sticky={false}
         rightSlot={
@@ -85,5 +86,22 @@ export default function Embed() {
         )}
       </div>
     </div>
+  )
+}
+
+function EmbedFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+      <TopNav sticky={false} />
+      <div className="max-w-5xl mx-auto px-4 py-6 text-sm text-slate-500">Loading embedded analyzer…</div>
+    </div>
+  )
+}
+
+export default function Embed() {
+  return (
+    <Suspense fallback={<EmbedFallback />}>
+      <EmbedContent />
+    </Suspense>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { FiAlertTriangle, FiExternalLink, FiFileText, FiRefreshCw, FiTrash2 } from 'react-icons/fi'
 import URLInputForm from '@/components/URLInputForm'
 import ResultsDashboard from '@/components/ResultsDashboard'
@@ -22,7 +22,7 @@ function formatTimestamp(value: string): string {
   return date.toLocaleString(undefined, DATE_OPTIONS)
 }
 
-export default function Dashboard() {
+function DashboardContent() {
   const {
     token,
     loading: authLoading,
@@ -369,5 +369,24 @@ export default function Dashboard() {
         )}
       </main>
     </div>
+  )
+}
+
+function DashboardFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+      <TopNav />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <p className="text-sm text-slate-500">Loading membership dashboard…</p>
+      </main>
+    </div>
+  )
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={<DashboardFallback />}>
+      <DashboardContent />
+    </Suspense>
   )
 }
