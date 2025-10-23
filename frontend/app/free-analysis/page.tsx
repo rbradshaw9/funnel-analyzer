@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { analyzeFunnel, sendAnalysisEmail } from '@/lib/api';
 import type { AnalysisResult } from '@/types';
@@ -13,19 +13,66 @@ export default function FreeAnalysisPage() {
   const [email, setEmail] = useState('');
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState('Initializing analysis…');
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  const progressStages = useMemo(
+    () => [
+      { delay: 1500, percent: 20, message: 'Scraping your page content…' },
+      { delay: 5000, percent: 38, message: 'Capturing screenshots & structure…' },
+      { delay: 11000, percent: 58, message: 'Evaluating copy, design, and proof…' },
+      { delay: 20000, percent: 78, message: 'Scoring conversion opportunities…' },
+      { delay: 32000, percent: 92, message: 'Preparing executive summary & next steps…' },
+    ],
+    []
+  );
+
+  useEffect(() => {
+    if (!isAnalyzing) {
+      setProgress(0);
+      setProgressMessage('Initializing analysis…');
+      setElapsedSeconds(0);
+      return;
+    }
+
+    setProgress(8);
+    setProgressMessage('Queueing your analysis…');
+    setElapsedSeconds(0);
+
+    const timers = progressStages.map(({ delay, percent, message }) =>
+      setTimeout(() => {
+        setProgress(percent);
+        setProgressMessage(message);
+      }, delay)
+    );
+
+    const interval = setInterval(() => {
+      setElapsedSeconds((seconds) => seconds + 1);
+    }, 1000);
+
+    return () => {
+      timers.forEach(clearTimeout);
+      clearInterval(interval);
+    };
+  }, [isAnalyzing, progressStages]);
 
   const handleAnalyze = async () => {
     if (!url.trim()) return;
 
     setIsAnalyzing(true);
+    setProgress(8);
+    setProgressMessage('Queueing your analysis…');
     setResult(null);
     setEmailSubmitted(false);
     setShowUnlockModal(false);
 
     try {
-  const analysis = await analyzeFunnel([url.trim()]);
-  setResult(analysis);
-  setEmail(analysis.recipient_email ?? '');
+      const analysis = await analyzeFunnel([url.trim()]);
+      setResult(analysis);
+      setEmail(analysis.recipient_email ?? '');
+      setProgress(100);
+      setProgressMessage('Analysis ready!');
     } catch (error) {
       console.error('Analysis failed:', error);
       alert('Analysis failed. Please try again.');
@@ -171,9 +218,28 @@ export default function FreeAnalysisPage() {
             animate={{ opacity: 1 }}
             className="text-center py-20"
           >
-            <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-indigo-600 border-t-transparent mb-6"></div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">Analyzing Your Page...</h3>
-            <p className="text-gray-600">Our AI is reviewing your page content, design, and conversion elements.</p>
+            <div className="max-w-xl mx-auto bg-white rounded-2xl shadow-xl border border-indigo-100 p-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-bold text-gray-900">Analyzing Your Page…</h3>
+                <span className="text-sm font-medium text-indigo-600">
+                  {elapsedSeconds}s elapsed
+                </span>
+              </div>
+              <p className="text-gray-600 mb-6">{progressMessage}</p>
+              <div className="h-3 w-full bg-indigo-100 rounded-full overflow-hidden">
+                <motion.div
+                  key={progress}
+                  initial={{ width: `${Math.max(progress - 10, 0)}%` }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                  className="h-full bg-gradient-to-r from-indigo-500 to-purple-600"
+                />
+              </div>
+              <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
+                <span>Estimated time: ~45 seconds</span>
+                <span className="font-medium text-indigo-600">Hang tight — almost there!</span>
+              </div>
+            </div>
           </motion.div>
         )}
 
