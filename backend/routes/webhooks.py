@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import hmac
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
@@ -10,9 +12,19 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db.session import get_db_session
-from ..services.webhooks import handle_thrivecart_webhook
-from ..utils.config import settings
 from ..models.database import WebhookEvent
+from ..services.mautic import sync_thrivecart_event
+from ..services.webhooks import WebhookResult, handle_thrivecart_webhook
+from ..utils.config import settings
+
+logger = logging.getLogger(__name__)
+
+
+def _log_background_error(task: asyncio.Task) -> None:
+    try:
+        task.result()
+    except Exception as exc:  # pragma: no cover - background task safety
+        logger.exception("Background task failure: %s", exc)
 
 router = APIRouter()
 
@@ -41,7 +53,7 @@ async def thrivecart_webhook(
     body = await request.body()
 
     try:
-        message, status = await handle_thrivecart_webhook(
+        result: WebhookResult = await handle_thrivecart_webhook(
             session=session,
             body=body,
             signature=x_webhook_signature or x_thrivecart_signature or sign,
@@ -49,7 +61,15 @@ async def thrivecart_webhook(
     except HTTPException:
         raise
 
-    return JSONResponse({"status": message}, status_code=status)
+    if result.event:
+        task = asyncio.create_task(sync_thrivecart_event(result.event.payload))
+        task.add_done_callback(_log_background_error)
+
+    response_payload = {"status": result.message}
+    if result.event and getattr(result.event, "id", None) is not None:
+        response_payload["event_id"] = result.event.id
+
+    return JSONResponse(response_payload, status_code=result.status)
 
 
 @router.get("/thrivecart/events")

@@ -229,8 +229,16 @@ Request body:
 - Expects a ThriveCart webhook payload with header `X-Webhook-Signature` containing an HMAC SHA-256 digest of the raw body using `THRIVECART_WEBHOOK_SECRET`.
 - Automatically handles ThriveCart `HEAD` probes and Fluent-style query-string signatures (`?sign=`).
 - Persists the payload to the `webhook_events` table for audit/replay and returns `{ "status": "ok" }` with HTTP 200 when accepted.
+- Triggers a background Mautic sync (contact upsert + event note) when Mautic credentials are configured.
 - Use Railway/Vercel secrets to configure the shared secret before enabling the webhook in ThriveCart.
 - Debugging helper endpoint: `GET /api/webhooks/thrivecart/events?secret=...` returns the most recent payloads (requires the same shared secret and is limited to 100 records).
+
+#### Mautic CRM Sync (beta)
+
+- Populate `MAUTIC_BASE_URL`, `MAUTIC_API_USERNAME`, and `MAUTIC_API_PASSWORD` to enable best-effort CRM updates.
+- Each accepted ThriveCart webhook upserts the contact (email, name, phone, company) and attaches a JSON note summarising the payload.
+- Errors are logged server-side but do not affect the HTTP response to ThriveCart.
+- Extend `backend/services/mautic.py` to map additional fields (tags, segments, deals) as business rules solidify.
 
 ### Frontend Routes
 
