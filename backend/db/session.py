@@ -16,6 +16,7 @@ from .migrations import (
     ensure_screenshot_storage_key_column,
     ensure_user_password_hash_column,
     ensure_user_role_column,
+    ensure_user_plan_column,
 )
 from ..utils.config import settings
 
@@ -61,6 +62,7 @@ async def init_db() -> None:
         await ensure_screenshot_storage_key_column(conn)
         await ensure_user_role_column(conn)
         await ensure_user_password_hash_column(conn)
+    await ensure_user_plan_column(conn)
 
     async with AsyncSessionFactory() as session:
         default_email = (settings.DEFAULT_USER_EMAIL or "").strip().lower()

@@ -96,3 +96,29 @@ async def ensure_user_password_hash_column(conn: AsyncConnection) -> None:
 
     logger.info("Adding missing users.password_hash column")
     await conn.exec_driver_sql("ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)")
+
+
+async def ensure_user_plan_column(conn: AsyncConnection) -> None:
+    """Ensure the `plan` column exists on the users table."""
+    dialect = conn.dialect.name
+
+    if dialect == "sqlite":
+        result = await conn.exec_driver_sql("PRAGMA table_info(users)")
+        columns: Sequence[tuple] = result.fetchall()
+        has_column = any(col[1] == "plan" for col in columns)
+    else:
+        result = await conn.exec_driver_sql(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'users' AND column_name = 'plan'"
+        )
+        has_column = result.first() is not None
+
+    if has_column:
+        return
+
+    logger.info("Adding missing users.plan column")
+    if dialect == "sqlite":
+        await conn.exec_driver_sql("ALTER TABLE users ADD COLUMN plan VARCHAR(50) DEFAULT 'free'")
+        await conn.exec_driver_sql("UPDATE users SET plan = 'free' WHERE plan IS NULL")
+    else:
+        await conn.exec_driver_sql("ALTER TABLE users ADD COLUMN plan VARCHAR(50) DEFAULT 'free' NOT NULL")
