@@ -227,8 +227,10 @@ Request body:
 #### POST `/api/webhooks/thrivecart`
 
 - Expects a ThriveCart webhook payload with header `X-Webhook-Signature` containing an HMAC SHA-256 digest of the raw body using `THRIVECART_WEBHOOK_SECRET`.
-- Persists the payload to the `webhook_events` table for audit/replay and returns `{ "status": "ok" }` with HTTP 202 when accepted.
+- Automatically handles ThriveCart `HEAD` probes and Fluent-style query-string signatures (`?sign=`).
+- Persists the payload to the `webhook_events` table for audit/replay and returns `{ "status": "ok" }` with HTTP 200 when accepted.
 - Use Railway/Vercel secrets to configure the shared secret before enabling the webhook in ThriveCart.
+- Debugging helper endpoint: `GET /api/webhooks/thrivecart/events?secret=...` returns the most recent payloads (requires the same shared secret and is limited to 100 records).
 
 ### Frontend Routes
 

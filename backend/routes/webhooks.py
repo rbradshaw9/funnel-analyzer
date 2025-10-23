@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import hmac
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db.session import get_db_session
 from ..services.webhooks import handle_thrivecart_webhook
+from ..utils.config import settings
+from ..models.database import WebhookEvent
 
 router = APIRouter()
 
@@ -45,3 +50,35 @@ async def thrivecart_webhook(
         raise
 
     return JSONResponse({"status": message}, status_code=status)
+
+
+@router.get("/thrivecart/events")
+async def list_thrivecart_events(
+    secret: str = Query(..., description="ThriveCart webhook secret for authorization"),
+    limit: int = Query(20, ge=1, le=100),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """List recent ThriveCart webhook events for debugging and verification."""
+    configured_secret = settings.THRIVECART_WEBHOOK_SECRET or ""
+    if not configured_secret:
+        raise HTTPException(status_code=503, detail="ThriveCart integration not configured")
+    if not hmac.compare_digest(secret, configured_secret):
+        raise HTTPException(status_code=401, detail="Invalid secret")
+
+    result = await session.execute(
+        select(WebhookEvent)
+        .where(WebhookEvent.source == "thrivecart")
+        .order_by(desc(WebhookEvent.created_at))
+        .limit(limit)
+    )
+    events = [
+        {
+            "id": event.id,
+            "event_type": event.event_type,
+            "created_at": event.created_at.isoformat() if event.created_at else None,
+            "payload": event.payload,
+        }
+        for event in result.scalars().all()
+    ]
+
+    return {"events": events}
