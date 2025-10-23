@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Sequence
+from typing import Optional, Sequence
 
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -11,26 +11,55 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 logger = logging.getLogger(__name__)
 
 
+async def _sqlite_column_exists(conn: AsyncConnection, table: str, column: str) -> bool:
+    result = await conn.exec_driver_sql(f"PRAGMA table_info({table})")
+    columns: Sequence[tuple] = result.fetchall()
+    return any(col[1] == column for col in columns)
+
+
+async def _postgres_column_exists(conn: AsyncConnection, table: str, column: str) -> bool:
+    result = await conn.exec_driver_sql(
+        "SELECT column_name FROM information_schema.columns "
+        f"WHERE table_name = '{table}' AND column_name = '{column}'"
+    )
+    return result.first() is not None
+
+
+async def _add_sqlite_column_if_missing(
+    conn: AsyncConnection,
+    table: str,
+    column: str,
+    definition: str,
+) -> bool:
+    if await _sqlite_column_exists(conn, table, column):
+        return False
+    await conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+    return True
+
+
+async def _add_postgres_column_if_missing(
+    conn: AsyncConnection,
+    table: str,
+    column: str,
+    definition: str,
+) -> None:
+    await conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {definition}")
+
+
 async def ensure_recipient_email_column(conn: AsyncConnection) -> None:
     """Ensure the `recipient_email` column exists on the analyses table."""
     dialect = conn.dialect.name
 
     if dialect == "sqlite":
-        result = await conn.exec_driver_sql("PRAGMA table_info(analyses)")
-        columns: Sequence[tuple] = result.fetchall()
-        has_column = any(col[1] == "recipient_email" for col in columns)
+        added = await _add_sqlite_column_if_missing(conn, "analyses", "recipient_email", "VARCHAR(255)")
     else:
-        result = await conn.exec_driver_sql(
-            "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name = 'analyses' AND column_name = 'recipient_email'"
-        )
-        has_column = result.first() is not None
+        exists = await _postgres_column_exists(conn, "analyses", "recipient_email")
+        if not exists:
+            await _add_postgres_column_if_missing(conn, "analyses", "recipient_email", "VARCHAR(255)")
+        added = not exists
 
-    if has_column:
-        return
-
-    logger.info("Adding missing analyses.recipient_email column")
-    await conn.exec_driver_sql("ALTER TABLE analyses ADD COLUMN recipient_email VARCHAR(255)")
+    if added:
+        logger.info("Adding missing analyses.recipient_email column")
 
 
 async def ensure_screenshot_storage_key_column(conn: AsyncConnection) -> None:
@@ -38,21 +67,15 @@ async def ensure_screenshot_storage_key_column(conn: AsyncConnection) -> None:
     dialect = conn.dialect.name
 
     if dialect == "sqlite":
-        result = await conn.exec_driver_sql("PRAGMA table_info(analysis_pages)")
-        columns: Sequence[tuple] = result.fetchall()
-        has_column = any(col[1] == "screenshot_storage_key" for col in columns)
+        added = await _add_sqlite_column_if_missing(conn, "analysis_pages", "screenshot_storage_key", "VARCHAR(2048)")
     else:
-        result = await conn.exec_driver_sql(
-            "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name = 'analysis_pages' AND column_name = 'screenshot_storage_key'"
-        )
-        has_column = result.first() is not None
+        exists = await _postgres_column_exists(conn, "analysis_pages", "screenshot_storage_key")
+        if not exists:
+            await _add_postgres_column_if_missing(conn, "analysis_pages", "screenshot_storage_key", "VARCHAR(2048)")
+        added = not exists
 
-    if has_column:
-        return
-
-    logger.info("Adding missing analysis_pages.screenshot_storage_key column")
-    await conn.exec_driver_sql("ALTER TABLE analysis_pages ADD COLUMN screenshot_storage_key VARCHAR(2048)")
+    if added:
+        logger.info("Adding missing analysis_pages.screenshot_storage_key column")
 
 
 async def ensure_user_role_column(conn: AsyncConnection) -> None:
@@ -60,21 +83,15 @@ async def ensure_user_role_column(conn: AsyncConnection) -> None:
     dialect = conn.dialect.name
 
     if dialect == "sqlite":
-        result = await conn.exec_driver_sql("PRAGMA table_info(users)")
-        columns: Sequence[tuple] = result.fetchall()
-        has_column = any(col[1] == "role" for col in columns)
+        added = await _add_sqlite_column_if_missing(conn, "users", "role", "VARCHAR(50) DEFAULT 'member'")
     else:
-        result = await conn.exec_driver_sql(
-            "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name = 'users' AND column_name = 'role'"
-        )
-        has_column = result.first() is not None
+        exists = await _postgres_column_exists(conn, "users", "role")
+        if not exists:
+            await _add_postgres_column_if_missing(conn, "users", "role", "VARCHAR(50) DEFAULT 'member'")
+        added = not exists
 
-    if has_column:
-        return
-
-    logger.info("Adding missing users.role column")
-    await conn.exec_driver_sql("ALTER TABLE users ADD COLUMN role VARCHAR(50) DEFAULT 'member'")
+    if added:
+        logger.info("Adding missing users.role column")
 
 
 async def ensure_user_password_hash_column(conn: AsyncConnection) -> None:
@@ -82,21 +99,15 @@ async def ensure_user_password_hash_column(conn: AsyncConnection) -> None:
     dialect = conn.dialect.name
 
     if dialect == "sqlite":
-        result = await conn.exec_driver_sql("PRAGMA table_info(users)")
-        columns: Sequence[tuple] = result.fetchall()
-        has_column = any(col[1] == "password_hash" for col in columns)
+        added = await _add_sqlite_column_if_missing(conn, "users", "password_hash", "VARCHAR(255)")
     else:
-        result = await conn.exec_driver_sql(
-            "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name = 'users' AND column_name = 'password_hash'"
-        )
-        has_column = result.first() is not None
+        exists = await _postgres_column_exists(conn, "users", "password_hash")
+        if not exists:
+            await _add_postgres_column_if_missing(conn, "users", "password_hash", "VARCHAR(255)")
+        added = not exists
 
-    if has_column:
-        return
-
-    logger.info("Adding missing users.password_hash column")
-    await conn.exec_driver_sql("ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)")
+    if added:
+        logger.info("Adding missing users.password_hash column")
 
 
 async def ensure_user_plan_column(conn: AsyncConnection) -> None:
@@ -104,30 +115,112 @@ async def ensure_user_plan_column(conn: AsyncConnection) -> None:
     dialect = conn.dialect.name
 
     if dialect == "sqlite":
-        result = await conn.exec_driver_sql("PRAGMA table_info(users)")
-        columns: Sequence[tuple] = result.fetchall()
-        if any(col[1] == "plan" for col in columns):
-            return
+        added = await _add_sqlite_column_if_missing(conn, "users", "plan", "VARCHAR(50) DEFAULT 'free'")
+    else:
+        logger.info("Ensuring users.plan column exists")
+        exists = await _postgres_column_exists(conn, "users", "plan")
+        if not exists:
+            await _add_postgres_column_if_missing(conn, "users", "plan", "VARCHAR(50) DEFAULT 'free'")
+        added = not exists
 
-        logger.info("Adding missing users.plan column (sqlite)")
-        await conn.exec_driver_sql("ALTER TABLE users ADD COLUMN plan VARCHAR(50) DEFAULT 'free'")
-        await conn.exec_driver_sql("UPDATE users SET plan = 'free' WHERE plan IS NULL")
-        return
-
-    logger.info("Ensuring users.plan column exists")
-    try:
-        await conn.exec_driver_sql("ALTER TABLE users ADD COLUMN plan VARCHAR(50) DEFAULT 'free'")
-    except ProgrammingError as exc:  # column may already exist if added concurrently
-        if "column \"plan\" of relation \"users\" already exists" not in str(exc):
-            raise
-
-    await conn.exec_driver_sql("ALTER TABLE users ALTER COLUMN plan SET DEFAULT 'free'")
     await conn.exec_driver_sql("UPDATE users SET plan = 'free' WHERE plan IS NULL")
-    try:
-        await conn.exec_driver_sql("ALTER TABLE users ALTER COLUMN plan SET NOT NULL")
-    except ProgrammingError as exc:
-        message = str(exc)
-        if "does not exist" in message or "null values" in message:
-            logger.warning("Could not enforce NOT NULL on users.plan column: %s", message)
+
+    if dialect != "sqlite":
+        await conn.exec_driver_sql("ALTER TABLE users ALTER COLUMN plan SET DEFAULT 'free'")
+        try:
+            await conn.exec_driver_sql("ALTER TABLE users ALTER COLUMN plan SET NOT NULL")
+        except ProgrammingError as exc:
+            message = str(exc)
+            if "does not exist" in message or "null values" in message:
+                logger.warning("Could not enforce NOT NULL on users.plan column: %s", message)
+            else:
+                raise
+
+    if added:
+        logger.info("Ensured users.plan column with default 'free'")
+
+
+async def ensure_user_additional_columns(conn: AsyncConnection) -> None:
+    """Backfill recently added nullable columns on the users table."""
+
+    dialect = conn.dialect.name
+
+    ColumnDef = tuple[str, str, str, Optional[str], Optional[str]]
+    columns: Sequence[ColumnDef] = (
+        (
+            "status",
+            "VARCHAR(50) DEFAULT 'active'",
+            "VARCHAR(50) DEFAULT 'active'",
+            "UPDATE users SET status = 'active' WHERE status IS NULL",
+            "UPDATE users SET status = 'active' WHERE status IS NULL",
+        ),
+        (
+            "status_reason",
+            "VARCHAR(255)",
+            "VARCHAR(255)",
+            None,
+            None,
+        ),
+        (
+            "status_last_updated",
+            "TIMESTAMPTZ DEFAULT NOW()",
+            "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            "UPDATE users SET status_last_updated = NOW() WHERE status_last_updated IS NULL",
+            "UPDATE users SET status_last_updated = CURRENT_TIMESTAMP WHERE status_last_updated IS NULL",
+        ),
+        (
+            "subscription_id",
+            "VARCHAR(150)",
+            "VARCHAR(150)",
+            None,
+            None,
+        ),
+        (
+            "thrivecart_customer_id",
+            "VARCHAR(150)",
+            "VARCHAR(150)",
+            None,
+            None,
+        ),
+        (
+            "access_expires_at",
+            "TIMESTAMPTZ",
+            "TIMESTAMP",
+            None,
+            None,
+        ),
+        (
+            "portal_update_url",
+            "VARCHAR(2048)",
+            "VARCHAR(2048)",
+            None,
+            None,
+        ),
+        (
+            "last_magic_link_sent_at",
+            "TIMESTAMPTZ",
+            "TIMESTAMP",
+            None,
+            None,
+        ),
+    )
+
+    for name, pg_def, sqlite_def, pg_backfill, sqlite_backfill in columns:
+        if dialect == "sqlite":
+            newly_added = await _add_sqlite_column_if_missing(conn, "users", name, sqlite_def)
+            if sqlite_backfill:
+                await conn.exec_driver_sql(sqlite_backfill)
         else:
-            raise
+            exists = await _postgres_column_exists(conn, "users", name)
+            if not exists:
+                await _add_postgres_column_if_missing(conn, "users", name, pg_def)
+            newly_added = not exists
+            if pg_backfill:
+                await conn.exec_driver_sql(pg_backfill)
+
+        if newly_added:
+            logger.info("Ensured users.%s column exists", name)
+
+    if dialect != "sqlite":
+        await conn.exec_driver_sql("ALTER TABLE users ALTER COLUMN status SET DEFAULT 'active'")
+        await conn.exec_driver_sql("ALTER TABLE users ALTER COLUMN status_last_updated SET DEFAULT NOW()")
