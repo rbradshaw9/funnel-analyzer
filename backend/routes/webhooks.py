@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +24,7 @@ async def thrivecart_webhook(
     session: AsyncSession = Depends(get_db_session),
     x_webhook_signature: str | None = Header(default=None, convert_underscores=False),
     x_thrivecart_signature: str | None = Header(default=None, convert_underscores=False),
+    sign: str | None = Query(default=None),
 ):
     """Receive ThriveCart webhook payloads, verify signature, and persist for processing."""
     body = await request.body()
@@ -32,7 +33,7 @@ async def thrivecart_webhook(
         message, status = await handle_thrivecart_webhook(
             session=session,
             body=body,
-            signature=x_webhook_signature or x_thrivecart_signature,
+            signature=x_webhook_signature or x_thrivecart_signature or sign,
         )
     except HTTPException:
         raise
