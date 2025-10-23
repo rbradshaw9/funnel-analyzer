@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Sequence
 
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 logger = logging.getLogger(__name__)
@@ -105,20 +106,28 @@ async def ensure_user_plan_column(conn: AsyncConnection) -> None:
     if dialect == "sqlite":
         result = await conn.exec_driver_sql("PRAGMA table_info(users)")
         columns: Sequence[tuple] = result.fetchall()
-        has_column = any(col[1] == "plan" for col in columns)
-    else:
-        result = await conn.exec_driver_sql(
-            "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name = 'users' AND column_name = 'plan'"
-        )
-        has_column = result.first() is not None
+        if any(col[1] == "plan" for col in columns):
+            return
 
-    if has_column:
-        return
-
-    logger.info("Adding missing users.plan column")
-    if dialect == "sqlite":
+        logger.info("Adding missing users.plan column (sqlite)")
         await conn.exec_driver_sql("ALTER TABLE users ADD COLUMN plan VARCHAR(50) DEFAULT 'free'")
         await conn.exec_driver_sql("UPDATE users SET plan = 'free' WHERE plan IS NULL")
-    else:
-        await conn.exec_driver_sql("ALTER TABLE users ADD COLUMN plan VARCHAR(50) DEFAULT 'free' NOT NULL")
+        return
+
+    logger.info("Ensuring users.plan column exists")
+    try:
+        await conn.exec_driver_sql("ALTER TABLE users ADD COLUMN plan VARCHAR(50) DEFAULT 'free'")
+    except ProgrammingError as exc:  # column may already exist if added concurrently
+        if "column \"plan\" of relation \"users\" already exists" not in str(exc):
+            raise
+
+    await conn.exec_driver_sql("ALTER TABLE users ALTER COLUMN plan SET DEFAULT 'free'")
+    await conn.exec_driver_sql("UPDATE users SET plan = 'free' WHERE plan IS NULL")
+    try:
+        await conn.exec_driver_sql("ALTER TABLE users ALTER COLUMN plan SET NOT NULL")
+    except ProgrammingError as exc:
+        message = str(exc)
+        if "does not exist" in message or "null values" in message:
+            logger.warning("Could not enforce NOT NULL on users.plan column: %s", message)
+        else:
+            raise
