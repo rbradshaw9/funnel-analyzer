@@ -28,6 +28,7 @@ function EmbedContent() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
       <TopNav
         sticky={false}
+        showLoginButton={false}
         rightSlot={
           token ? (
             <span className="text-sm text-slate-600">

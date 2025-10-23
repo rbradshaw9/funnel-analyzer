@@ -3,14 +3,23 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy import select
 
 from ..models.database import Base, User
-from .migrations import ensure_recipient_email_column, ensure_screenshot_storage_key_column
+from ..services.passwords import hash_password, verify_password
+from .migrations import (
+    ensure_recipient_email_column,
+    ensure_screenshot_storage_key_column,
+    ensure_user_password_hash_column,
+    ensure_user_role_column,
+)
 from ..utils.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def _build_async_database_url(raw_url: str) -> str:
@@ -45,25 +54,77 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
-    """Create tables and ensure a default user exists for demo flows."""
+    """Create tables and ensure default users exist for demo flows."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    await ensure_recipient_email_column(conn)
-    await ensure_screenshot_storage_key_column(conn)
+        await ensure_recipient_email_column(conn)
+        await ensure_screenshot_storage_key_column(conn)
+        await ensure_user_role_column(conn)
+        await ensure_user_password_hash_column(conn)
 
     async with AsyncSessionFactory() as session:
-        query = select(User).where(User.email == settings.DEFAULT_USER_EMAIL)
-        result = await session.execute(query)
-        user = result.scalar_one_or_none()
-        if user is None:
-            session.add(
-                User(
-                    email=settings.DEFAULT_USER_EMAIL,
-                    full_name=settings.DEFAULT_USER_NAME,
-                    is_active=1,
+        default_email = (settings.DEFAULT_USER_EMAIL or "").strip().lower()
+        if default_email:
+            query = select(User).where(User.email == default_email)
+            result = await session.execute(query)
+            user = result.scalar_one_or_none()
+            if user is None:
+                session.add(
+                    User(
+                        email=default_email,
+                        full_name=settings.DEFAULT_USER_NAME,
+                        is_active=1,
+                    )
                 )
-            )
-            await session.commit()
+                await session.commit()
+
+        admin_email = (settings.DEFAULT_ADMIN_EMAIL or "").strip().lower()
+        admin_password = (settings.DEFAULT_ADMIN_PASSWORD or "").strip()
+
+        if admin_email:
+            if not admin_password:
+                logger.warning("DEFAULT_ADMIN_EMAIL is set but DEFAULT_ADMIN_PASSWORD is missing; skipping admin seeding")
+            else:
+                result = await session.execute(select(User).where(User.email == admin_email))
+                admin = result.scalar_one_or_none()
+                password_matches = verify_password(admin_password, admin.password_hash) if admin else False
+
+                if admin is None:
+                    session.add(
+                        User(
+                            email=admin_email,
+                            full_name=settings.DEFAULT_ADMIN_NAME,
+                            is_active=1,
+                            role="admin",
+                            password_hash=hash_password(admin_password),
+                            status="active",
+                            plan="pro",
+                        )
+                    )
+                    await session.commit()
+                else:
+                    updated = False
+                    if admin.role != "admin":
+                        admin.role = "admin"
+                        updated = True
+                    if not password_matches:
+                        admin.password_hash = hash_password(admin_password)
+                        updated = True
+                    if settings.DEFAULT_ADMIN_NAME and admin.full_name != settings.DEFAULT_ADMIN_NAME:
+                        admin.full_name = settings.DEFAULT_ADMIN_NAME
+                        updated = True
+                    if admin.is_active != 1:
+                        admin.is_active = 1
+                        updated = True
+                    if admin.status != "active":
+                        admin.status = "active"
+                        updated = True
+                    if admin.plan != "pro":
+                        admin.plan = "pro"
+                        updated = True
+
+                    if updated:
+                        await session.commit()
 
 
 async def reset_db() -> None:

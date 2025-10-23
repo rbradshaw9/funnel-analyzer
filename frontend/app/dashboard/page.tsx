@@ -186,6 +186,7 @@ function DashboardContent() {
             </span>
           ) : null
         }
+        showLoginButton={false}
       />
 
       {/* Main Content */}

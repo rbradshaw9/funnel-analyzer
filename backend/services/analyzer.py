@@ -85,12 +85,12 @@ async def analyze_funnel(
         return [str(item) for item in items if isinstance(item, (str, int, float))]
 
     for i, page_content in enumerate(page_contents):
-    screenshot_base64 = None
+        screenshot_base64 = None
         screenshot_timeout_seconds = 8
         screenshot_task: asyncio.Task[str | None] | None = None
         screenshot_captured = False
         screenshot_uploaded = False
-    screenshot_asset = None
+        screenshot_asset = None
 
         if screenshot_service:
             screenshot_metrics["attempted"] += 1

@@ -3,14 +3,17 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
+import { LoginButton } from './LoginButton'
+
 interface TopNavProps {
   rightSlot?: ReactNode
   translucent?: boolean
   sticky?: boolean
   className?: string
+  showLoginButton?: boolean
 }
 
-export function TopNav({ rightSlot, translucent = true, sticky = true, className }: TopNavProps) {
+export function TopNav({ rightSlot, translucent = true, sticky = true, className, showLoginButton = true }: TopNavProps) {
   const headerClasses = [
     'border-b border-slate-200',
     translucent ? 'bg-white/85 backdrop-blur-md' : 'bg-white',
@@ -32,7 +35,10 @@ export function TopNav({ rightSlot, translucent = true, sticky = true, className
               Funnel Analyzer Pro
             </span>
           </Link>
-          <div className="flex items-center gap-4">{rightSlot}</div>
+          <div className="flex items-center gap-4">
+            {rightSlot}
+            {showLoginButton ? <LoginButton /> : null}
+          </div>
         </div>
       </div>
     </header>

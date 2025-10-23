@@ -161,3 +161,9 @@ export interface MagicLinkResponse {
   status: 'sent' | 'skipped'
   message?: string
 }
+
+export interface AdminLoginResponse {
+  access_token: string
+  token_type: 'bearer'
+  expires_in?: number
+}

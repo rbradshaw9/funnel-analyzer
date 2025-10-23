@@ -19,6 +19,7 @@ class User(Base):
     is_active = Column(Integer, default=1)
     plan = Column(String(50), nullable=False, default="free", server_default="free")
     status = Column(String(50), nullable=False, default="active", server_default="active")
+    role = Column(String(50), nullable=False, default="member", server_default="member")
     status_reason = Column(String(255), nullable=True)
     status_last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     subscription_id = Column(String(150), nullable=True, index=True)
@@ -26,6 +27,7 @@ class User(Base):
     access_expires_at = Column(DateTime(timezone=True), nullable=True)
     portal_update_url = Column(String(2048), nullable=True)
     last_magic_link_sent_at = Column(DateTime(timezone=True), nullable=True)
+    password_hash = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

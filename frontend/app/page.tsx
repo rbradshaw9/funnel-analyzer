@@ -1,17 +1,47 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { TopNav } from '@/components/TopNav';
 
 export default function Home() {
   const metrics = [
-    { label: 'Clarity', score: 92, gradient: 'from-sky-400 to-sky-500' },
-    { label: 'Value', score: 85, gradient: 'from-violet-500 to-fuchsia-500' },
-    { label: 'Proof', score: 78, gradient: 'from-amber-400 to-orange-500' },
-    { label: 'Design', score: 90, gradient: 'from-rose-400 to-pink-500' },
-    { label: 'Flow', score: 88, gradient: 'from-emerald-400 to-teal-500' },
-  ]
+    {
+      label: 'Clarity',
+      score: 92,
+      gradient: 'from-sky-400 to-sky-500',
+      description: 'Examines how quickly the page communicates the offer, measures headline strength, message consistency, and whether visitors instantly know what to do next.',
+    },
+    {
+      label: 'Value',
+      score: 85,
+      gradient: 'from-violet-500 to-fuchsia-500',
+      description: 'Evaluates how compelling the value proposition is, checking benefit framing, differentiation, objection handling, and perceived ROI for the visitor.',
+    },
+    {
+      label: 'Proof',
+      score: 78,
+      gradient: 'from-amber-400 to-orange-500',
+      description: 'Scores the depth of social proof, credibility assets, data points, and trust signals that reassure buyers they are making the right decision.',
+    },
+    {
+      label: 'Design',
+      score: 90,
+      gradient: 'from-rose-400 to-pink-500',
+      description: 'Reviews visual hierarchy, readability, accessibility, and responsiveness to ensure the layout guides attention and feels premium on every device.',
+    },
+    {
+      label: 'Flow',
+      score: 88,
+      gradient: 'from-emerald-400 to-teal-500',
+      description: 'Checks the conversion journey for friction—CTA placement, step sequencing, load speed cues, and how smoothly visitors progress to the next action.',
+    },
+  ] as const
+
+  type Metric = (typeof metrics)[number]
+
+  const [activeMetric, setActiveMetric] = useState<Metric | null>(null)
 
   const overallScore = Math.round(metrics.reduce((acc, metric) => acc + metric.score, 0) / metrics.length)
   const overallScoreDeg = overallScore * 3.6
@@ -127,9 +157,12 @@ export default function Home() {
 
               <div className="space-y-4">
                 {metrics.map((metric) => (
-                  <div
+                  <button
+                    type="button"
                     key={metric.label}
-                    className="rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition bg-white/60"
+                    onClick={() => setActiveMetric(metric)}
+                    className="w-full rounded-2xl border border-slate-200 p-4 text-left shadow-sm transition hover:shadow-md bg-white/60"
+                    aria-label={`Explain the ${metric.label} score`}
                   >
                     <div className="flex items-center justify-between text-sm mb-2">
                       <div>
@@ -144,13 +177,52 @@ export default function Home() {
                         style={{ width: `${metric.score}%` }}
                       />
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
           </motion.div>
         </div>
       </section>
+
+      {activeMetric && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4"
+          onClick={() => setActiveMetric(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">
+                  {activeMetric.label} score
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">Target ≥ 85 · Current {activeMetric.score}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveMetric(null)}
+                className="text-slate-400 hover:text-slate-600"
+                aria-label="Close metric explanation"
+              >
+                ×
+              </button>
+            </div>
+            <p className="mt-4 text-sm leading-relaxed text-slate-600">
+              {activeMetric.description}
+            </p>
+            <button
+              type="button"
+              onClick={() => setActiveMetric(null)}
+              className="mt-6 w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Social Proof */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -12,13 +12,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db.session import get_db_session
 from ..models.database import User
 from ..models.schemas import (
+    AdminLoginRequest,
+    AdminLoginResponse,
     AuthValidateRequest,
     AuthValidateResponse,
     MagicLinkRequest,
     MagicLinkResponse,
 )
-from ..services.auth import create_magic_link_token, validate_jwt_token
+from ..services.auth import create_jwt_token, create_magic_link_token, validate_jwt_token
 from ..services.email import get_email_service
+from ..services.passwords import verify_password
 from ..utils.config import settings
 
 router = APIRouter()
@@ -163,4 +166,34 @@ async def validate_token(
         portal_update_url=user.portal_update_url,
         token_type=result.get("token_type"),
         expires_at=result.get("expires_at"),
+    )
+
+
+@router.post("/admin/login", response_model=AdminLoginResponse)
+async def admin_login(
+    request: AdminLoginRequest,
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Authenticate an admin user using email + password credentials."""
+
+    email = _normalize_email(request.email)
+    stmt = select(User).where(User.email == email)
+    result = await session.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if user is None or user.role != "admin":
+        logger.warning("Admin login failed for %s: no admin account", email)
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    if not verify_password(request.password, user.password_hash):
+        logger.warning("Admin login failed for %s: bad password", email)
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    expires_delta = timedelta(hours=settings.JWT_EXPIRATION_HOURS)
+    token = await create_jwt_token(user.id, user.email, expires_in=expires_delta, token_type="admin_session")
+
+    return AdminLoginResponse(
+        access_token=token,
+        token_type="bearer",
+        expires_in=int(expires_delta.total_seconds()),
     )

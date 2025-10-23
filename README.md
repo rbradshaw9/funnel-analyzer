@@ -5,6 +5,9 @@
 A production-ready full-stack application that analyzes marketing funnels using GPT-4o. Users can input multiple funnel URLs (sales pages, order forms, upsells, thank-you pages) and receive comprehensive AI-powered analysis with scores for clarity, value, proof, design, and flow.
 
 ## 🎯 Overview
+# Seeded admin credentials (replace in real deployments)
+DEFAULT_ADMIN_EMAIL=rbradshaw@gmail.com
+DEFAULT_ADMIN_PASSWORD=MiR43Tx2-
 
 **Backend**: FastAPI (Python 3.11) on Railway  
 **Frontend**: Next.js 14 (App Router) on Vercel  
@@ -140,6 +143,12 @@ MAUTIC_API_PASSWORD=...
 NEXT_PUBLIC_API_URL=http://localhost:3000
 NEXT_PUBLIC_ENV=development
 ```
+
+## 🔐 Authentication
+
+- **Magic link login** remains available for end users via email-based access.
+- **Admin credentials** are now seeded automatically using `DEFAULT_ADMIN_EMAIL` and `DEFAULT_ADMIN_PASSWORD`. Override these values in `.env` before deploying to production.
+- Admin logins issue a JWT for the dashboard; the frontend `Login` button falls back to the magic link flow if the credentials route is not needed.
 
 ### 3. Backend Setup & Run
 

@@ -1,6 +1,7 @@
 import axios from 'axios'
 import {
   AnalysisResult,
+  AdminLoginResponse,
   AuthResponse,
   MagicLinkResponse,
   ReportDeleteResponse,
@@ -74,8 +75,9 @@ export async function getReportDetail(
     const params: Record<string, number> = {}
     if (typeof options.userId === 'number') {
       params.user_id = options.userId
-  }
-  const response = await api.get<AnalysisResult>(`/api/reports/detail/${analysisId}`, {
+    }
+
+    const response = await api.get<AnalysisResult>(`/api/reports/detail/${analysisId}`, {
       params,
     })
     return response.data
@@ -121,5 +123,14 @@ export async function requestMagicLink(email: string): Promise<MagicLinkResponse
     return response.data
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to send magic link')
+  }
+}
+
+export async function adminLogin(email: string, password: string): Promise<AdminLoginResponse> {
+  try {
+    const response = await api.post<AdminLoginResponse>('/api/auth/admin/login', { email, password })
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Invalid credentials')
   }
 }

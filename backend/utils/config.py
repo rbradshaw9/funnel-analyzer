@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # Default demo user (used until real auth integration is completed)
     DEFAULT_USER_EMAIL: str = "demo@funnelanalyzer.pro"
     DEFAULT_USER_NAME: str = "Demo User"
+    DEFAULT_ADMIN_EMAIL: Optional[str] = "rbradshaw@gmail.com"
+    DEFAULT_ADMIN_NAME: str = "Funnel Analyzer Admin"
+    DEFAULT_ADMIN_PASSWORD: Optional[str] = "MiR43Tx2-"
     
     # External services
     FRONTEND_URL: str = "http://localhost:3001"

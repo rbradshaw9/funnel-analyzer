@@ -224,3 +224,18 @@ class ReportDeleteResponse(BaseModel):
     assets_failed: int
     assets_skipped: int
     storage_available: bool
+
+
+class AdminLoginRequest(BaseModel):
+    """Payload for admin credential login."""
+
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=128)
+
+
+class AdminLoginResponse(BaseModel):
+    """Bearer token issued after successful admin login."""
+
+    access_token: str
+    token_type: Literal["bearer"] = "bearer"
+    expires_in: int = Field(..., ge=0, description="Token lifetime in seconds")
