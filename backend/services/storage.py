@@ -36,6 +36,7 @@ class StorageService:
 
     def __init__(self, config: StorageConfig, access_key: str, secret_key: str) -> None:
         self._config = config
+        self._acl_supported: bool = True
         session_kwargs: dict = {
             "aws_access_key_id": access_key,
             "aws_secret_access_key": secret_key,
@@ -79,15 +80,33 @@ class StorageService:
         return self._build_public_url(key)
 
     def _put_object_sync(self, key: str, body: bytes, content_type: str) -> None:
+        params = {
+            "Bucket": self._config.bucket,
+            "Key": key,
+            "Body": body,
+            "ContentType": content_type,
+        }
+
+        if self._acl_supported:
+            params["ACL"] = "public-read"
+
         try:
-            self._client.put_object(
-                Bucket=self._config.bucket,
-                Key=key,
-                Body=body,
-                ContentType=content_type,
-                ACL="public-read",
-            )
-        except (ClientError, BotoCoreError) as exc:  # noqa: BLE001
+            self._client.put_object(**params)
+            return
+        except ClientError as exc:  # noqa: BLE001
+            error_code = (exc.response or {}).get("Error", {}).get("Code")
+            if self._acl_supported and error_code == "AccessControlListNotSupported":
+                self._acl_supported = False
+                logger.warning(
+                    "Bucket %s does not accept ACLs; retrying upload without ACL",
+                    self._config.bucket,
+                )
+                params.pop("ACL", None)
+                self._client.put_object(**params)
+                return
+            logger.error("S3 sync upload failed for %s: %s", key, exc)
+            raise
+        except BotoCoreError as exc:  # noqa: BLE001
             logger.error("S3 sync upload failed for %s: %s", key, exc)
             raise
 

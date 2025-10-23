@@ -240,6 +240,8 @@ Request body:
 - Errors are logged server-side but do not affect the HTTP response to ThriveCart.
 - Extend `backend/services/mautic.py` to map additional fields (tags, segments, deals) as business rules solidify.
 
+> ℹ️ **S3 buckets with Object Ownership enforced** – the storage service automatically retries uploads without ACLs when the bucket rejects them, so Server-Side policies or CloudFront distributions can manage access control instead of per-object ACLs.
+
 ### Frontend Routes
 
 | Route | Description |
