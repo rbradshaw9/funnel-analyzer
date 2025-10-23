@@ -6,6 +6,7 @@ import {
   MagicLinkResponse,
   ReportDeleteResponse,
   ReportListResponse,
+  PublicStatsResponse,
 } from '@/types'
 
 // API Configuration
@@ -132,5 +133,14 @@ export async function adminLogin(email: string, password: string): Promise<Admin
     return response.data
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Invalid credentials')
+  }
+}
+
+export async function getPublicStats(): Promise<PublicStatsResponse> {
+  try {
+    const response = await api.get<PublicStatsResponse>('/api/metrics/stats')
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to load public stats')
   }
 }

@@ -239,3 +239,10 @@ class AdminLoginResponse(BaseModel):
     access_token: str
     token_type: Literal["bearer"] = "bearer"
     expires_in: int = Field(..., ge=0, description="Token lifetime in seconds")
+
+
+class PublicStatsResponse(BaseModel):
+    """Aggregate statistics suitable for public surfaces."""
+
+    analyses_run: int = Field(default=0, ge=0)
+    pages_analyzed: int = Field(default=0, ge=0)

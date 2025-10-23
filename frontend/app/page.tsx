@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { TopNav } from '@/components/TopNav';
 import { SMART_TOOL_CLUB_JOIN_URL } from '@/lib/externalLinks';
+import { getPublicStats } from '@/lib/api';
 
 export default function Home() {
   const metrics = [
@@ -43,9 +44,97 @@ export default function Home() {
   type Metric = (typeof metrics)[number]
 
   const [activeMetric, setActiveMetric] = useState<Metric | null>(null)
+  const [pagesAnalyzedTarget, setPagesAnalyzedTarget] = useState<number | null>(null)
+  const [displayedPagesAnalyzed, setDisplayedPagesAnalyzed] = useState(0)
+  const animationFrameRef = useRef<number | null>(null)
+  const animationStartRef = useRef<number | null>(null)
+  const displayedPagesRef = useRef(0)
 
   const overallScore = Math.round(metrics.reduce((acc, metric) => acc + metric.score, 0) / metrics.length)
   const overallScoreDeg = overallScore * 3.6
+
+  useEffect(() => {
+    displayedPagesRef.current = displayedPagesAnalyzed
+  }, [displayedPagesAnalyzed])
+
+  useEffect(() => {
+    let isMounted = true
+
+    const fetchStats = async () => {
+      try {
+        const stats = await getPublicStats()
+        if (!isMounted) {
+          return
+        }
+        setPagesAnalyzedTarget(Math.max(stats.pages_analyzed ?? 0, 0))
+      } catch (error) {
+        console.warn('Failed to load public stats', error)
+      }
+    }
+
+    fetchStats()
+    const intervalId = setInterval(fetchStats, 60_000)
+
+    return () => {
+      isMounted = false
+      clearInterval(intervalId)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (pagesAnalyzedTarget === null) {
+      return
+    }
+
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current)
+    }
+
+    animationStartRef.current = null
+    const startingValue = displayedPagesRef.current
+    const targetValue = Math.max(pagesAnalyzedTarget, 0)
+
+    if (startingValue === targetValue) {
+      return
+    }
+
+    const duration = 1_500
+
+    const step = (timestamp: number) => {
+      if (animationStartRef.current === null) {
+        animationStartRef.current = timestamp
+      }
+
+      const progress = Math.min((timestamp - animationStartRef.current) / duration, 1)
+      const nextValue = Math.round(startingValue + (targetValue - startingValue) * progress)
+      setDisplayedPagesAnalyzed(nextValue)
+
+      if (progress < 1) {
+        animationFrameRef.current = requestAnimationFrame(step)
+      }
+    }
+
+    animationFrameRef.current = requestAnimationFrame(step)
+
+    return () => {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current)
+        animationFrameRef.current = null
+      }
+    }
+  }, [pagesAnalyzedTarget])
+
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current)
+      }
+    }
+  }, [])
+
+  const pagesAnalyzedDisplay = pagesAnalyzedTarget === null
+    ? '—'
+    : `${Math.max(displayedPagesAnalyzed, 0).toLocaleString()}+`
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
@@ -230,7 +319,7 @@ export default function Home() {
         <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
-              <div className="text-4xl font-bold text-indigo-600 mb-2">2,500+</div>
+              <div className="text-4xl font-bold text-indigo-600 mb-2">{pagesAnalyzedDisplay}</div>
               <div className="text-sm text-gray-600">Pages Analyzed</div>
             </div>
             <div>

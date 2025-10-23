@@ -167,3 +167,8 @@ export interface AdminLoginResponse {
   token_type: 'bearer'
   expires_in?: number
 }
+
+export interface PublicStatsResponse {
+  analyses_run: number
+  pages_analyzed: number
+}
