@@ -61,6 +61,10 @@ async def handle_thrivecart_webhook(
     if not secret:
         raise HTTPException(status_code=503, detail="ThriveCart integration not configured")
 
+    if not signature:
+        logger.warning("ThriveCart webhook missing signature; treating as validation ping")
+        return ("handshake", 202)
+
     _validate_signature(secret, body, signature)
 
     try:
