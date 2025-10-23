@@ -118,6 +118,8 @@ OPENAI_API_KEY=sk-your-actual-openai-key-here
 LLM_PROVIDER=openai
 DATABASE_URL=sqlite:///./funnel_analyzer.db  # SQLite for local dev
 JWT_SECRET=your-secret-minimum-32-characters
+DEFAULT_ADMIN_EMAIL=rbradshaw@gmail.com
+DEFAULT_ADMIN_PASSWORD=MiR43Tx2-
 ENVIRONMENT=development
 FRONTEND_URL=http://localhost:3001
 # Optional screenshot storage (S3, R2, Supabase)
@@ -129,8 +131,8 @@ AWS_S3_ENDPOINT_URL=https://s3.us-east-1.amazonaws.com  # optional for R2/Supaba
 AWS_S3_BASE_URL=https://cdn.yourdomain.com (optional CDN)
 # Optional transactional email (SendGrid)
 SENDGRID_API_KEY=...
-EMAIL_DEFAULT_FROM="Funnel Analyzer <reports@smarttoolclub.com>"
-EMAIL_DEFAULT_REPLY_TO=support@smarttoolclub.com
+EMAIL_DEFAULT_FROM="Funnel Analyzer Pro Reports <reports@smarttoolclub.com>"
+EMAIL_DEFAULT_REPLY_TO=ryan@smarttoolclub.com
 # Automation/webhooks
 THRIVECART_WEBHOOK_SECRET=...
 MAUTIC_BASE_URL=https://your-mautic-instance
@@ -142,6 +144,7 @@ MAUTIC_API_PASSWORD=...
 # Frontend (.env.local in frontend/)
 NEXT_PUBLIC_API_URL=http://localhost:3000
 NEXT_PUBLIC_ENV=development
+NEXT_PUBLIC_CLUB_JOIN_URL=https://smarttoolclub.com
 ```
 
 ## 🔐 Authentication

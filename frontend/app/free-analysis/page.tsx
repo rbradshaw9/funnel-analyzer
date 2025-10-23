@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { analyzeFunnel, sendAnalysisEmail } from '@/lib/api';
 import type { AnalysisResult } from '@/types';
 import { TopNav } from '@/components/TopNav';
+import { SMART_TOOL_CLUB_JOIN_URL } from '@/lib/externalLinks';
 
 type StageKey = 'scrape' | 'screenshot' | 'analysis' | 'summary';
 
@@ -278,13 +279,13 @@ export default function FreeAnalysisPage() {
 
     try {
       setIsSendingEmail(true);
-  await sendAnalysisEmail(result.analysis_id, email.trim());
-  setEmailSubmitted(true);
-  setEmail(email.trim());
-  setResult((prev) => (prev ? { ...prev, recipient_email: email.trim() } : prev));
+      await sendAnalysisEmail(result.analysis_id, email.trim());
+      setEmailSubmitted(true);
+      setEmail(email.trim());
+      setResult((prev) => (prev ? { ...prev, recipient_email: email.trim() } : prev));
 
       setTimeout(() => {
-        window.location.href = 'https://smarttoolclub.com/join';
+        window.location.href = SMART_TOOL_CLUB_JOIN_URL;
       }, 3000);
     } catch (err) {
       console.error('Failed to send analysis email:', err);
@@ -316,7 +317,7 @@ export default function FreeAnalysisPage() {
       <TopNav
         rightSlot={
           <a
-            href="https://smarttoolclub.com"
+            href={SMART_TOOL_CLUB_JOIN_URL}
             className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
           >
             Smart Tool Club →
@@ -653,7 +654,7 @@ export default function FreeAnalysisPage() {
                   <div className="text-center">
                     <p className="text-sm text-gray-500 mb-3">or</p>
                     <a
-                      href="https://smarttoolclub.com/join"
+                      href={SMART_TOOL_CLUB_JOIN_URL}
                       className="text-indigo-600 hover:text-indigo-700 font-semibold"
                     >
                       Join Smart Tool Club for Unlimited Access →

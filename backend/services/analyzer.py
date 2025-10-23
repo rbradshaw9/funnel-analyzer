@@ -7,6 +7,8 @@ import logging
 import time
 from typing import Any, List, Optional
 
+import httpx
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +22,59 @@ from ..utils.config import settings
 
 logger = logging.getLogger(__name__)
 
+_VALIDATION_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; FunnelAnalyzer/1.0; +https://funnelanalyzer.pro)",
+}
+_VALIDATION_TIMEOUT = httpx.Timeout(8.0, connect=5.0)
+
+
+async def _validate_single_url(client: httpx.AsyncClient, url: str) -> Optional[str]:
+    """Check that a URL is reachable before attempting screenshots or AI analysis."""
+
+    head_error: Optional[str] = None
+    try:
+        response = await client.head(url, headers=_VALIDATION_HEADERS)
+    except Exception as exc:  # noqa: BLE001 - network failures vary widely
+        head_error = str(exc).strip() or None
+        response = None
+
+    if response and 200 <= response.status_code < 400:
+        return None
+
+    if response and response.status_code not in {405, 501}:
+        head_error = f"HTTP {response.status_code}"
+
+    try:
+        response = await client.get(url, headers=_VALIDATION_HEADERS)
+    except Exception as exc:  # noqa: BLE001 - capture networking errors
+        message = head_error or (str(exc).strip() or "request failed")
+        return message
+
+    if 200 <= response.status_code < 400:
+        return None
+
+    return f"HTTP {response.status_code}"
+
+
+async def _validate_urls_or_raise(urls: List[str]) -> None:
+    """Ensure all URLs respond successfully before running the heavy analysis pipeline."""
+
+    if not urls:
+        raise ValueError("At least one URL is required")
+
+    async with httpx.AsyncClient(follow_redirects=True, timeout=_VALIDATION_TIMEOUT) as client:
+        results = await asyncio.gather(*(_validate_single_url(client, url) for url in urls))
+
+    failures = []
+    for url, failure in zip(urls, results):
+        if failure:
+            logger.warning("URL validation failed for %s: %s", url, failure)
+            failures.append(f"{url} ({failure})")
+
+    if failures:
+        details = "; ".join(failures)
+        raise ValueError(f"Some URLs could not be reached: {details}")
+
 
 async def analyze_funnel(
     urls: List[str],
@@ -32,6 +87,8 @@ async def analyze_funnel(
     start_time = time.time()
     perf_start = time.perf_counter()
     
+    await _validate_urls_or_raise(urls)
+
     # Step 1: Scrape all pages
     logger.info(f"Starting analysis for {len(urls)} URLs")
     scrape_start = time.perf_counter()

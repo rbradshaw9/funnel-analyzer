@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { TopNav } from '@/components/TopNav';
+import { SMART_TOOL_CLUB_JOIN_URL } from '@/lib/externalLinks';
 
 export default function Home() {
   const metrics = [
@@ -56,7 +57,7 @@ export default function Home() {
               Free Analysis
             </Link>
             <a
-              href="https://smarttoolclub.com"
+              href={SMART_TOOL_CLUB_JOIN_URL}
               className="inline-flex items-center px-5 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold shadow-md hover:from-indigo-700 hover:to-purple-700 transition-colors"
             >
               Join Club
@@ -336,7 +337,7 @@ export default function Home() {
 
           <p className="text-sm text-gray-500 mt-6">
             Want full access to multi-page funnels and advanced features?{' '}
-            <a href="https://smarttoolclub.com/join" className="text-indigo-600 hover:text-indigo-700 font-semibold">
+            <a href={SMART_TOOL_CLUB_JOIN_URL} className="text-indigo-600 hover:text-indigo-700 font-semibold">
               Join Smart Tool Club
             </a>
           </p>
@@ -357,7 +358,7 @@ export default function Home() {
               <h4 className="text-white font-bold mb-4">Product</h4>
               <ul className="space-y-2 text-sm">
                 <li><Link href="/free-analysis" className="hover:text-white">Free Analysis</Link></li>
-                <li><a href="https://smarttoolclub.com" className="hover:text-white">Smart Tool Club</a></li>
+                <li><a href={SMART_TOOL_CLUB_JOIN_URL} className="hover:text-white">Smart Tool Club</a></li>
               </ul>
             </div>
             <div>

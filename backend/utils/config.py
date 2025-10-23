@@ -55,8 +55,8 @@ class Settings(BaseSettings):
 
     # Email provider (SendGrid)
     SENDGRID_API_KEY: Optional[str] = None
-    EMAIL_DEFAULT_FROM: Optional[str] = None
-    EMAIL_DEFAULT_REPLY_TO: Optional[str] = None
+    EMAIL_DEFAULT_FROM: Optional[str] = "Funnel Analyzer Pro Reports <reports@smarttoolclub.com>"
+    EMAIL_DEFAULT_REPLY_TO: Optional[str] = "ryan@smarttoolclub.com"
 
     # Automation / integrations
     THRIVECART_WEBHOOK_SECRET: Optional[str] = None
