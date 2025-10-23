@@ -51,7 +51,10 @@ Transform from internal tool → Lead generation freemium SaaS → Premium membe
 ## PHASE 2: Member Dashboard (6-8 weeks)
 
 ### Authentication & Access Control
-- [ ] WordPress JWT integration
+- [ ] Magic-link login with SendGrid
+- [ ] Subscription status sync (ThriveCart webhooks + grace periods)
+- [ ] Customer portal messaging for past-due/canceled accounts
+- [ ] WordPress JWT integration (wishlist)
 - [ ] Session management
 - [ ] Member vs non-member routing
 - [ ] Rate limiting (free vs paid)

@@ -4,6 +4,72 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { analyzeFunnel, sendAnalysisEmail } from '@/lib/api';
 import type { AnalysisResult } from '@/types';
+import { TopNav } from '@/components/TopNav';
+
+type StageKey = 'scrape' | 'screenshot' | 'analysis' | 'summary';
+
+const STAGE_SEQUENCE: Array<{ key: StageKey; label: string; message: string }> = [
+  {
+    key: 'scrape',
+    label: 'Content scraping',
+    message: 'Scraping your page content…',
+  },
+  {
+    key: 'screenshot',
+    label: 'Screenshots',
+    message: 'Capturing screenshots & structure…',
+  },
+  {
+    key: 'analysis',
+    label: 'LLM analysis',
+    message: 'Evaluating copy, design, and proof…',
+  },
+  {
+    key: 'summary',
+    label: 'Report summary',
+    message: 'Preparing executive summary & next steps…',
+  },
+];
+
+const DEFAULT_STAGE_ESTIMATES: Record<StageKey, number> = {
+  scrape: 3.0,
+  screenshot: 5.0,
+  analysis: 13.5,
+  summary: 6.5,
+};
+
+const STORAGE_KEY_STAGE_ESTIMATES = 'faStageEstimates';
+const MIN_STAGE_SECONDS = 0.8;
+const MAX_STAGE_SECONDS = 60;
+
+const clampDuration = (value: unknown, fallback: number) => {
+  const numeric = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  return Math.min(Math.max(numeric, MIN_STAGE_SECONDS), MAX_STAGE_SECONDS);
+};
+
+const smoothDuration = (previous: number, next: number) => {
+  const blended = previous * 0.6 + next * 0.4;
+  return Math.round(blended * 100) / 100;
+};
+
+const sumDurations = (estimates: Record<StageKey, number>) =>
+  STAGE_SEQUENCE.reduce((total, stage) => total + Math.max(estimates[stage.key], MIN_STAGE_SECONDS), 0);
+
+const formatSeconds = (value?: number | null) => {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return '—';
+  if (value >= 60) {
+    const minutes = Math.floor(value / 60);
+    const seconds = Math.round(value % 60);
+    if (seconds === 0) {
+      return `${minutes}m`;
+    }
+    return `${minutes}m ${seconds}s`;
+  }
+  if (value >= 10) {
+    return `${Math.round(value)}s`;
+  }
+  return `${value.toFixed(1)}s`;
+};
 
 export default function FreeAnalysisPage() {
   const [url, setUrl] = useState('');
@@ -16,17 +82,135 @@ export default function FreeAnalysisPage() {
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState('Initializing analysis…');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [stageEstimates, setStageEstimates] = useState<Record<StageKey, number>>(() => ({
+    ...DEFAULT_STAGE_ESTIMATES,
+  }));
 
-  const progressStages = useMemo(
-    () => [
-      { delay: 1500, percent: 20, message: 'Scraping your page content…' },
-      { delay: 5000, percent: 38, message: 'Capturing screenshots & structure…' },
-      { delay: 11000, percent: 58, message: 'Evaluating copy, design, and proof…' },
-      { delay: 20000, percent: 78, message: 'Scoring conversion opportunities…' },
-      { delay: 32000, percent: 92, message: 'Preparing executive summary & next steps…' },
-    ],
-    []
-  );
+  const estimatedTotalSeconds = useMemo(() => sumDurations(stageEstimates), [stageEstimates]);
+
+  const progressStages = useMemo(() => {
+    const stagesWithDurations = STAGE_SEQUENCE.map((stage) => ({
+      ...stage,
+      seconds: Math.max(stageEstimates[stage.key], MIN_STAGE_SECONDS),
+    }));
+
+    const totalSeconds = stagesWithDurations.reduce((acc, stage) => acc + stage.seconds, 0);
+    let elapsed = 0;
+
+    return stagesWithDurations.map((stage, index) => {
+      elapsed += stage.seconds;
+      const ratio = totalSeconds > 0 ? elapsed / totalSeconds : (index + 1) / stagesWithDurations.length;
+      const percentBase = 18 + ratio * 75;
+      const percent = Math.min(Math.round(percentBase), index === stagesWithDurations.length - 1 ? 96 : 95);
+      const delay = Math.max(750, Math.round(elapsed * 1000));
+
+      return {
+        key: stage.key,
+        delay,
+        percent,
+        message: stage.message,
+      };
+    });
+  }, [stageEstimates]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = window.localStorage.getItem(STORAGE_KEY_STAGE_ESTIMATES);
+      if (!stored) return;
+      const parsed = JSON.parse(stored) as Partial<Record<StageKey, number>>;
+      setStageEstimates((previous) => ({
+        scrape: clampDuration(parsed?.scrape, previous.scrape),
+        screenshot: clampDuration(parsed?.screenshot, previous.screenshot),
+        analysis: clampDuration(parsed?.analysis, previous.analysis),
+        summary: clampDuration(parsed?.summary, previous.summary),
+      }));
+    } catch (error) {
+      console.warn('Failed to load stage estimates', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    const telemetry = result?.pipeline_metrics;
+    if (!telemetry?.stage_timings) return;
+
+    const timings = telemetry.stage_timings;
+
+    setStageEstimates((previous) => {
+      const nextScrape = clampDuration(timings.scrape_seconds, previous.scrape);
+      const nextScreenshot = clampDuration(timings.screenshot_seconds, previous.screenshot);
+      const nextAnalysis = clampDuration(timings.analysis_seconds, previous.analysis);
+
+      const totalCandidateRaw =
+        typeof timings.total_seconds === 'number' && Number.isFinite(timings.total_seconds)
+          ? timings.total_seconds
+          : result?.analysis_duration_seconds;
+
+      const totalSeconds =
+        typeof totalCandidateRaw === 'number' && Number.isFinite(totalCandidateRaw) && totalCandidateRaw > 0
+          ? totalCandidateRaw
+          : sumDurations(previous);
+
+      let summaryCandidate =
+        totalSeconds -
+        (timings.scrape_seconds ?? 0) -
+        (timings.screenshot_seconds ?? 0) -
+        (timings.analysis_seconds ?? 0);
+
+      if (!Number.isFinite(summaryCandidate) || summaryCandidate <= 0) {
+        summaryCandidate = previous.summary;
+      }
+
+      const nextSummary = clampDuration(summaryCandidate, previous.summary);
+
+      const updated: Record<StageKey, number> = {
+        scrape: smoothDuration(previous.scrape, nextScrape),
+        screenshot: smoothDuration(previous.screenshot, nextScreenshot),
+        analysis: smoothDuration(previous.analysis, nextAnalysis),
+        summary: smoothDuration(previous.summary, nextSummary),
+      };
+
+      try {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(STORAGE_KEY_STAGE_ESTIMATES, JSON.stringify(updated));
+        }
+      } catch (error) {
+        console.warn('Failed to store stage estimates', error);
+      }
+
+      return updated;
+    });
+  }, [result?.pipeline_metrics, result?.analysis_duration_seconds]);
+
+  const stageTimings = result?.pipeline_metrics?.stage_timings;
+  const screenshotMetrics = result?.pipeline_metrics?.screenshot;
+  const telemetryNotes = result?.pipeline_metrics?.notes;
+  const llmProvider = result?.pipeline_metrics?.llm_provider;
+  const actualRunTimeSeconds = stageTimings?.total_seconds ?? result?.analysis_duration_seconds ?? null;
+  const stageBreakdown = useMemo<Record<StageKey, number | undefined>>(() => {
+    if (stageTimings) {
+      const summaryCandidate =
+        (stageTimings.total_seconds ?? 0) -
+        (stageTimings.scrape_seconds ?? 0) -
+        (stageTimings.screenshot_seconds ?? 0) -
+        (stageTimings.analysis_seconds ?? 0);
+
+      return {
+        scrape: stageTimings.scrape_seconds,
+        screenshot: stageTimings.screenshot_seconds,
+        analysis: stageTimings.analysis_seconds,
+        summary: summaryCandidate > MIN_STAGE_SECONDS ? summaryCandidate : undefined,
+      };
+    }
+
+    return {
+      scrape: stageEstimates.scrape,
+      screenshot: stageEstimates.screenshot,
+      analysis: stageEstimates.analysis,
+      summary: stageEstimates.summary,
+    };
+  }, [stageTimings, stageEstimates]);
+  const timelineSource = stageTimings ? 'actual' : 'estimated';
 
   useEffect(() => {
     if (!isAnalyzing) {
@@ -129,21 +313,16 @@ export default function FreeAnalysisPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              Funnel Analyzer Pro
-            </h1>
-            <a
-              href="https://smarttoolclub.com"
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
-            >
-              Smart Tool Club →
-            </a>
-          </div>
-        </div>
-      </header>
+      <TopNav
+        rightSlot={
+          <a
+            href="https://smarttoolclub.com"
+            className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+          >
+            Smart Tool Club →
+          </a>
+        }
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Hero Section */}
@@ -236,7 +415,7 @@ export default function FreeAnalysisPage() {
                 />
               </div>
               <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
-                <span>Estimated time: ~45 seconds</span>
+                <span>Estimated time: ~{formatSeconds(estimatedTotalSeconds)}</span>
                 <span className="font-medium text-indigo-600">Hang tight — almost there!</span>
               </div>
             </div>
@@ -302,6 +481,19 @@ export default function FreeAnalysisPage() {
                 ))}
               </div>
 
+              <div className="mt-2 mb-6 text-sm text-gray-500 text-center space-y-1">
+                <div>
+                  <span className="font-semibold text-gray-700">Actual run time:</span>{' '}
+                  {formatSeconds(actualRunTimeSeconds)}
+                </div>
+                {llmProvider && (
+                  <div>
+                    <span className="font-semibold text-gray-700">LLM:</span>{' '}
+                    <span className="uppercase tracking-wide text-gray-500">{llmProvider}</span>
+                  </div>
+                )}
+              </div>
+
               {/* Blurred Summary */}
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/50 to-white z-10 backdrop-blur-sm rounded-lg"></div>
@@ -320,6 +512,55 @@ export default function FreeAnalysisPage() {
                   </button>
                 </div>
               </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-200">
+              <div className="flex items-center justify-between mb-6">
+                <h4 className="text-xl font-semibold text-gray-900">Analysis timeline</h4>
+                <span className="text-xs font-semibold uppercase tracking-wide text-indigo-500/80">
+                  {timelineSource === 'actual' ? 'Actual' : 'Estimated'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {STAGE_SEQUENCE.map((stage) => (
+                  <div
+                    key={stage.key}
+                    className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4"
+                  >
+                    <div className="text-sm font-semibold text-indigo-600">{stage.label}</div>
+                    <div className="text-2xl font-bold text-gray-900 mt-2">
+                      {formatSeconds(stageBreakdown[stage.key])}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">{stage.message.replace(/…$/, '.')}</div>
+                  </div>
+                ))}
+              </div>
+
+              {screenshotMetrics && screenshotMetrics.attempted > 0 && (
+                <div className="mt-6 text-sm text-gray-600 flex flex-wrap gap-x-3 gap-y-1">
+                  <span className="font-semibold text-gray-700">Screenshots:</span>
+                  <span>
+                    {screenshotMetrics.succeeded}/{screenshotMetrics.attempted} captured
+                  </span>
+                  {screenshotMetrics.uploaded ? (
+                    <span>· {screenshotMetrics.uploaded} uploaded</span>
+                  ) : null}
+                  {screenshotMetrics.timeouts ? (
+                    <span>· {screenshotMetrics.timeouts} timeouts</span>
+                  ) : null}
+                  {screenshotMetrics.failed ? (
+                    <span>· {screenshotMetrics.failed} errors</span>
+                  ) : null}
+                </div>
+              )}
+
+              {telemetryNotes && telemetryNotes.length > 0 && (
+                <div className="mt-4 text-xs text-gray-400">
+                  <span className="font-semibold text-gray-500">Notes:</span>{' '}
+                  {telemetryNotes.join(', ')}
+                </div>
+              )}
             </div>
 
             {/* Blurred Detailed Feedback */}

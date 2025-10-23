@@ -17,6 +17,15 @@ class User(Base):
     wordpress_user_id = Column(String(100), unique=True, index=True, nullable=True)
     full_name = Column(String(255), nullable=True)
     is_active = Column(Integer, default=1)
+    plan = Column(String(50), nullable=False, default="free", server_default="free")
+    status = Column(String(50), nullable=False, default="active", server_default="active")
+    status_reason = Column(String(255), nullable=True)
+    status_last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    subscription_id = Column(String(150), nullable=True, index=True)
+    thrivecart_customer_id = Column(String(150), nullable=True, index=True)
+    access_expires_at = Column(DateTime(timezone=True), nullable=True)
+    portal_update_url = Column(String(2048), nullable=True)
+    last_magic_link_sent_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -42,6 +51,7 @@ class Analysis(Base):
     overall_score = Column(Integer, nullable=False)  # Average or weighted score
     summary = Column(Text, nullable=False)  # Executive summary from GPT-4o
     detailed_feedback = Column(JSON, nullable=False)  # Per-page feedback
+    pipeline_metrics = Column(JSON, nullable=True)  # Telemetry for scrape/screenshot/LLM stages
     
     # Metadata
     analysis_duration_seconds = Column(Integer, nullable=True)
@@ -74,6 +84,7 @@ class AnalysisPage(Base):
     title = Column(String(500), nullable=True)
     text_content = Column(Text, nullable=True)
     screenshot_url = Column(String(2048), nullable=True)
+    screenshot_storage_key = Column(String(2048), nullable=True, index=True)
     
     # Page-specific scores
     page_scores = Column(JSON, nullable=True)

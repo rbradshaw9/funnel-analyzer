@@ -1,5 +1,11 @@
 import axios from 'axios'
-import { AnalysisResult, AuthResponse } from '@/types'
+import {
+  AnalysisResult,
+  AuthResponse,
+  MagicLinkResponse,
+  ReportDeleteResponse,
+  ReportListResponse,
+} from '@/types'
 
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://analyzer.smarttoolclub.com'
@@ -45,9 +51,9 @@ export async function validateToken(token: string): Promise<AuthResponse> {
   }
 }
 
-export async function getReports(userId: number, limit = 10, offset = 0): Promise<any> {
+export async function getReports(userId: number, limit = 10, offset = 0): Promise<ReportListResponse> {
   try {
-    const response = await api.get(`/api/reports/${userId}`, {
+    const response = await api.get<ReportListResponse>(`/api/reports/${userId}`, {
       params: { limit, offset },
     })
     return response.data
@@ -56,12 +62,48 @@ export async function getReports(userId: number, limit = 10, offset = 0): Promis
   }
 }
 
-export async function getReportDetail(analysisId: number): Promise<AnalysisResult> {
+interface ReportDetailOptions {
+  userId?: number
+}
+
+export async function getReportDetail(
+  analysisId: number,
+  options: ReportDetailOptions = {},
+): Promise<AnalysisResult> {
   try {
-    const response = await api.get<AnalysisResult>(`/api/reports/detail/${analysisId}`)
+    const params: Record<string, number> = {}
+    if (typeof options.userId === 'number') {
+      params.user_id = options.userId
+  }
+  const response = await api.get<AnalysisResult>(`/api/reports/detail/${analysisId}`, {
+      params,
+    })
     return response.data
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to fetch report detail')
+  }
+}
+
+interface DeleteReportOptions {
+  userId?: number
+}
+
+export async function deleteReport(
+  analysisId: number,
+  options: DeleteReportOptions = {},
+): Promise<ReportDeleteResponse> {
+  try {
+    const params: Record<string, number> = {}
+    if (typeof options.userId === 'number') {
+      params.user_id = options.userId
+    }
+
+    const response = await api.delete<ReportDeleteResponse>(`/api/reports/detail/${analysisId}`, {
+      params,
+    })
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to delete report')
   }
 }
 
@@ -70,5 +112,14 @@ export async function sendAnalysisEmail(analysisId: number, email: string): Prom
     await api.post(`/api/analyze/${analysisId}/email`, { email })
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to send analysis email')
+  }
+}
+
+export async function requestMagicLink(email: string): Promise<MagicLinkResponse> {
+  try {
+    const response = await api.post<MagicLinkResponse>('/api/auth/magic-link', { email })
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to send magic link')
   }
 }

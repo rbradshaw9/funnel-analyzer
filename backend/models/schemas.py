@@ -2,9 +2,10 @@
 Pydantic schemas for request/response validation.
 """
 
-from pydantic import BaseModel, HttpUrl, Field, field_validator, EmailStr, ConfigDict
-from typing import List, Optional, Dict
 from datetime import datetime
+from typing import Dict, List, Optional, Literal
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, field_validator
 
 
 class AnalysisRequest(BaseModel):
@@ -92,6 +93,28 @@ class VideoRecommendation(BaseModel):
     recommendation: str
 
 
+class PipelineStageTimings(BaseModel):
+    scrape_seconds: Optional[float] = Field(default=None, ge=0, description="Time spent scraping URLs")
+    analysis_seconds: Optional[float] = Field(default=None, ge=0, description="Time spent in LLM analysis")
+    screenshot_seconds: Optional[float] = Field(default=None, ge=0, description="Time spent awaiting screenshots")
+    total_seconds: Optional[float] = Field(default=None, ge=0, description="Total pipeline duration")
+
+
+class ScreenshotPipelineMetrics(BaseModel):
+    attempted: int = Field(default=0, ge=0)
+    succeeded: int = Field(default=0, ge=0)
+    failed: int = Field(default=0, ge=0)
+    uploaded: int = Field(default=0, ge=0)
+    timeouts: int = Field(default=0, ge=0)
+
+
+class PipelineTelemetry(BaseModel):
+    stage_timings: Optional[PipelineStageTimings] = None
+    screenshot: Optional[ScreenshotPipelineMetrics] = None
+    llm_provider: Optional[str] = None
+    notes: Optional[List[str]] = None
+
+
 class PageAnalysis(BaseModel):
     """Analysis results for a single page."""
     
@@ -101,6 +124,7 @@ class PageAnalysis(BaseModel):
     scores: ScoreBreakdown
     feedback: str
     screenshot_url: Optional[str] = None
+    screenshot_storage_key: Optional[str] = None
     headline_recommendation: Optional[str] = None
     cta_recommendations: Optional[List[CTARecommendation]] = None
     design_improvements: Optional[List[DesignImprovement]] = None
@@ -127,12 +151,26 @@ class AnalysisResponse(BaseModel):
     created_at: datetime
     analysis_duration_seconds: Optional[int] = None
     recipient_email: Optional[EmailStr] = None
+    pipeline_metrics: Optional[PipelineTelemetry] = None
     
 
 class AnalysisEmailRequest(BaseModel):
     """Payload for requesting an email delivery of an analysis."""
 
     email: EmailStr
+
+
+class MagicLinkRequest(BaseModel):
+    """Payload to request a magic-link email."""
+
+    email: EmailStr = Field(..., description="Email address to receive the magic link")
+
+
+class MagicLinkResponse(BaseModel):
+    """Response after attempting to send a magic-link email."""
+
+    status: Literal["sent", "skipped"]
+    message: Optional[str] = None
 
 
 class AuthValidateRequest(BaseModel):
@@ -148,6 +186,14 @@ class AuthValidateResponse(BaseModel):
     user_id: Optional[int] = None
     email: Optional[str] = None
     message: Optional[str] = None
+    plan: Optional[str] = None
+    status: Optional[str] = None
+    status_reason: Optional[str] = None
+    access_granted: bool = False
+    access_expires_at: Optional[datetime] = None
+    portal_update_url: Optional[str] = None
+    token_type: Optional[str] = None
+    expires_at: Optional[datetime] = None
 
 
 class ReportListItem(BaseModel):
@@ -166,3 +212,15 @@ class ReportListResponse(BaseModel):
     
     reports: List[ReportListItem]
     total: int
+
+
+class ReportDeleteResponse(BaseModel):
+    """Deletion outcome when removing a stored analysis."""
+
+    status: Literal["deleted"]
+    analysis_id: int
+    assets_total: int
+    assets_deleted: int
+    assets_failed: int
+    assets_skipped: int
+    storage_available: bool

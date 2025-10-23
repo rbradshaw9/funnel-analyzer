@@ -31,6 +31,12 @@ class StorageConfig:
     public_expiry_seconds: int
 
 
+@dataclass
+class StoredObject:
+    key: str
+    url: str
+
+
 class StorageService:
     """Handles uploads of binary assets to an S3-compatible bucket."""
 
@@ -54,8 +60,8 @@ class StorageService:
         base64_data: str,
         content_type: str = "image/png",
         prefix: str = "screenshots/",
-    ) -> Optional[str]:
-        """Upload a base64 encoded image and return a public URL if available."""
+    ) -> Optional[StoredObject]:
+        """Upload a base64 encoded image and return key + URL when successful."""
 
         if not base64_data:
             return None
@@ -77,7 +83,8 @@ class StorageService:
             logger.error("Screenshot upload error: %s", exc)
             return None
 
-        return self._build_public_url(key)
+        url = self._build_public_url(key)
+        return StoredObject(key=key, url=url) if url else None
 
     def _put_object_sync(self, key: str, body: bytes, content_type: str) -> None:
         params = {
@@ -123,6 +130,35 @@ class StorageService:
 
         # Fallback to standard AWS global endpoint (not recommended for production)
         return f"https://{self._config.bucket}.s3.amazonaws.com/{key}"
+
+    async def delete_object(self, key: str) -> bool:
+        """Delete an object from storage. Returns True when removal succeeds."""
+
+        if not key:
+            return False
+
+        loop = asyncio.get_running_loop()
+
+        try:
+            await loop.run_in_executor(None, self._delete_object_sync, key)
+            return True
+        except Exception as exc:  # noqa: BLE001 - keep cleanup resilient
+            logger.error("Failed to delete storage object %s: %s", key, exc)
+            return False
+
+    def _delete_object_sync(self, key: str) -> None:
+        try:
+            self._client.delete_object(Bucket=self._config.bucket, Key=key)
+        except ClientError as exc:  # noqa: BLE001
+            error_code = (exc.response or {}).get("Error", {}).get("Code")
+            if error_code == "NoSuchKey":
+                logger.info("Storage object %s already removed", key)
+                return
+            logger.error("S3 delete failed for %s: %s", key, exc)
+            raise
+        except BotoCoreError as exc:  # noqa: BLE001
+            logger.error("S3 delete failed for %s: %s", key, exc)
+            raise
 
 
 _storage_service: Optional[StorageService] = None

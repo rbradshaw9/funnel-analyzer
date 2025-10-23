@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db.session import get_db_session
-from ..models.schemas import AnalysisResponse, ReportListResponse
-from ..services.reports import get_report_by_id, get_user_reports
+from ..models.schemas import AnalysisResponse, ReportDeleteResponse, ReportListResponse
+from ..services.reports import delete_report, get_report_by_id, get_user_reports
 import logging
 
 router = APIRouter()
@@ -40,6 +40,26 @@ async def get_report_detail(
     except Exception as e:
         logger.error(f"Failed to fetch report detail: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve report")
+
+
+@router.delete("/detail/{analysis_id}", response_model=ReportDeleteResponse)
+async def remove_report_detail(
+    analysis_id: int,
+    session: AsyncSession = Depends(get_db_session),
+    user_id: int | None = Query(default=None, ge=1, description="Optional user ownership check"),
+):
+    """Delete an analysis and purge any persisted screenshots."""
+
+    try:
+        result = await delete_report(session=session, analysis_id=analysis_id, user_id=user_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Failed to delete report %s: %s", analysis_id, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to delete report") from exc
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    return {"status": "deleted", **result}
 
 
 @router.get("/{user_id}", response_model=ReportListResponse)

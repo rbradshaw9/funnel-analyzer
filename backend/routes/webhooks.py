@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db.session import get_db_session
 from ..models.database import WebhookEvent
 from ..services.mautic import sync_thrivecart_event
+from ..services.subscriptions import apply_thrivecart_membership_update
 from ..services.webhooks import WebhookResult, handle_thrivecart_webhook
 from ..utils.config import settings
 
@@ -61,6 +62,15 @@ async def thrivecart_webhook(
     except HTTPException:
         raise
 
+    updated_user_id = None
+    if result.event:
+        try:
+            user = await apply_thrivecart_membership_update(session, result.event.payload)
+            if user:
+                updated_user_id = user.id
+        except Exception as exc:  # noqa: BLE001 - defensive logging for webhook resilience
+            logger.exception("Failed to apply ThriveCart membership update: %s", exc)
+
     if result.event:
         task = asyncio.create_task(sync_thrivecart_event(result.event.payload))
         task.add_done_callback(_log_background_error)
@@ -68,6 +78,8 @@ async def thrivecart_webhook(
     response_payload = {"status": result.message}
     if result.event and getattr(result.event, "id", None) is not None:
         response_payload["event_id"] = result.event.id
+    if updated_user_id is not None:
+        response_payload["user_id"] = updated_user_id
 
     return JSONResponse(response_payload, status_code=result.status)
 

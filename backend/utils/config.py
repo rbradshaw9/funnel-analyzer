@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "your-secret-key-change-in-production"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_HOURS: int = 24
+    MAGIC_LINK_EXPIRATION_MINUTES: int = 30
 
     # Default demo user (used until real auth integration is completed)
     DEFAULT_USER_EMAIL: str = "demo@funnelanalyzer.pro"

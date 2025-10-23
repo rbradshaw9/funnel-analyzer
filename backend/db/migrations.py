@@ -30,3 +30,25 @@ async def ensure_recipient_email_column(conn: AsyncConnection) -> None:
 
     logger.info("Adding missing analyses.recipient_email column")
     await conn.exec_driver_sql("ALTER TABLE analyses ADD COLUMN recipient_email VARCHAR(255)")
+
+
+async def ensure_screenshot_storage_key_column(conn: AsyncConnection) -> None:
+    """Ensure the `screenshot_storage_key` column exists on analysis_pages."""
+    dialect = conn.dialect.name
+
+    if dialect == "sqlite":
+        result = await conn.exec_driver_sql("PRAGMA table_info(analysis_pages)")
+        columns: Sequence[tuple] = result.fetchall()
+        has_column = any(col[1] == "screenshot_storage_key" for col in columns)
+    else:
+        result = await conn.exec_driver_sql(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'analysis_pages' AND column_name = 'screenshot_storage_key'"
+        )
+        has_column = result.first() is not None
+
+    if has_column:
+        return
+
+    logger.info("Adding missing analysis_pages.screenshot_storage_key column")
+    await conn.exec_driver_sql("ALTER TABLE analysis_pages ADD COLUMN screenshot_storage_key VARCHAR(2048)")

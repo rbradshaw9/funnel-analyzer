@@ -30,10 +30,13 @@ async def analyze_funnel(
     """Generate analysis results, persist them, and return a response payload."""
     
     start_time = time.time()
+    perf_start = time.perf_counter()
     
     # Step 1: Scrape all pages
     logger.info(f"Starting analysis for {len(urls)} URLs")
+    scrape_start = time.perf_counter()
     page_contents = await scrape_funnel(urls)
+    scrape_duration = time.perf_counter() - scrape_start
     
     # Step 2: Capture screenshots (best effort) and analyze each page with OpenAI
     llm_provider = get_llm_provider()
@@ -46,6 +49,23 @@ async def analyze_funnel(
     except Exception as screenshot_error:
         logger.warning(f"Screenshot service unavailable, continuing without visuals: {screenshot_error}")
     
+    screenshot_metrics = {
+        "attempted": 0,
+        "succeeded": 0,
+        "failed": 0,
+        "uploaded": 0,
+        "timeouts": 0,
+    }
+    screenshot_time_total = 0.0
+    llm_duration_total = 0.0
+    telemetry_notes: list[str] = []
+    if not screenshot_service:
+        telemetry_notes.append("screenshot_service_unavailable")
+    if not (settings.OPENAI_API_KEY or "").strip():
+        telemetry_notes.append("llm_placeholder_mode")
+    if not storage_service:
+        telemetry_notes.append("storage_service_unconfigured")
+
     def _ensure_list(value: Any) -> list:
         if not value:
             return []
@@ -65,11 +85,16 @@ async def analyze_funnel(
         return [str(item) for item in items if isinstance(item, (str, int, float))]
 
     for i, page_content in enumerate(page_contents):
-        screenshot_base64 = None
+    screenshot_base64 = None
         screenshot_timeout_seconds = 8
         screenshot_task: asyncio.Task[str | None] | None = None
+        screenshot_captured = False
+        screenshot_uploaded = False
+    screenshot_asset = None
 
         if screenshot_service:
+            screenshot_metrics["attempted"] += 1
+            capture_timer_start = time.perf_counter()
             screenshot_task = asyncio.create_task(
                 screenshot_service.capture_screenshot(
                     page_content.url,
@@ -84,12 +109,14 @@ async def analyze_funnel(
                     asyncio.shield(screenshot_task),
                     timeout=screenshot_timeout_seconds,
                 )
+                screenshot_captured = bool(screenshot_base64)
             except asyncio.TimeoutError:
                 logger.info(
                     "Screenshot exceeded %ss for %s; continuing without blocking analysis",
                     screenshot_timeout_seconds,
                     page_content.url,
                 )
+                screenshot_metrics["timeouts"] += 1
             except Exception as screenshot_error:  # noqa: BLE001
                 logger.warning(
                     "Failed to capture screenshot for %s: %s",
@@ -98,9 +125,11 @@ async def analyze_funnel(
                 )
                 screenshot_task = None
             finally:
+                screenshot_time_total += time.perf_counter() - capture_timer_start
                 if screenshot_task and screenshot_task.done():
                     try:
                         screenshot_base64 = screenshot_task.result()
+                        screenshot_captured = screenshot_captured or bool(screenshot_base64)
                     except Exception as capture_error:  # noqa: BLE001
                         logger.warning(
                             "Screenshot task error for %s: %s",
@@ -109,20 +138,25 @@ async def analyze_funnel(
                         )
                         screenshot_task = None
 
+        llm_timer_start = time.perf_counter()
         analysis_result = await llm_provider.analyze_page(
             page_content,
             page_number=i + 1,
             total_pages=len(urls),
             screenshot_base64=screenshot_base64,
         )
+        llm_duration_total += time.perf_counter() - llm_timer_start
 
         screenshot_url = None
         if screenshot_base64 and storage_service:
             try:
-                screenshot_url = await storage_service.upload_base64_image(
+                screenshot_asset = await storage_service.upload_base64_image(
                     base64_data=screenshot_base64,
                     content_type="image/png",
                 )
+                if screenshot_asset:
+                    screenshot_url = screenshot_asset.url
+                    screenshot_uploaded = True
             except Exception as upload_error:  # noqa: BLE001 - log and continue
                 logger.warning(
                     "Failed to upload screenshot for %s: %s",
@@ -130,13 +164,18 @@ async def analyze_funnel(
                     upload_error,
                 )
         elif screenshot_task and storage_service:
+            deferred_capture_start = time.perf_counter()
             try:
                 captured = await screenshot_task
                 if captured:
-                    screenshot_url = await storage_service.upload_base64_image(
+                    screenshot_captured = True
+                    screenshot_asset = await storage_service.upload_base64_image(
                         base64_data=captured,
                         content_type="image/png",
                     )
+                    if screenshot_asset:
+                        screenshot_url = screenshot_asset.url
+                        screenshot_uploaded = True
             except asyncio.CancelledError:
                 pass
             except Exception as late_capture_error:  # noqa: BLE001
@@ -145,6 +184,16 @@ async def analyze_funnel(
                     page_content.url,
                     late_capture_error,
                 )
+            finally:
+                screenshot_time_total += time.perf_counter() - deferred_capture_start
+
+        if screenshot_service:
+            if screenshot_captured:
+                screenshot_metrics["succeeded"] += 1
+            else:
+                screenshot_metrics["failed"] += 1
+            if screenshot_uploaded:
+                screenshot_metrics["uploaded"] += 1
 
         page_analyses.append({
             "url": page_content.url,
@@ -165,6 +214,7 @@ async def analyze_funnel(
             "video_recommendations": _dict_list(analysis_result.get("video_recommendations")),
             "email_capture_recommendations": _string_list(analysis_result.get("email_capture_recommendations")),
             "screenshot_url": screenshot_url,
+            "screenshot_storage_key": getattr(screenshot_asset, "key", None),
         })
     
     # Step 3: Calculate overall scores
@@ -180,7 +230,24 @@ async def analyze_funnel(
     summary = await llm_provider.analyze_funnel_summary(page_analyses, overall_score)
     
     duration = int(time.time() - start_time)
-    logger.info(f"Analysis completed in {duration}s with overall score: {overall_score}")
+    total_perf_duration = time.perf_counter() - perf_start
+
+    pipeline_metrics = {
+        "stage_timings": {
+            "scrape_seconds": round(scrape_duration, 3),
+            "analysis_seconds": round(llm_duration_total, 3),
+            "screenshot_seconds": round(screenshot_time_total, 3) if screenshot_service else None,
+            "total_seconds": round(total_perf_duration, 3),
+        },
+        "screenshot": screenshot_metrics if screenshot_service else None,
+        "llm_provider": settings.LLM_PROVIDER,
+        "notes": telemetry_notes or None,
+    }
+
+    logger.info(
+        "Analysis completed in %ss with overall score %s", duration, overall_score
+    )
+    logger.debug("Analysis telemetry: %s", pipeline_metrics)
     
     # Step 5: Persist to database
     resolved_user_id = await _resolve_user_id(session, user_id)
@@ -193,6 +260,7 @@ async def analyze_funnel(
         "pages": page_analyses,
         "analysis_duration_seconds": duration,
         "recipient_email": recipient_email,
+        "pipeline_metrics": pipeline_metrics,
     }
 
     analysis = Analysis(
@@ -202,6 +270,7 @@ async def analyze_funnel(
         overall_score=analysis_result["overall_score"],
         summary=analysis_result["summary"],
         detailed_feedback=analysis_result["pages"],
+        pipeline_metrics=pipeline_metrics,
         analysis_duration_seconds=analysis_result.get("analysis_duration_seconds"),
         recipient_email=recipient_email,
     )
@@ -212,6 +281,7 @@ async def analyze_funnel(
             page_type=page.get("page_type"),
             title=page.get("title"),
             screenshot_url=page.get("screenshot_url"),
+            screenshot_storage_key=page.get("screenshot_storage_key"),
             page_scores=page["scores"],
             page_feedback=page["feedback"],
         )
@@ -232,6 +302,7 @@ async def analyze_funnel(
         "created_at": analysis.created_at,
         "analysis_duration_seconds": analysis.analysis_duration_seconds,
         "recipient_email": recipient_email,
+        "pipeline_metrics": pipeline_metrics,
     }
 
     return AnalysisResponse.model_validate(response_payload)

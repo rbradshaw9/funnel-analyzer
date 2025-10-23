@@ -2,36 +2,38 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { TopNav } from '@/components/TopNav';
 
 export default function Home() {
+  const metrics = [
+    { label: 'Clarity', score: 92, gradient: 'from-sky-400 to-sky-500' },
+    { label: 'Value', score: 85, gradient: 'from-violet-500 to-fuchsia-500' },
+    { label: 'Proof', score: 78, gradient: 'from-amber-400 to-orange-500' },
+    { label: 'Design', score: 90, gradient: 'from-rose-400 to-pink-500' },
+    { label: 'Flow', score: 88, gradient: 'from-emerald-400 to-teal-500' },
+  ]
+
+  const overallScore = Math.round(metrics.reduce((acc, metric) => acc + metric.score, 0) / metrics.length)
+  const overallScoreDeg = overallScore * 3.6
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center">
-                <span className="text-white text-xl font-bold">FA</span>
-              </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                Funnel Analyzer Pro
-              </h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link href="/free-analysis" className="text-gray-600 hover:text-gray-900 font-medium">
-                Free Analysis
-              </Link>
-              <a
-                href="https://smarttoolclub.com"
-                className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md"
-              >
-                Join Club
-              </a>
-            </div>
+      <TopNav
+        rightSlot={
+          <div className="flex items-center gap-4">
+            <Link href="/free-analysis" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+              Free Analysis
+            </Link>
+            <a
+              href="https://smarttoolclub.com"
+              className="inline-flex items-center px-5 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold shadow-md hover:from-indigo-700 hover:to-purple-700 transition-colors"
+            >
+              Join Club
+            </a>
           </div>
-        </div>
-      </header>
+        }
+      />
 
       {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
@@ -102,41 +104,49 @@ export default function Home() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="relative"
           >
-            <div className="bg-white rounded-2xl shadow-2xl p-8 border border-gray-200">
-              <div className="text-center mb-6">
-                <div className="text-6xl font-extrabold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2">
-                  87
+            <div className="absolute -top-5 -right-4 bg-gradient-to-r from-orange-500 to-pink-500 text-white px-6 py-3 rounded-full shadow-xl font-semibold text-sm">
+              ⚡ 60s Funnel Insights
+            </div>
+            <div className="bg-white rounded-3xl shadow-2xl p-10 border border-slate-200">
+              <div className="flex flex-col items-center mb-10">
+                <div
+                  className="relative flex items-center justify-center w-48 h-48 rounded-full shadow-[0_25px_60px_rgba(99,102,241,0.25)]"
+                  style={{
+                    background: `conic-gradient(#4f46e5 ${overallScoreDeg}deg, #e2e8f0 ${overallScoreDeg}deg)`
+                  }}
+                >
+                  <div className="absolute inset-4 rounded-full bg-white flex flex-col items-center justify-center shadow-inner">
+                    <span className="text-4xl font-extrabold text-slate-900">{overallScore}</span>
+                    <span className="text-xs uppercase tracking-wider text-slate-500 mt-1">Overall score</span>
+                  </div>
                 </div>
-                <div className="text-sm text-gray-500 font-medium">Overall Score</div>
+                <p className="mt-6 text-center text-sm text-slate-500 max-w-xs">
+                  Balanced average across clarity, value, proof, design, and flow—highlighting the biggest conversion wins.
+                </p>
               </div>
-              
-              <div className="space-y-3">
-                {[
-                  { label: 'Clarity', score: 92, color: 'bg-blue-500' },
-                  { label: 'Value', score: 85, color: 'bg-purple-500' },
-                  { label: 'Proof', score: 78, color: 'bg-yellow-500' },
-                  { label: 'Design', score: 90, color: 'bg-pink-500' },
-                  { label: 'Flow', score: 88, color: 'bg-green-500' },
-                ].map((metric) => (
-                  <div key={metric.label}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-700 font-medium">{metric.label}</span>
-                      <span className="text-gray-900 font-bold">{metric.score}</span>
+
+              <div className="space-y-4">
+                {metrics.map((metric) => (
+                  <div
+                    key={metric.label}
+                    className="rounded-2xl border border-slate-200 p-4 shadow-sm hover:shadow-md transition bg-white/60"
+                  >
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <div>
+                        <span className="font-semibold text-slate-900">{metric.label}</span>
+                        <span className="ml-2 text-xs text-slate-400">Target ≥ 85</span>
+                      </div>
+                      <span className="text-base font-bold text-slate-900">{metric.score}</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
                       <div
-                        className={`${metric.color} h-2 rounded-full transition-all duration-500`}
+                        className={`h-full bg-gradient-to-r ${metric.gradient}`}
                         style={{ width: `${metric.score}%` }}
                       />
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-            
-            {/* Floating badge */}
-            <div className="absolute -top-4 -right-4 bg-gradient-to-r from-orange-500 to-pink-500 text-white px-6 py-3 rounded-full shadow-xl font-bold text-sm">
-              ⚡ Instant Results
             </div>
           </motion.div>
         </div>

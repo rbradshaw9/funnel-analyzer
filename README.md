@@ -250,6 +250,22 @@ Request body:
 | `/dashboard` | Main analysis interface |
 | `/embed` | Minimal UI for iframe embedding |
 
+### Screenshot Management
+
+- Every stored page now includes both a `screenshot_url` and the raw `screenshot_storage_key`. You can see these fields in `GET /api/reports/detail/{analysis_id}` responses or by inspecting `analysis_pages` in the database.
+- To verify an upload manually, copy the `screenshot_storage_key` and run `aws s3 head-object --bucket $AWS_S3_BUCKET --key <key>` (or open the URL if the bucket is public/CDN fronted).
+- Ephemeral screenshots from anonymous/free analyses are eligible for deletion after 7 days. Run the maintenance helper:
+
+   ```bash
+   # Dry-run (shows what would be removed)
+   python -m backend.scripts.cleanup_screenshots
+
+   # Apply deletions and keep only the most recent paid-member shots
+   python -m backend.scripts.cleanup_screenshots --apply --days 7
+   ```
+
+   Paid members retain their screenshots indefinitely; delete them only when a new analysis replaces the existing report or when you intentionally purge the analysis record.
+
 ### Real Analysis
 
 The application now includes:
@@ -428,6 +444,8 @@ npm test
 3. **Reporting:** implement PDF export and scheduled email digests using the email service.
 4. **Data sync:** integrate ThriveCart webhooks + Mautic API to push analyses into lifecycle automations.
 5. **Insights roadmap:** add historical trend comparisons, experiment tracking, and team collaboration features.
+6. **Email handoff clarity:** keep report-delivery emails inside the app (SendGrid) and trigger Mautic campaigns via tags/segments for longer nurture sequences.
+7. **Membership access control:** implement magic-link login, ThriveCart subscription webhooks, and subscription-status messaging (grace periods, customer portal link) so access updates automatically on renewals, failures, or cancellations.
 
 ## 🤝 Contributing
 

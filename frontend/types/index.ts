@@ -65,6 +65,28 @@ export interface VideoRecommendation {
   recommendation: string
 }
 
+export interface PipelineStageTimings {
+  scrape_seconds?: number
+  analysis_seconds?: number
+  screenshot_seconds?: number
+  total_seconds?: number
+}
+
+export interface ScreenshotPipelineMetrics {
+  attempted: number
+  succeeded: number
+  failed: number
+  uploaded: number
+  timeouts: number
+}
+
+export interface PipelineTelemetry {
+  stage_timings?: PipelineStageTimings
+  screenshot?: ScreenshotPipelineMetrics
+  llm_provider?: string
+  notes?: string[]
+}
+
 export interface PageAnalysis {
   url: string
   page_type?: string
@@ -72,6 +94,7 @@ export interface PageAnalysis {
   scores: ScoreBreakdown
   feedback: string
   screenshot_url?: string
+  screenshot_storage_key?: string
   headline_recommendation?: string
   cta_recommendations?: CTARecommendation[]
   design_improvements?: DesignImprovement[]
@@ -94,11 +117,47 @@ export interface AnalysisResult {
   created_at: string
   analysis_duration_seconds?: number
   recipient_email?: string
+  pipeline_metrics?: PipelineTelemetry
+}
+
+export interface ReportListItem {
+  analysis_id: number
+  overall_score: number
+  urls: string[]
+  created_at: string
+}
+
+export interface ReportListResponse {
+  reports: ReportListItem[]
+  total: number
+}
+
+export interface ReportDeleteResponse {
+  status: 'deleted'
+  analysis_id: number
+  assets_total: number
+  assets_deleted: number
+  assets_failed: number
+  assets_skipped: number
+  storage_available: boolean
 }
 
 export interface AuthResponse {
   valid: boolean
   user_id?: number
   email?: string
+  message?: string
+  plan?: string
+  status?: string
+  status_reason?: string
+  access_granted?: boolean
+  access_expires_at?: string
+  portal_update_url?: string
+  token_type?: string
+  expires_at?: string
+}
+
+export interface MagicLinkResponse {
+  status: 'sent' | 'skipped'
   message?: string
 }
