@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
-# Use Python 3.11 slim image for FastAPI backend
-FROM python:3.11-slim
+# Use Python 3.11 slim bookworm image for FastAPI backend
+FROM python:3.11-slim-bookworm
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \

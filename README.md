@@ -9,17 +9,19 @@ A production-ready full-stack application that analyzes marketing funnels using 
 **Backend**: FastAPI (Python 3.11) on Railway  
 **Frontend**: Next.js 14 (App Router) on Vercel  
 **Database**: PostgreSQL with SQLAlchemy  
-**AI**: OpenAI GPT-4o for analysis  
+**AI**: OpenAI GPT-4o for analysis (pluggable provider registry)  
 **Auth**: JWT tokens from WordPress membership site
 
 ### Key Features
 
 - 🎨 Clean, Apple-like UI with Tailwind CSS + Framer Motion
-- 🤖 AI-powered analysis of funnel pages
-- 📊 Comprehensive scoring: Clarity, Value, Proof, Design, Flow
+- 🤖 AI-powered analysis of funnel pages with CRO-grade recommendations
+- 📊 Comprehensive scoring: Clarity, Value, Proof, Design, Flow plus diagnostics
 - 📱 Responsive dashboard with iframe embedding support
 - 🔐 JWT authentication for WordPress integration
 - 📄 PDF export capability (coming soon)
+- 🖼️ Automatic Playwright screenshots stored in S3 (optional)
+- ✉️ SendGrid-ready transactional email service for magic links and notifications
 - ⚡ Real-time analysis with loading animations
 
 ## 📁 Project Structure
@@ -36,9 +38,14 @@ funnel-analyzer/
 │   │   ├── database.py       # SQLAlchemy models (User, Analysis, AnalysisPage)
 │   │   └── schemas.py        # Request/response validation
 │   ├── services/             # Business logic
-│   │   ├── analyzer.py       # Funnel analysis service (currently mock)
+│   │   ├── analyzer.py       # Funnel analysis orchestration
 │   │   ├── auth.py           # JWT validation
-│   │   └── reports.py        # Report retrieval
+│   │   ├── email.py          # SendGrid transactional helper
+│   │   ├── llm_provider.py   # Provider registry (OpenAI by default)
+│   │   ├── reports.py        # Report retrieval
+│   │   ├── screenshot.py     # Playwright screenshot capture
+│   │   ├── scraper.py        # Content extraction
+│   │   └── storage.py        # Screenshot upload to S3
 │   ├── utils/                # Utilities
 │   │   └── config.py         # Settings management
 │   ├── requirements.txt      # Python dependencies
@@ -105,10 +112,29 @@ Edit `.env` with your credentials:
 ```bash
 # Backend (.env in project root or backend/.env)
 OPENAI_API_KEY=sk-your-actual-openai-key-here
+LLM_PROVIDER=openai
 DATABASE_URL=sqlite:///./funnel_analyzer.db  # SQLite for local dev
 JWT_SECRET=your-secret-minimum-32-characters
 ENVIRONMENT=development
 FRONTEND_URL=http://localhost:3001
+# Optional screenshot storage (S3, R2, Supabase)
+AWS_S3_BUCKET=your-screenshot-bucket
+AWS_S3_REGION=us-east-1
+AWS_S3_ACCESS_KEY_ID=...
+AWS_S3_SECRET_ACCESS_KEY=...
+AWS_S3_ENDPOINT_URL=https://s3.us-east-1.amazonaws.com  # optional for R2/Supabase
+AWS_S3_BASE_URL=https://cdn.yourdomain.com (optional CDN)
+# Optional transactional email (SendGrid)
+SENDGRID_API_KEY=...
+EMAIL_DEFAULT_FROM="Funnel Analyzer <reports@smarttoolclub.com>"
+EMAIL_DEFAULT_REPLY_TO=support@smarttoolclub.com
+# Automation/webhooks
+THRIVECART_WEBHOOK_SECRET=...
+MAUTIC_BASE_URL=https://your-mautic-instance
+MAUTIC_CLIENT_ID=...
+MAUTIC_CLIENT_SECRET=...
+MAUTIC_API_USERNAME=...
+MAUTIC_API_PASSWORD=...
 
 # Frontend (.env.local in frontend/)
 NEXT_PUBLIC_API_URL=http://localhost:3000
@@ -169,9 +195,40 @@ The frontend will be available at: `http://localhost:3001`
 | GET | `/` | Health check |
 | GET | `/health` | Detailed system status |
 | POST | `/api/analyze` | Analyze funnel URLs (returns scores + feedback) |
+| POST | `/api/analyze/{analysis_id}/email` | Trigger email delivery for an existing report |
 | POST | `/api/auth/validate` | Validate JWT token |
+| POST | `/api/webhooks/thrivecart` | Receive ThriveCart purchase webhooks |
 | GET | `/api/reports/{user_id}` | Get user's past reports |
 | GET | `/api/reports/detail/{analysis_id}` | Get detailed report |
+
+#### POST `/api/analyze`
+
+Request body:
+
+```json
+{
+   "urls": ["https://example.com/sales", "https://example.com/checkout"],
+   "email": "optional-recipient@example.com"
+}
+```
+
+- `email` is optional. When supplied, the backend queues a SendGrid notification with the executive summary and page breakdown and stores the recipient so the report can be re-sent later.
+
+#### POST `/api/analyze/{analysis_id}/email`
+
+```json
+{
+   "email": "recipient@example.com"
+}
+```
+
+- Allows operations or the frontend to re-send any saved analysis once credentials are configured. Responds with `{"status": "sent"}` when the email service succeeds.
+
+#### POST `/api/webhooks/thrivecart`
+
+- Expects a ThriveCart webhook payload with header `X-Webhook-Signature` containing an HMAC SHA-256 digest of the raw body using `THRIVECART_WEBHOOK_SECRET`.
+- Persists the payload to the `webhook_events` table for audit/replay and returns `{ "status": "ok" }` with HTTP 202 when accepted.
+- Use Railway/Vercel secrets to configure the shared secret before enabling the webhook in ThriveCart.
 
 ### Frontend Routes
 
@@ -185,15 +242,18 @@ The frontend will be available at: `http://localhost:3001`
 
 The application now includes:
 - ✅ **Web scraping** with BeautifulSoup + requests
-- ✅ **OpenAI GPT-4o integration** for AI analysis  
+- ✅ **OpenAI GPT-4o integration** for AI analysis (extensible provider layer)  
 - ✅ **Database persistence** with SQLite (local) or PostgreSQL (production)
+- ✅ **Vision analysis** with Playwright screenshots (uploaded to S3 when configured)
+- ✅ **Consultant-level recommendations** including CTA tests, alerts, trust gaps, diagnostics
 
 **Analysis flow:**
 1. Scrapes URLs to extract titles, headings, content, CTAs
-2. Sends content to GPT-4o for analysis
+2. Captures above-the-fold screenshots via Playwright (optional upload to S3)
+3. Sends content + visual context to the configured LLM for analysis
 3. Generates scores (clarity, value, proof, design, flow)
-4. Creates actionable feedback and executive summary
-5. Stores results in database
+4. Creates actionable feedback, diagnostics, and executive summary
+5. Stores results in database and persists screenshot URLs when available
 
 **Without OpenAI API key:** Falls back to intelligent placeholder scores based on scraped content.
 
@@ -235,6 +295,14 @@ docker run --rm -p 3000:3000 --env-file .env funnel-analyzer-backend
    - `JWT_SECRET`
    - `ENVIRONMENT=production`
    - `FRONTEND_URL=https://your-vercel-app.vercel.app`
+   - `AWS_S3_BUCKET=funnel-analyzer-pro`
+   - `AWS_S3_REGION=us-east-1`
+   - `AWS_S3_ACCESS_KEY_ID=...`
+   - `AWS_S3_SECRET_ACCESS_KEY=...`
+   - `AWS_S3_BASE_URL` (optional CDN/front-door URL)
+   - `SENDGRID_API_KEY=...`
+   - `EMAIL_DEFAULT_FROM="Funnel Analyzer <reports@smarttoolclub.com>"`
+   - `EMAIL_DEFAULT_REPLY_TO=support@smarttoolclub.com`
 
 3. Railway will automatically:
    - Detect `Dockerfile`
@@ -343,31 +411,11 @@ npm test
 
 ### To Complete Production Setup:
 
-1. **Implement Real Analysis:**
-   - Add Playwright for web scraping
-   - Integrate OpenAI GPT-4o API
-   - Parse and structure AI responses
-
-2. **Enable Database:**
-   - Set up Neon PostgreSQL
-   - Run database migrations
-   - Update services to use real database
-
-3. **Add Authentication:**
-   - Integrate WordPress JWT validation
-   - Add user session management
-   - Implement report history
-
-4. **PDF Export:**
-   - Integrate jsPDF + html2canvas
-   - Style report templates
-   - Add download functionality
-
-5. **Advanced Features:**
-   - Screenshot capture with Playwright
-   - Comparison reports
-   - Historical trend analysis
-   - Team collaboration
+1. **Credential wiring:** supply S3 + SendGrid + ThriveCart/Mautic secrets to unlock screenshot hosting, email notifications, and CRM sync.
+2. **Auth polish:** finish JWT/magic-link flow and gated dashboard UX.
+3. **Reporting:** implement PDF export and scheduled email digests using the email service.
+4. **Data sync:** integrate ThriveCart webhooks + Mautic API to push analyses into lifecycle automations.
+5. **Insights roadmap:** add historical trend comparisons, experiment tracking, and team collaboration features.
 
 ## 🤝 Contributing
 

@@ -24,6 +24,8 @@ class PageContent:
         paragraphs: List[str],
         ctas: List[str],
         meta_description: Optional[str] = None,
+        forms: Optional[List[str]] = None,
+        videos: Optional[List[str]] = None,
     ):
         self.url = url
         self.title = title
@@ -31,6 +33,8 @@ class PageContent:
         self.paragraphs = paragraphs
         self.ctas = ctas
         self.meta_description = meta_description
+        self.forms = forms or []
+        self.videos = videos or []
     
     def get_full_text(self) -> str:
         """Combine all text content for analysis."""
@@ -44,6 +48,18 @@ class PageContent:
             "\nCalls-to-Action:",
             *[f"- {cta}" for cta in self.ctas[:10]],
         ]
+
+        if self.forms:
+            parts.extend([
+                "\nForms Detected:",
+                *[f"- {form}" for form in self.forms[:5]],
+            ])
+
+        if self.videos:
+            parts.extend([
+                "\nEmbedded Media:",
+                *[f"- {video}" for video in self.videos[:5]],
+            ])
         return "\n".join(parts)
 
 
@@ -118,8 +134,57 @@ async def scrape_url(url: str, timeout: int = 30) -> PageContent:
             if text and any(keyword in text.lower() for keyword in cta_keywords):
                 ctas.append(text)
         
+        # Extract forms for lead capture insight
+        forms = []
+        for form in soup.find_all("form"):
+            snippets = []
+
+            heading = form.find(["h1", "h2", "h3", "legend", "label"])
+            heading_text = heading.get_text(strip=True) if heading else ""
+            if heading_text:
+                snippets.append(heading_text)
+
+            inputs = []
+            for input_el in form.find_all(["input", "textarea", "select"]):
+                placeholder = input_el.get("placeholder", "").strip()
+                name = input_el.get("name", "").strip()
+                label = input_el.get("aria-label", "").strip()
+                descriptor = placeholder or label or name
+                if descriptor:
+                    inputs.append(descriptor)
+
+            if inputs:
+                snippets.append(f"Fields: {', '.join(inputs[:6])}")
+
+            submit_button = form.find(["button", "input"], attrs={"type": "submit"})
+            if submit_button:
+                submit_text = submit_button.get_text(strip=True) or submit_button.get("value", "").strip()
+                if submit_text:
+                    snippets.append(f"CTA: {submit_text}")
+
+            if snippets:
+                forms.append(" | ".join(snippets))
+
+        # Extract embedded video/iframe content for richer analysis
+        videos = []
+        for video in soup.find_all("video"):
+            src = video.get("src")
+            if not src:
+                source_tag = video.find("source")
+                if source_tag:
+                    src = source_tag.get("src")
+            if src:
+                videos.append(src.strip())
+
+        video_domains = ("youtube", "vimeo", "wistia", "loom", "vid", "stream")
+        for iframe in soup.find_all("iframe"):
+            src = (iframe.get("src") or "").strip()
+            if src and any(domain in src.lower() for domain in video_domains):
+                title = (iframe.get("title") or "").strip()
+                videos.append(f"{title} - {src}" if title else src)
+
         logger.info(
-            f"Scraped {url}: {len(headings)} headings, {len(paragraphs)} paragraphs, {len(ctas)} CTAs"
+            f"Scraped {url}: {len(headings)} headings, {len(paragraphs)} paragraphs, {len(ctas)} CTAs, {len(forms)} forms, {len(videos)} videos"
         )
         
         return PageContent(
@@ -129,6 +194,8 @@ async def scrape_url(url: str, timeout: int = 30) -> PageContent:
             paragraphs=paragraphs,
             ctas=ctas,
             meta_description=meta_description,
+            forms=forms,
+            videos=videos,
         )
         
     except requests.exceptions.RequestException as e:

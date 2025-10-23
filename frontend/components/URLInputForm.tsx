@@ -9,6 +9,7 @@ import { analyzeFunnel } from '@/lib/api'
 export default function URLInputForm() {
   const [urls, setUrls] = useState<string[]>([''])
   const [error, setError] = useState<string>('')
+  const [recipientEmail, setRecipientEmail] = useState<string>('')
   const { setAnalyzing, setCurrentAnalysis } = useAnalysisStore()
 
   const addUrlField = () => {
@@ -51,11 +52,17 @@ export default function URLInputForm() {
       return
     }
 
+    const trimmedEmail = recipientEmail.trim()
+    if (trimmedEmail && !/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
+      setError('Please enter a valid email address')
+      return
+    }
+
     try {
       setAnalyzing(true)
       setError('')
       
-      const result = await analyzeFunnel(validUrls)
+      const result = await analyzeFunnel(validUrls, { email: trimmedEmail || undefined })
       setCurrentAnalysis(result)
     } catch (err: any) {
       setError(err.message || 'Failed to analyze funnel. Please try again.')
@@ -124,6 +131,27 @@ export default function URLInputForm() {
             {error}
           </motion.div>
         )}
+
+        <div className="mt-6">
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            Optional: Email results to this address
+          </label>
+          <input
+            type="email"
+            value={recipientEmail}
+            onChange={(e) => {
+              setRecipientEmail(e.target.value)
+              if (error) {
+                setError('')
+              }
+            }}
+            placeholder="you@example.com"
+            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+          />
+          <p className="mt-2 text-xs text-slate-500">
+            We&apos;ll send a copy of the full report if provided.
+          </p>
+        </div>
 
         <button
           type="submit"

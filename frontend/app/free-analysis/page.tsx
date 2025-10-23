@@ -2,30 +2,8 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.smarttoolclub.com';
-
-interface ScoreMetrics {
-  clarity: number;
-  value: number;
-  proof: number;
-  design: number;
-  flow: number;
-}
-
-interface AnalysisResult {
-  overall_score: number;
-  scores: ScoreMetrics;
-  summary: string;
-  pages: Array<{
-    url: string;
-    page_type: string;
-    title: string;
-    scores: ScoreMetrics;
-    feedback: string;
-  }>;
-}
+import { analyzeFunnel, sendAnalysisEmail } from '@/lib/api';
+import type { AnalysisResult } from '@/types';
 
 export default function FreeAnalysisPage() {
   const [url, setUrl] = useState('');
@@ -34,20 +12,20 @@ export default function FreeAnalysisPage() {
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [email, setEmail] = useState('');
   const [emailSubmitted, setEmailSubmitted] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   const handleAnalyze = async () => {
     if (!url.trim()) return;
 
     setIsAnalyzing(true);
     setResult(null);
+    setEmailSubmitted(false);
+    setShowUnlockModal(false);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/analyze`, {
-        urls: [url],
-        user_id: null,
-      });
-
-      setResult(response.data);
+  const analysis = await analyzeFunnel([url.trim()]);
+  setResult(analysis);
+  setEmail(analysis.recipient_email ?? '');
     } catch (error) {
       console.error('Analysis failed:', error);
       alert('Analysis failed. Please try again.');
@@ -57,18 +35,36 @@ export default function FreeAnalysisPage() {
   };
 
   const handleUnlockReport = async () => {
+    if (!result) {
+      alert('Run an analysis first to unlock the report.');
+      return;
+    }
+
     if (!email.trim() || !email.includes('@')) {
       alert('Please enter a valid email address');
       return;
     }
 
-    // TODO: Send email with full report
-    setEmailSubmitted(true);
-    
-    // Redirect to membership page after 3 seconds
-    setTimeout(() => {
-      window.location.href = 'https://smarttoolclub.com/join';
-    }, 3000);
+    try {
+      setIsSendingEmail(true);
+  await sendAnalysisEmail(result.analysis_id, email.trim());
+  setEmailSubmitted(true);
+  setEmail(email.trim());
+  setResult((prev) => (prev ? { ...prev, recipient_email: email.trim() } : prev));
+
+      setTimeout(() => {
+        window.location.href = 'https://smarttoolclub.com/join';
+      }, 3000);
+    } catch (err) {
+      console.error('Failed to send analysis email:', err);
+      alert(
+        err instanceof Error
+          ? err.message
+          : 'We could not email the full report. Please try again shortly.'
+      );
+    } finally {
+      setIsSendingEmail(false);
+    }
   };
 
   const getScoreColor = (score: number) => {
@@ -341,9 +337,10 @@ export default function FreeAnalysisPage() {
 
                   <button
                     onClick={handleUnlockReport}
-                    className="w-full px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg mb-3"
+                    disabled={isSendingEmail}
+                    className="w-full px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg mb-3 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    Send Me the Full Report
+                    {isSendingEmail ? 'Sending…' : 'Send Me the Full Report'}
                   </button>
 
                   <div className="text-center">
@@ -365,7 +362,7 @@ export default function FreeAnalysisPage() {
                   <div className="text-6xl mb-4">✅</div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-2">Check Your Email!</h3>
                   <p className="text-gray-600 mb-6">
-                    We've sent the full report to <strong>{email}</strong>
+                    We&apos;ve sent the full report to <strong>{email}</strong>
                   </p>
                   <p className="text-sm text-gray-500">
                     Redirecting to Smart Tool Club membership...

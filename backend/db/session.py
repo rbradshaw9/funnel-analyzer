@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy import select
 
 from ..models.database import Base, User
+from .migrations import ensure_recipient_email_column
 from ..utils.config import settings
 
 
@@ -47,6 +48,7 @@ async def init_db() -> None:
     """Create tables and ensure a default user exists for demo flows."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await ensure_recipient_email_column(conn)
 
     async with AsyncSessionFactory() as session:
         query = select(User).where(User.email == settings.DEFAULT_USER_EMAIL)

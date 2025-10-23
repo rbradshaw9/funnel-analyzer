@@ -1,7 +1,8 @@
 import axios from 'axios'
 import { AnalysisResult, AuthResponse } from '@/types'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://funnel-analyzer-production-b6b4.up.railway.app'
+// API Configuration
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://analyzer.smarttoolclub.com'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -10,9 +11,25 @@ const api = axios.create({
   },
 })
 
-export async function analyzeFunnel(urls: string[]): Promise<AnalysisResult> {
+interface AnalyzeFunnelOptions {
+  email?: string
+  userId?: number | null
+}
+
+export async function analyzeFunnel(urls: string[], options: AnalyzeFunnelOptions = {}): Promise<AnalysisResult> {
   try {
-    const response = await api.post<AnalysisResult>('/api/analyze', { urls })
+    const payload: Record<string, unknown> = { urls }
+
+    if (options.email) {
+      payload.email = options.email
+    }
+
+    const params: Record<string, number> = {}
+    if (typeof options.userId === 'number') {
+      params.user_id = options.userId
+    }
+
+    const response = await api.post<AnalysisResult>('/api/analyze', payload, { params })
     return response.data
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to analyze funnel')
@@ -45,5 +62,13 @@ export async function getReportDetail(analysisId: number): Promise<AnalysisResul
     return response.data
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to fetch report detail')
+  }
+}
+
+export async function sendAnalysisEmail(analysisId: number, email: string): Promise<void> {
+  try {
+    await api.post(`/api/analyze/${analysisId}/email`, { email })
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to send analysis email')
   }
 }

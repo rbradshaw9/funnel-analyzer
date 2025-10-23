@@ -2,7 +2,7 @@
 Pydantic schemas for request/response validation.
 """
 
-from pydantic import BaseModel, HttpUrl, Field, field_validator
+from pydantic import BaseModel, HttpUrl, Field, field_validator, EmailStr
 from typing import List, Optional, Dict
 from datetime import datetime
 
@@ -11,6 +11,7 @@ class AnalysisRequest(BaseModel):
     """Request body for funnel analysis."""
     
     urls: List[HttpUrl] = Field(..., min_length=1, max_length=10, description="List of funnel URLs to analyze")
+    email: Optional[EmailStr] = Field(default=None, description="Optional email to receive the report")
     
     @field_validator('urls')
     @classmethod
@@ -30,6 +31,65 @@ class ScoreBreakdown(BaseModel):
     flow: int = Field(..., ge=0, le=100, description="Flow and continuity score (0-100)")
 
 
+class CTARecommendation(BaseModel):
+    copy: str
+    location: Optional[str] = None
+    reason: Optional[str] = None
+
+
+class DesignImprovement(BaseModel):
+    area: Optional[str] = None
+    recommendation: str
+    impact: Optional[str] = None
+
+
+class TrustElementRecommendation(BaseModel):
+    element: str
+    why: Optional[str] = None
+
+
+class ABTestPlan(BaseModel):
+    element: Optional[str] = None
+    control: Optional[str] = None
+    variant: Optional[str] = None
+    expected_lift: Optional[str] = None
+    reasoning: Optional[str] = None
+
+
+class PriorityAlert(BaseModel):
+    severity: Optional[str] = None
+    issue: str
+    impact: Optional[str] = None
+    fix: Optional[str] = None
+
+
+class FunnelFlowGap(BaseModel):
+    step: Optional[str] = None
+    issue: str
+    fix: Optional[str] = None
+
+
+class CopyDiagnostics(BaseModel):
+    hook: Optional[str] = None
+    offer: Optional[str] = None
+    urgency: Optional[str] = None
+    objections: Optional[str] = None
+    audience_fit: Optional[str] = None
+
+
+class VisualDiagnostics(BaseModel):
+    hero: Optional[str] = None
+    layout: Optional[str] = None
+    contrast: Optional[str] = None
+    mobile: Optional[str] = None
+    credibility: Optional[str] = None
+
+
+class VideoRecommendation(BaseModel):
+    context: Optional[str] = None
+    recommendation: str
+
+
 class PageAnalysis(BaseModel):
     """Analysis results for a single page."""
     
@@ -39,6 +99,17 @@ class PageAnalysis(BaseModel):
     scores: ScoreBreakdown
     feedback: str
     screenshot_url: Optional[str] = None
+    headline_recommendation: Optional[str] = None
+    cta_recommendations: Optional[List[CTARecommendation]] = None
+    design_improvements: Optional[List[DesignImprovement]] = None
+    trust_elements_missing: Optional[List[TrustElementRecommendation]] = None
+    ab_test_priority: Optional[ABTestPlan] = None
+    priority_alerts: Optional[List[PriorityAlert]] = None
+    funnel_flow_gaps: Optional[List[FunnelFlowGap]] = None
+    copy_diagnostics: Optional[CopyDiagnostics] = None
+    visual_diagnostics: Optional[VisualDiagnostics] = None
+    video_recommendations: Optional[List[VideoRecommendation]] = None
+    email_capture_recommendations: Optional[List[str]] = None
 
 
 class AnalysisResponse(BaseModel):
@@ -51,9 +122,16 @@ class AnalysisResponse(BaseModel):
     pages: List[PageAnalysis]
     created_at: datetime
     analysis_duration_seconds: Optional[int] = None
+    recipient_email: Optional[EmailStr] = None
     
     class Config:
         from_attributes = True
+
+
+class AnalysisEmailRequest(BaseModel):
+    """Payload for requesting an email delivery of an analysis."""
+
+    email: EmailStr
 
 
 class AuthValidateRequest(BaseModel):

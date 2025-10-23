@@ -31,8 +31,16 @@ cd ..
 # Copy environment template
 cp .env.example .env
 
-# Edit .env and add your OpenAI API key (optional):
+# Edit .env and add secrets (as available):
 # OPENAI_API_KEY=sk-your-key-here
+# AWS_S3_BUCKET=your-screenshot-bucket (optional but recommended)
+# AWS_S3_REGION=us-east-1
+# AWS_S3_ACCESS_KEY_ID=...
+# AWS_S3_SECRET_ACCESS_KEY=...
+# AWS_S3_BASE_URL=https://cdn.yourdomain.com  # optional CDN/front door URL
+# SENDGRID_API_KEY=...
+# EMAIL_DEFAULT_FROM="Funnel Analyzer <reports@smarttoolclub.com>"
+# EMAIL_DEFAULT_REPLY_TO=support@smarttoolclub.com
 ```
 
 **Note:** The app works without an OpenAI key using intelligent placeholder analysis!
@@ -140,7 +148,8 @@ rm funnel_analyzer.db
 - Add your OpenAI API key for real AI analysis
 - Customize scoring criteria in `backend/services/openai_service.py`
 - Update frontend styling in `frontend/app/globals.css`
-- Enable screenshot capture (add Playwright integration)
+- Enable screenshot uploads to S3 for persistent visuals
+- Plug in SendGrid to deliver magic links or report summaries
 - Set up WordPress JWT integration
 
 ## 🆘 Getting Help

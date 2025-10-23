@@ -47,6 +47,7 @@ class Analysis(Base):
     analysis_duration_seconds = Column(Integer, nullable=True)
     status = Column(String(50), default="completed")  # completed, failed, processing
     error_message = Column(Text, nullable=True)
+    recipient_email = Column(String(255), nullable=True)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -84,3 +85,19 @@ class AnalysisPage(Base):
     
     def __repr__(self):
         return f"<AnalysisPage {self.url}>"
+
+
+class WebhookEvent(Base):
+    """Raw webhook payloads for audit trails and replay support."""
+
+    __tablename__ = "webhook_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    source = Column(String(100), nullable=False, index=True)
+    event_type = Column(String(150), nullable=True)
+    payload = Column(JSON, nullable=False)
+    raw_payload = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    def __repr__(self) -> str:
+        return f"<WebhookEvent {self.source}:{self.id}>"

@@ -1,0 +1,38 @@
+"""Webhook endpoints for third-party automation providers."""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..db.session import get_db_session
+from ..services.webhooks import handle_thrivecart_webhook
+
+router = APIRouter()
+
+
+@router.get("/thrivecart")
+async def thrivecart_webhook_ping():
+    """Allow ThriveCart to verify the webhook endpoint responds successfully."""
+    return {"status": "ready"}
+
+
+@router.post("/thrivecart", status_code=202)
+async def thrivecart_webhook(
+    request: Request,
+    session: AsyncSession = Depends(get_db_session),
+    x_webhook_signature: str | None = Header(default=None, convert_underscores=False),
+):
+    """Receive ThriveCart webhook payloads, verify signature, and persist for processing."""
+    body = await request.body()
+
+    try:
+        message, status = await handle_thrivecart_webhook(
+            session=session,
+            body=body,
+            signature=x_webhook_signature,
+        )
+    except HTTPException:
+        raise
+
+    return {"status": message, "code": status}

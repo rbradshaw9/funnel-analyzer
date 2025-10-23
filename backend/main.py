@@ -10,10 +10,10 @@ import logging
 
 try:
     from .db.session import init_db  # type: ignore[attr-defined]
-    from .routes import analysis, auth, reports  # type: ignore[attr-defined]
+    from .routes import analysis, auth, reports, webhooks  # type: ignore[attr-defined]
     from .utils.config import settings  # type: ignore[attr-defined]
 except ImportError:  # pragma: no cover - fallback for direct script execution
-    from routes import analysis, auth, reports
+    from routes import analysis, auth, reports, webhooks
     from utils.config import settings
 
 # Configure logging
@@ -65,6 +65,7 @@ app.add_middleware(
 app.include_router(analysis.router, prefix="/api", tags=["Analysis"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
+app.include_router(webhooks.router, prefix="/api/webhooks", tags=["Webhooks"])
 
 
 @app.get("/")
@@ -83,7 +84,7 @@ async def health():
     return {
         "status": "healthy",
         "database": "connected",
-        "openai": "configured" if settings.OPENAI_API_KEY else "not_configured",
+        "openai": "configured" if settings.     OPENAI_API_KEY else "not_configured",
     }
 
 

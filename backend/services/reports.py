@@ -66,12 +66,19 @@ async def get_report_by_id(
     if analysis is None:
         return None
 
-    return {
-        "analysis_id": analysis.id,
-        "overall_score": analysis.overall_score,
-        "scores": analysis.scores,
-        "summary": analysis.summary,
-        "pages": [
+    stored_pages = analysis.detailed_feedback or []
+
+    if stored_pages:
+        # Ensure screenshot URLs from relational table are merged in if missing
+        for idx, page_data in enumerate(stored_pages):
+            if isinstance(page_data, dict):
+                if "screenshot_url" not in page_data:
+                    try:
+                        page_data["screenshot_url"] = analysis.pages[idx].screenshot_url
+                    except IndexError:
+                        page_data["screenshot_url"] = None
+    else:
+        stored_pages = [
             {
                 "url": page.url,
                 "page_type": page.page_type,
@@ -81,7 +88,15 @@ async def get_report_by_id(
                 "screenshot_url": page.screenshot_url,
             }
             for page in analysis.pages
-        ],
+        ]
+
+    return {
+        "analysis_id": analysis.id,
+        "overall_score": analysis.overall_score,
+        "scores": analysis.scores,
+        "summary": analysis.summary,
+        "pages": stored_pages,
         "created_at": analysis.created_at,
         "analysis_duration_seconds": analysis.analysis_duration_seconds,
+        "recipient_email": analysis.recipient_email,
     }

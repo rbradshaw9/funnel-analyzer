@@ -4,21 +4,28 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.database import Analysis, AnalysisPage, User
 from ..models.schemas import AnalysisResponse
-from ..services.openai_service import get_openai_service
+from ..services.screenshot import get_screenshot_service
+from ..services.llm_provider import get_llm_provider
+from ..services.storage import get_storage_service
 from ..services.scraper import scrape_funnel
 from ..utils.config import settings
 
 logger = logging.getLogger(__name__)
 
 
-async def analyze_funnel(urls: List[str], session: AsyncSession, user_id: Optional[int] = None) -> AnalysisResponse:
+async def analyze_funnel(
+    urls: List[str],
+    session: AsyncSession,
+    user_id: Optional[int] = None,
+    recipient_email: Optional[str] = None,
+) -> AnalysisResponse:
     """Generate analysis results, persist them, and return a response payload."""
     
     start_time = time.time()
@@ -27,20 +34,90 @@ async def analyze_funnel(urls: List[str], session: AsyncSession, user_id: Option
     logger.info(f"Starting analysis for {len(urls)} URLs")
     page_contents = await scrape_funnel(urls)
     
-    # Step 2: Analyze each page with OpenAI
-    openai_service = get_openai_service()
+    # Step 2: Capture screenshots (best effort) and analyze each page with OpenAI
+    llm_provider = get_llm_provider()
     page_analyses = []
+    screenshot_service = None
+    storage_service = get_storage_service()
+
+    try:
+        screenshot_service = await get_screenshot_service()
+    except Exception as screenshot_error:
+        logger.warning(f"Screenshot service unavailable, continuing without visuals: {screenshot_error}")
     
+    def _ensure_list(value: Any) -> list:
+        if not value:
+            return []
+        if isinstance(value, list):
+            return value
+        return [value]
+
+    def _ensure_dict(value: Any) -> Optional[dict]:
+        return value if isinstance(value, dict) else None
+
+    def _dict_list(value: Any) -> list:
+        items = _ensure_list(value)
+        return [item for item in items if isinstance(item, dict)]
+
+    def _string_list(value: Any) -> list[str]:
+        items = _ensure_list(value)
+        return [str(item) for item in items if isinstance(item, (str, int, float))]
+
     for i, page_content in enumerate(page_contents):
-        analysis_result = await openai_service.analyze_page(
-            page_content, page_number=i + 1, total_pages=len(urls)
+        screenshot_base64 = None
+
+        if screenshot_service:
+            try:
+                screenshot_base64 = await screenshot_service.capture_screenshot(
+                    page_content.url,
+                    viewport_width=1440,
+                    viewport_height=900,
+                    full_page=False,
+                )
+            except Exception as screenshot_error:
+                logger.warning(f"Failed to capture screenshot for {page_content.url}: {screenshot_error}")
+                screenshot_base64 = None
+
+        analysis_result = await llm_provider.analyze_page(
+            page_content,
+            page_number=i + 1,
+            total_pages=len(urls),
+            screenshot_base64=screenshot_base64,
         )
+
+        screenshot_url = None
+        if screenshot_base64 and storage_service:
+            try:
+                screenshot_url = await storage_service.upload_base64_image(
+                    base64_data=screenshot_base64,
+                    content_type="image/png",
+                )
+            except Exception as upload_error:  # noqa: BLE001 - log and continue
+                logger.warning(
+                    "Failed to upload screenshot for %s: %s",
+                    page_content.url,
+                    upload_error,
+                )
+
         page_analyses.append({
             "url": page_content.url,
             "title": page_content.title,
             "page_type": analysis_result.get("page_type", "unknown"),
             "scores": analysis_result["scores"],
             "feedback": analysis_result["feedback"],
+            # Enhanced recommendations
+            "headline_recommendation": analysis_result.get("headline_recommendation"),
+            "cta_recommendations": _dict_list(analysis_result.get("cta_recommendations")),
+            "design_improvements": _dict_list(analysis_result.get("design_improvements")),
+            "trust_elements_missing": _dict_list(analysis_result.get("trust_elements_missing")),
+            "ab_test_priority": _ensure_dict(analysis_result.get("ab_test_priority")),
+            "priority_alerts": _dict_list(analysis_result.get("priority_alerts")),
+            "funnel_flow_gaps": _dict_list(analysis_result.get("funnel_flow_gaps")),
+            "copy_diagnostics": _ensure_dict(analysis_result.get("copy_diagnostics")),
+            "visual_diagnostics": _ensure_dict(analysis_result.get("visual_diagnostics")),
+            "video_recommendations": _dict_list(analysis_result.get("video_recommendations")),
+            "email_capture_recommendations": _string_list(analysis_result.get("email_capture_recommendations")),
+            "screenshot_url": screenshot_url,
         })
     
     # Step 3: Calculate overall scores
@@ -53,7 +130,7 @@ async def analyze_funnel(urls: List[str], session: AsyncSession, user_id: Option
     overall_score = sum(avg_scores.values()) // len(avg_scores)
     
     # Step 4: Generate executive summary
-    summary = await openai_service.analyze_funnel_summary(page_analyses, overall_score)
+    summary = await llm_provider.analyze_funnel_summary(page_analyses, overall_score)
     
     duration = int(time.time() - start_time)
     logger.info(f"Analysis completed in {duration}s with overall score: {overall_score}")
@@ -68,6 +145,7 @@ async def analyze_funnel(urls: List[str], session: AsyncSession, user_id: Option
         "summary": summary,
         "pages": page_analyses,
         "analysis_duration_seconds": duration,
+        "recipient_email": recipient_email,
     }
 
     analysis = Analysis(
@@ -78,6 +156,7 @@ async def analyze_funnel(urls: List[str], session: AsyncSession, user_id: Option
         summary=analysis_result["summary"],
         detailed_feedback=analysis_result["pages"],
         analysis_duration_seconds=analysis_result.get("analysis_duration_seconds"),
+        recipient_email=recipient_email,
     )
 
     analysis.pages = [
@@ -102,19 +181,10 @@ async def analyze_funnel(urls: List[str], session: AsyncSession, user_id: Option
         "overall_score": analysis.overall_score,
         "scores": analysis.scores,
         "summary": analysis.summary,
-        "pages": [
-            {
-                "url": page.url,
-                "page_type": page.page_type,
-                "title": page.title,
-                "scores": page.page_scores,
-                "feedback": page.page_feedback,
-                "screenshot_url": page.screenshot_url,
-            }
-            for page in analysis.pages
-        ],
+        "pages": analysis_result["pages"],
         "created_at": analysis.created_at,
         "analysis_duration_seconds": analysis.analysis_duration_seconds,
+        "recipient_email": recipient_email,
     }
 
     return AnalysisResponse.model_validate(response_payload)

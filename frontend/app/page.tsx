@@ -55,7 +55,7 @@ export default function Home() {
             
             <p className="text-xl text-gray-600 mb-8 leading-relaxed">
               Get instant, AI-powered analysis of your sales pages, landing pages, and funnels. 
-              Discover exactly what's working, what's not, and how to boost conversions.
+              Discover exactly what&apos;s working, what&apos;s not, and how to boost conversions.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
