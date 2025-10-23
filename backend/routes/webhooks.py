@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db.session import get_db_session
@@ -16,6 +16,12 @@ router = APIRouter()
 async def thrivecart_webhook_ping():
     """Allow ThriveCart to verify the webhook endpoint responds successfully."""
     return {"status": "ready"}
+
+
+@router.head("/thrivecart")
+async def thrivecart_webhook_head() -> Response:
+    """Respond to ThriveCart HEAD pings with a 200 status."""
+    return Response(status_code=200)
 
 
 @router.post("/thrivecart")
