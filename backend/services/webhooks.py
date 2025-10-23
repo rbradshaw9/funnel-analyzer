@@ -81,4 +81,4 @@ async def handle_thrivecart_webhook(
     )
 
     await session.commit()
-    return ("ok", 202)
+    return ("ok", 200)
