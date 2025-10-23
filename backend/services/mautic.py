@@ -203,5 +203,3 @@ async def sync_thrivecart_event(payload: Dict[str, Any]) -> None:
         note_ok = await client.add_note(contact_id, note_title, note_content)
         if note_ok:
             logger.debug("Attached ThriveCart note to Mautic contact %s", contact_id)
-
-*** End of File
