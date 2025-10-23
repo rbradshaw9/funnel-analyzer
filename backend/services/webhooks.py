@@ -63,7 +63,7 @@ async def handle_thrivecart_webhook(
 
     if not signature:
         logger.warning("ThriveCart webhook missing signature; treating as validation ping")
-        return ("handshake", 202)
+        return ("handshake", 200)
 
     _validate_signature(secret, body, signature)
 
