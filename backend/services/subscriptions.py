@@ -41,6 +41,12 @@ _CANCELED_EVENTS = {
     "subscription_paused",
     "order.refunded",
     "subscription_refunded",
+    "order_refund",
+    "order_refund_product",
+    "order_refund_bump",
+    "order_refund_upsell",
+    "order_refund_downsell",
+    "order_payment_refunded",
 }
 
 _PLAN_KEYS = (

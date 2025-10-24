@@ -99,6 +99,41 @@ def test_thrivecart_failed_payment_sets_past_due():
     _run_async(scenario())
 
 
+def test_thrivecart_refund_cancels_user():
+    async def scenario():
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        Session = async_sessionmaker(engine, expire_on_commit=False)
+
+        async with Session() as session:
+            activation_payload = {
+                "event": "subscription_payment",
+                "subscription": {
+                    "status": "active",
+                    "subscription_id": "sub_refund_test",
+                },
+                "customer": {"email": "refund@example.com"},
+            }
+            await apply_thrivecart_membership_update(session, activation_payload)
+
+            refund_payload = {
+                "event": "order_refund_product",
+                "subscription": {},
+                "customer": {"email": "refund@example.com"},
+            }
+            result = await apply_thrivecart_membership_update(session, refund_payload)
+            assert result is not None
+            user = result.user
+            assert user.status == "canceled"
+            assert user.is_active == 0
+            assert result.status_changed is True
+
+        await engine.dispose()
+
+    _run_async(scenario())
+
+
 def test_thrivecart_payload_without_email_is_ignored():
     async def scenario():
         engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
