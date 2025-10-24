@@ -144,7 +144,7 @@ Transform from internal tool → Lead generation freemium SaaS → Premium membe
 - OpenAI GPT-4o integration
 - Web scraping (BeautifulSoup)
 - Production deployment (Railway + Vercel)
-- Custom domain (api.smarttoolclub.com)
+- Custom domain (api.funnelanalyzerpro.com)
 - Database persistence
 - Health monitoring
 

@@ -131,8 +131,8 @@ AWS_S3_ENDPOINT_URL=https://s3.us-east-1.amazonaws.com  # optional for R2/Supaba
 AWS_S3_BASE_URL=https://cdn.yourdomain.com (optional CDN)
 # Optional transactional email (SendGrid)
 SENDGRID_API_KEY=...
-EMAIL_DEFAULT_FROM="Funnel Analyzer Pro Reports <reports@smarttoolclub.com>"
-EMAIL_DEFAULT_REPLY_TO=ryan@smarttoolclub.com
+EMAIL_DEFAULT_FROM="Funnel Analyzer Pro Reports <reports@funnelanalyzerpro.com>"
+EMAIL_DEFAULT_REPLY_TO=support@funnelanalyzerpro.com
 # Automation/webhooks
 THRIVECART_WEBHOOK_SECRET=...
 MAUTIC_BASE_URL=https://your-mautic-instance
@@ -144,7 +144,7 @@ MAUTIC_API_PASSWORD=...
 # Frontend (.env.local in frontend/)
 NEXT_PUBLIC_API_URL=http://localhost:3000
 NEXT_PUBLIC_ENV=development
-NEXT_PUBLIC_CLUB_JOIN_URL=https://smarttoolclub.com
+NEXT_PUBLIC_JOIN_URL=https://funnelanalyzerpro.com/pricing
 ```
 
 ## 🔐 Authentication
@@ -341,8 +341,8 @@ docker run --rm -p 3000:3000 --env-file .env funnel-analyzer-backend
    - `AWS_S3_SECRET_ACCESS_KEY=...`
    - `AWS_S3_BASE_URL` (optional CDN/front-door URL)
    - `SENDGRID_API_KEY=...`
-   - `EMAIL_DEFAULT_FROM="Funnel Analyzer <reports@smarttoolclub.com>"`
-   - `EMAIL_DEFAULT_REPLY_TO=support@smarttoolclub.com`
+   - `EMAIL_DEFAULT_FROM="Funnel Analyzer Pro <reports@funnelanalyzerpro.com>"`
+   - `EMAIL_DEFAULT_REPLY_TO=support@funnelanalyzerpro.com`
 
 3. Railway will automatically:
    - Detect `Dockerfile`
@@ -401,7 +401,7 @@ This is a **standalone application**, not a WordPress plugin. It integrates via 
 2. Configure shared `JWT_SECRET` in both WordPress and Funnel Analyzer
 3. Pass token to app via URL parameter:
    ```
-   https://app.smarttoolclub.com/dashboard?token=abc123
+   https://funnelanalyzerpro.com/dashboard?token=abc123
    ```
 
 ### Embedding in WordPress
@@ -410,7 +410,7 @@ Use iframe:
 
 ```html
 <iframe 
-  src="https://app.smarttoolclub.com/embed?token=USER_JWT_TOKEN"
+   src="https://funnelanalyzerpro.com/embed?token=USER_JWT_TOKEN"
   width="100%" 
   height="800"
   frameborder="0"

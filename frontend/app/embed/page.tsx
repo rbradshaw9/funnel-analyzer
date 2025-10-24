@@ -8,6 +8,7 @@ import LoadingAnimation from '@/components/LoadingAnimation'
 import { TopNav } from '@/components/TopNav'
 import { useAnalysisStore } from '@/store/analysisStore'
 import { useAuthValidation } from '@/hooks/useAuthValidation'
+import { FUNNEL_ANALYZER_JOIN_URL } from '@/lib/externalLinks'
 
 function EmbedContent() {
   const { currentAnalysis, isAnalyzing } = useAnalysisStore()
@@ -36,12 +37,12 @@ function EmbedContent() {
             </span>
           ) : (
             <a
-              href="https://smarttoolclub.com"
+              href={FUNNEL_ANALYZER_JOIN_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm font-semibold text-primary-600 hover:text-primary-700"
             >
-              Smart Tool Club
+              Funnel Analyzer Pro
             </a>
           )
         }

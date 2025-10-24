@@ -39,8 +39,8 @@ cp .env.example .env
 # AWS_S3_SECRET_ACCESS_KEY=...
 # AWS_S3_BASE_URL=https://cdn.yourdomain.com  # optional CDN/front door URL
 # SENDGRID_API_KEY=...
-# EMAIL_DEFAULT_FROM="Funnel Analyzer <reports@smarttoolclub.com>"
-# EMAIL_DEFAULT_REPLY_TO=support@smarttoolclub.com
+# EMAIL_DEFAULT_FROM="Funnel Analyzer Pro <reports@funnelanalyzerpro.com>"
+# EMAIL_DEFAULT_REPLY_TO=support@funnelanalyzerpro.com
 ```
 
 **Note:** The app works without an OpenAI key using intelligent placeholder analysis!

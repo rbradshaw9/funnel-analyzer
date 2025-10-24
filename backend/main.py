@@ -42,7 +42,8 @@ app = FastAPI(
 allowed_origins = [
     "http://localhost:3000",
     "http://localhost:3001",
-    "https://app.smarttoolclub.com",
+    "https://funnelanalyzerpro.com",
+    "https://www.funnelanalyzerpro.com",
 ]
 
 if settings.FRONTEND_URL:

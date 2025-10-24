@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { TopNav } from '@/components/TopNav';
-import { SMART_TOOL_CLUB_JOIN_URL } from '@/lib/externalLinks';
+import { FUNNEL_ANALYZER_JOIN_URL } from '@/lib/externalLinks';
 import { getPublicStats } from '@/lib/api';
 
 export default function Home() {
@@ -145,12 +145,12 @@ export default function Home() {
             <Link href="/free-analysis" className="text-sm font-medium text-slate-600 hover:text-slate-900">
               Free Analysis
             </Link>
-            <a
-              href={SMART_TOOL_CLUB_JOIN_URL}
+            <Link
+              href={FUNNEL_ANALYZER_JOIN_URL}
               className="inline-flex items-center px-5 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold shadow-md hover:from-indigo-700 hover:to-purple-700 transition-colors"
             >
-              Join Club
-            </a>
+              View Pricing
+            </Link>
           </div>
         }
       />
@@ -425,10 +425,10 @@ export default function Home() {
           </Link>
 
           <p className="text-sm text-gray-500 mt-6">
-            Want full access to multi-page funnels and advanced features?{' '}
-            <a href={SMART_TOOL_CLUB_JOIN_URL} className="text-indigo-600 hover:text-indigo-700 font-semibold">
-              Join Smart Tool Club
-            </a>
+            Want unlimited funnels, advanced insights, and team access?{' '}
+            <Link href={FUNNEL_ANALYZER_JOIN_URL} className="text-indigo-600 hover:text-indigo-700 font-semibold">
+              View Funnel Analyzer Pro plans
+            </Link>
           </p>
         </div>
       </section>
@@ -447,19 +447,19 @@ export default function Home() {
               <h4 className="text-white font-bold mb-4">Product</h4>
               <ul className="space-y-2 text-sm">
                 <li><Link href="/free-analysis" className="hover:text-white">Free Analysis</Link></li>
-                <li><a href={SMART_TOOL_CLUB_JOIN_URL} className="hover:text-white">Smart Tool Club</a></li>
+                <li><Link href={FUNNEL_ANALYZER_JOIN_URL} className="hover:text-white">Pricing</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="text-white font-bold mb-4">Company</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="https://smarttoolclub.com/about" className="hover:text-white">About</a></li>
-                <li><a href="https://smarttoolclub.com/contact" className="hover:text-white">Contact</a></li>
+                <li><Link href="/pricing" className="hover:text-white">Plans</Link></li>
+                <li><a href="mailto:support@funnelanalyzerpro.com" className="hover:text-white">Support</a></li>
               </ul>
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm">
-            <p>&copy; 2025 Smart Tool Club. All rights reserved.</p>
+            <p>&copy; 2025 Funnel Analyzer Pro. All rights reserved.</p>
           </div>
         </div>
       </footer>

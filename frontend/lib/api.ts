@@ -10,7 +10,7 @@ import {
 } from '@/types'
 
 // API Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://analyzer.smarttoolclub.com'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.funnelanalyzerpro.com'
 
 const api = axios.create({
   baseURL: API_BASE_URL,

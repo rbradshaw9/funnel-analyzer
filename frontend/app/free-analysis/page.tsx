@@ -1,11 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { analyzeFunnel, sendAnalysisEmail } from '@/lib/api';
 import type { AnalysisResult } from '@/types';
 import { TopNav } from '@/components/TopNav';
-import { SMART_TOOL_CLUB_JOIN_URL } from '@/lib/externalLinks';
+import { FUNNEL_ANALYZER_JOIN_URL } from '@/lib/externalLinks';
 
 type StageKey = 'scrape' | 'screenshot' | 'analysis' | 'summary';
 
@@ -43,6 +44,26 @@ const STORAGE_KEY_STAGE_ESTIMATES = 'faStageEstimates';
 const MIN_STAGE_SECONDS = 0.8;
 const MAX_STAGE_SECONDS = 60;
 
+const UPGRADE_FEATURES: Array<{ title: string; description: string }> = [
+
+  {
+    title: 'Unlimited funnel steps',
+    description: 'Audit every page in your funnel with side-by-side drop-off tracking.',
+  },
+  {
+    title: 'AI rewrite playbooks',
+    description: 'Instant headline, hook, and CTA rewrites tuned to your niche.',
+  },
+  {
+    title: 'Competitor benchmarking',
+    description: 'See how you stack up against top-performing funnels in your industry.',
+  },
+  {
+    title: 'Client-ready exports',
+    description: 'Generate polished PDF and slide exports for teams and stakeholders.',
+  },
+];
+
 const clampDuration = (value: unknown, fallback: number) => {
   const numeric = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
   return Math.min(Math.max(numeric, MIN_STAGE_SECONDS), MAX_STAGE_SECONDS);
@@ -72,11 +93,77 @@ const formatSeconds = (value?: number | null) => {
   return `${value.toFixed(1)}s`;
 };
 
+interface UnlockOverlayCardProps {
+  email: string;
+  onEmailChange: (value: string) => void;
+  onUnlock: () => void;
+  isSendingEmail: boolean;
+  emailSubmitted: boolean;
+}
+
+function UnlockOverlayCard({ email, onEmailChange, onUnlock, isSendingEmail, emailSubmitted }: UnlockOverlayCardProps) {
+  if (emailSubmitted) {
+    return (
+      <div className="w-full max-w-sm rounded-2xl border border-indigo-100 bg-white/95 p-6 text-center shadow-2xl backdrop-blur">
+        <div className="text-4xl mb-3">✅</div>
+        <h3 className="text-2xl font-semibold text-gray-900 mb-2">Check your inbox</h3>
+        <p className="text-sm text-gray-600">
+          We just sent the full report your way. Stay tuned while we guide you to the pricing page.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-sm rounded-2xl border border-slate-200/80 bg-white/95 p-6 shadow-[0_28px_60px_-35px_rgba(79,70,229,0.65)] backdrop-blur">
+      <h3 className="text-lg font-semibold text-gray-900">Unlock the full report</h3>
+      <p className="mt-2 text-sm text-gray-600">
+        Get the executive summary, page-by-page breakdown, and AI-powered recommendations delivered instantly.
+      </p>
+
+      <ul className="mt-4 space-y-2 text-sm text-gray-600">
+        <li className="flex items-start gap-2">
+          <span className="mt-1 text-indigo-600">•</span>
+          <span>Unlimited funnel steps & split tests</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span className="mt-1 text-indigo-600">•</span>
+          <span>AI rewrite playbooks for hooks & CTAs</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span className="mt-1 text-indigo-600">•</span>
+          <span>Team-ready PDF exports & share links</span>
+        </li>
+      </ul>
+
+      <div className="mt-5 flex flex-col gap-3">
+        <input
+          type="email"
+          value={email}
+          onChange={(event) => onEmailChange(event.target.value)}
+          placeholder="you@brand.com"
+          className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm font-medium focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+        />
+        <button
+          onClick={onUnlock}
+          disabled={isSendingEmail}
+          className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-indigo-700 hover:to-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isSendingEmail ? 'Sending link…' : 'Email me the full report'}
+        </button>
+      </div>
+
+      <p className="mt-4 text-center text-xs text-gray-400">
+        No spam—just your full analysis and pro conversion resources.
+      </p>
+    </div>
+  );
+}
+
 export default function FreeAnalysisPage() {
   const [url, setUrl] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
-  const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [email, setEmail] = useState('');
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
@@ -243,17 +330,19 @@ export default function FreeAnalysisPage() {
   }, [isAnalyzing, progressStages]);
 
   const handleAnalyze = async () => {
-    if (!url.trim()) return;
+    const sanitizedUrl = url.trim().split(/\s+/)[0] ?? '';
+    if (!sanitizedUrl) return;
 
     setIsAnalyzing(true);
     setProgress(8);
     setProgressMessage('Queueing your analysis…');
     setResult(null);
-    setEmailSubmitted(false);
-    setShowUnlockModal(false);
+  setEmail('');
+  setEmailSubmitted(false);
 
     try {
-      const analysis = await analyzeFunnel([url.trim()]);
+      setUrl(sanitizedUrl);
+      const analysis = await analyzeFunnel([sanitizedUrl]);
       setResult(analysis);
       setEmail(analysis.recipient_email ?? '');
       setProgress(100);
@@ -285,7 +374,7 @@ export default function FreeAnalysisPage() {
       setResult((prev) => (prev ? { ...prev, recipient_email: email.trim() } : prev));
 
       setTimeout(() => {
-        window.location.href = SMART_TOOL_CLUB_JOIN_URL;
+  window.location.href = FUNNEL_ANALYZER_JOIN_URL;
       }, 3000);
     } catch (err) {
       console.error('Failed to send analysis email:', err);
@@ -316,12 +405,12 @@ export default function FreeAnalysisPage() {
       {/* Header */}
       <TopNav
         rightSlot={
-          <a
-            href={SMART_TOOL_CLUB_JOIN_URL}
+          <Link
+            href={FUNNEL_ANALYZER_JOIN_URL}
             className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
           >
-            Smart Tool Club →
-          </a>
+            Pricing →
+          </Link>
         }
       />
 
@@ -369,7 +458,7 @@ export default function FreeAnalysisPage() {
                 </button>
               </div>
               <p className="text-sm text-gray-500 mt-3 text-left">
-                ✨ No signup required • 💯 100% free analysis • ⚡ Results in seconds
+                ✨ No signup required • � Covers your primary page only • ⚡ Results in seconds
               </p>
             </div>
 
@@ -496,21 +585,22 @@ export default function FreeAnalysisPage() {
               </div>
 
               {/* Blurred Summary */}
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/50 to-white z-10 backdrop-blur-sm rounded-lg"></div>
-                <div className="filter blur-sm select-none pointer-events-none">
-                  <h4 className="font-semibold text-gray-900 mb-2">Executive Summary</h4>
-                  <p className="text-gray-600 leading-relaxed">{result.summary}</p>
+              <div className="relative overflow-hidden rounded-2xl border border-indigo-100/80 bg-white/60 p-6">
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/30 via-white/60 to-white/90 backdrop-blur-[2px]" />
+                <div className="relative" aria-hidden="true">
+                  <h4 className="mb-2 font-semibold text-gray-900">Executive Summary</h4>
+                  <p className="select-none text-gray-600/90 blur-[1.5px]">
+                    {result.summary}
+                  </p>
                 </div>
-                
-                {/* Unlock Button Overlay */}
-                <div className="absolute inset-0 flex items-center justify-center z-20">
-                  <button
-                    onClick={() => setShowUnlockModal(true)}
-                    className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-2xl hover:shadow-3xl hover:scale-105"
-                  >
-                    🔓 Unlock Full Report
-                  </button>
+                <div className="relative z-20 mt-6 flex justify-end">
+                  <UnlockOverlayCard
+                    email={email}
+                    onEmailChange={setEmail}
+                    onUnlock={handleUnlockReport}
+                    isSendingEmail={isSendingEmail}
+                    emailSubmitted={emailSubmitted}
+                  />
                 </div>
               </div>
             </div>
@@ -565,122 +655,67 @@ export default function FreeAnalysisPage() {
             </div>
 
             {/* Blurred Detailed Feedback */}
-            <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200 relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/70 to-white z-10 backdrop-blur-md"></div>
-              <div className="filter blur-md select-none pointer-events-none">
-                <h4 className="font-semibold text-gray-900 mb-4">Detailed Analysis</h4>
+            <div className="relative overflow-hidden rounded-2xl border border-indigo-100/60 bg-white p-8 shadow-xl">
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/40 via-white/75 to-white/95 backdrop-blur-[3px]" />
+              <div className="relative" aria-hidden="true">
+                <h4 className="mb-4 font-semibold text-gray-900">Detailed Analysis</h4>
                 {result.pages.map((page, idx) => (
-                  <div key={idx} className="mb-6">
-                    <h5 className="font-medium text-gray-700 mb-2">{page.title}</h5>
-                    <p className="text-gray-600">{page.feedback}</p>
+                  <div key={idx} className="mb-6 select-none text-gray-600/90 blur-[2px]">
+                    <h5 className="mb-2 font-medium text-gray-700">{page.title}</h5>
+                    <p>{page.feedback}</p>
                   </div>
                 ))}
               </div>
-              
-              <div className="absolute inset-0 flex items-center justify-center z-20">
-                <div className="text-center bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-2xl max-w-md">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                    Want the Full Analysis?
-                  </h3>
-                  <p className="text-gray-600 mb-6">
-                    Get detailed insights, actionable recommendations, and access to unlimited analyses.
-                  </p>
-                  <button
-                    onClick={() => setShowUnlockModal(true)}
-                    className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-xl hover:scale-105"
-                  >
-                    Unlock Now →
-                  </button>
-                </div>
+              <div className="relative z-20 mt-6 flex justify-end">
+                <UnlockOverlayCard
+                  email={email}
+                  onEmailChange={setEmail}
+                  onUnlock={handleUnlockReport}
+                  isSendingEmail={isSendingEmail}
+                  emailSubmitted={emailSubmitted}
+                />
               </div>
             </div>
 
-            {/* Try Another */}
-            <div className="text-center mt-8">
-              <button
-                onClick={() => {
-                  setResult(null);
-                  setUrl('');
-                }}
-                className="text-indigo-600 hover:text-indigo-700 font-medium"
-              >
-                ← Analyze Another Page
-              </button>
+            {/* Membership Value */}
+            <div className="mt-10 rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/70 to-purple-50/60 p-8 shadow-lg">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900">Everything you unlock with Pro</h3>
+                  <p className="mt-2 text-sm text-gray-600">
+                    Free scans cover your first page. Funnel Analyzer Pro unlocks multi-step funnels, unlimited analyses, and deeper conversion playbooks.
+                  </p>
+                </div>
+                <div className="text-left sm:text-right text-xs font-semibold uppercase tracking-[0.35em] text-indigo-500">
+                  Pro Advantage
+                </div>
+              </div>
+              <div className="mt-6 grid gap-5 md:grid-cols-2">
+                {UPGRADE_FEATURES.map((feature) => (
+                  <div key={feature.title} className="rounded-2xl border border-white/70 bg-white/80 p-5 shadow-sm">
+                    <h4 className="text-base font-semibold text-gray-900">{feature.title}</h4>
+                    <p className="mt-2 text-sm text-gray-600">{feature.description}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <a
+                  href={FUNNEL_ANALYZER_JOIN_URL}
+                  className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-indigo-700 hover:to-purple-700"
+                >
+                  Upgrade to Funnel Analyzer Pro
+                </a>
+                <Link
+                  href="/pricing"
+                  className="inline-flex items-center justify-center rounded-xl border border-indigo-200 px-6 py-3 text-sm font-semibold text-indigo-600 transition-colors hover:border-indigo-300 hover:text-indigo-700"
+                >
+                  See plan comparison
+                </Link>
+              </div>
             </div>
           </motion.div>
         )}
       </main>
-
-      {/* Unlock Modal */}
-      <AnimatePresence>
-        {showUnlockModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={() => setShowUnlockModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8"
-            >
-              {!emailSubmitted ? (
-                <>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Unlock Your Full Report</h3>
-                  <p className="text-gray-600 mb-6">
-                    Enter your email to receive the complete analysis with detailed recommendations.
-                  </p>
-
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="your@email.com"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4"
-                  />
-
-                  <button
-                    onClick={handleUnlockReport}
-                    disabled={isSendingEmail}
-                    className="w-full px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg mb-3 disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {isSendingEmail ? 'Sending…' : 'Send Me the Full Report'}
-                  </button>
-
-                  <div className="text-center">
-                    <p className="text-sm text-gray-500 mb-3">or</p>
-                    <a
-                      href={SMART_TOOL_CLUB_JOIN_URL}
-                      className="text-indigo-600 hover:text-indigo-700 font-semibold"
-                    >
-                      Join Smart Tool Club for Unlimited Access →
-                    </a>
-                  </div>
-
-                  <p className="text-xs text-gray-400 mt-6 text-center">
-                    We respect your privacy. Unsubscribe anytime.
-                  </p>
-                </>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="text-6xl mb-4">✅</div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Check Your Email!</h3>
-                  <p className="text-gray-600 mb-6">
-                    We&apos;ve sent the full report to <strong>{email}</strong>
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Redirecting to Smart Tool Club membership...
-                  </p>
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

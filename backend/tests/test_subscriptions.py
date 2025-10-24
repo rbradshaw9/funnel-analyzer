@@ -25,23 +25,23 @@ def test_thrivecart_payment_activates_user():
                 "subscription": {
                     "status": "active",
                     "subscription_id": "sub_123",
-                    "product_name": "Smart Tool Club",
+                    "product_name": "Funnel Analyzer Pro",
                     "next_payment_date": "2025-01-01T12:00:00Z",
                 },
                 "customer": {
                     "email": "member@example.com",
                     "customer_id": "cust_456",
-                    "portal_access_url": "https://portal.smarttoolclub.com/account",
+                    "portal_access_url": "https://portal.funnelanalyzerpro.com/account",
                 },
             }
             user = await apply_thrivecart_membership_update(session, payload)
             assert user is not None
             assert user.email == "member@example.com"
-            assert user.plan == "Smart Tool Club"
+            assert user.plan == "Funnel Analyzer Pro"
             assert user.status == "active"
             assert user.subscription_id == "sub_123"
             assert user.thrivecart_customer_id == "cust_456"
-            assert user.portal_update_url == "https://portal.smarttoolclub.com/account"
+            assert user.portal_update_url == "https://portal.funnelanalyzerpro.com/account"
             assert user.access_expires_at is not None
             expiry = user.access_expires_at
             if expiry.tzinfo is None:
