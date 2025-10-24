@@ -18,6 +18,7 @@ from .migrations import (
     ensure_user_role_column,
     ensure_user_plan_column,
     ensure_user_additional_columns,
+    migration_lock,
 )
 from ..utils.config import settings
 
@@ -58,13 +59,14 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 async def init_db() -> None:
     """Create tables and ensure default users exist for demo flows."""
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        await ensure_recipient_email_column(conn)
-        await ensure_screenshot_storage_key_column(conn)
-        await ensure_user_role_column(conn)
-        await ensure_user_password_hash_column(conn)
-        await ensure_user_plan_column(conn)
-    await ensure_user_additional_columns(conn)
+        async with migration_lock(conn):
+            await conn.run_sync(Base.metadata.create_all)
+            await ensure_recipient_email_column(conn)
+            await ensure_screenshot_storage_key_column(conn)
+            await ensure_user_role_column(conn)
+            await ensure_user_password_hash_column(conn)
+            await ensure_user_plan_column(conn)
+            await ensure_user_additional_columns(conn)
 
     async with AsyncSessionFactory() as session:
         default_email = (settings.DEFAULT_USER_EMAIL or "").strip().lower()

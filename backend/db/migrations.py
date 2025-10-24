@@ -3,12 +3,32 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, Sequence
+from contextlib import asynccontextmanager
+from typing import AsyncIterator, Optional, Sequence
 
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 logger = logging.getLogger(__name__)
+
+
+_MIGRATION_LOCK_KEY = 1_947_362_981
+
+
+@asynccontextmanager
+async def migration_lock(conn: AsyncConnection) -> AsyncIterator[None]:
+    """Synchronize startup migrations across concurrent workers."""
+
+    if conn.dialect.name != "postgresql":
+        yield
+        return
+
+    logger.info("Acquiring advisory lock for startup migrations")
+    await conn.exec_driver_sql(f"SELECT pg_advisory_lock({_MIGRATION_LOCK_KEY})")
+    try:
+        yield
+    finally:
+        await conn.exec_driver_sql(f"SELECT pg_advisory_unlock({_MIGRATION_LOCK_KEY})")
 
 
 async def _sqlite_column_exists(conn: AsyncConnection, table: str, column: str) -> bool:
