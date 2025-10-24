@@ -1,5 +1,6 @@
-'use client'
+"use client"
 
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
@@ -47,7 +48,7 @@ const DEFAULT_PLAN = {
 
 const SUPPORT_EMAIL = 'support@funnelanalyzerpro.com'
 
-export default function PurchaseSuccessPage() {
+function PurchaseSuccessContent() {
   const searchParams = useSearchParams()
   const planParam = (searchParams.get('plan') || '').toLowerCase()
   const plan = isPlanKey(planParam) ? PLAN_LIBRARY[planParam] : DEFAULT_PLAN
@@ -142,6 +143,29 @@ export default function PurchaseSuccessPage() {
         </section>
       </main>
     </div>
+  )
+}
+
+function LoadingState() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+      <TopNav />
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <section className="text-center">
+          <div className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-4 py-1.5 text-sm font-semibold text-indigo-600">
+            Preparing your account...
+          </div>
+        </section>
+      </main>
+    </div>
+  )
+}
+
+export default function PurchaseSuccessPage() {
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <PurchaseSuccessContent />
+    </Suspense>
   )
 }
 
