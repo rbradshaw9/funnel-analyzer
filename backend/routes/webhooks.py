@@ -47,8 +47,8 @@ async def thrivecart_webhook_head() -> Response:
 async def thrivecart_webhook(
     request: Request,
     session: AsyncSession = Depends(get_db_session),
-    x_webhook_signature: str | None = Header(default=None, convert_underscores=False),
-    x_thrivecart_signature: str | None = Header(default=None, convert_underscores=False),
+    x_webhook_signature: str | None = Header(default=None, alias="X-Webhook-Signature", convert_underscores=False),
+    x_thrivecart_signature: str | None = Header(default=None, alias="X-Thrivecart-Signature", convert_underscores=False),
     sign: str | None = Query(default=None),
 ):
     """Receive ThriveCart webhook payloads, verify signature, and persist for processing."""
