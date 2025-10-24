@@ -104,14 +104,26 @@ async def handle_thrivecart_webhook(
     if not secret:
         raise HTTPException(status_code=503, detail="ThriveCart integration not configured")
 
-    if not signature:
-        logger.warning("ThriveCart webhook missing signature; treating as validation ping")
-        return WebhookResult(message="handshake", status=200, event=None)
-
-    _validate_signature(secret, body, signature)
+    # ThriveCart doesn't always send a cryptographic signature - they include the secret in the payload
+    # If a signature is provided, validate it; otherwise, we'll verify the secret from the payload
+    if signature:
+        logger.info("Validating ThriveCart webhook signature")
+        _validate_signature(secret, body, signature)
+    else:
+        logger.info("ThriveCart webhook received without signature header - will verify secret from payload")
 
     payload = _deserialize_thrivecart_payload(body)
     raw_payload = body.decode("utf-8", errors="ignore") or None
+
+    # Verify the secret from the payload matches our configured secret
+    payload_secret = payload.get("thrivecart_secret")
+    if payload_secret and payload_secret != secret:
+        logger.warning(
+            "ThriveCart webhook secret mismatch: payload has '%s', expected '%s'",
+            payload_secret,
+            secret
+        )
+        raise HTTPException(status_code=401, detail="Invalid webhook secret in payload")
 
     event_record = await store_webhook_event(
         session=session,

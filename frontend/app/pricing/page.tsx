@@ -43,7 +43,7 @@ const plans = [
 
 export default function PricingPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
       <TopNav
         rightSlot={
           <div className="flex items-center gap-4">
@@ -52,7 +52,7 @@ export default function PricingPage() {
             </Link>
             <Link
               href={FUNNEL_ANALYZER_JOIN_URL}
-              className="inline-flex items-center px-5 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold shadow-md hover:from-indigo-700 hover:to-purple-700 transition-colors"
+              className="inline-flex items-center px-5 py-2 rounded-lg bg-gradient-to-r from-primary-600 to-accent-500 text-white text-sm font-semibold shadow-md hover:from-primary-700 hover:to-accent-600 transition-colors"
             >
               Start Now
             </Link>
@@ -62,7 +62,7 @@ export default function PricingPage() {
 
       <main className="mx-auto flex max-w-6xl flex-col gap-16 px-4 py-16 sm:px-6 lg:px-8">
         <section className="text-center">
-          <p className="text-sm font-semibold uppercase tracking-wide text-indigo-600">Pricing</p>
+          <p className="text-sm font-semibold uppercase tracking-wide text-primary-600">Pricing</p>
           <h1 className="mt-2 text-4xl font-extrabold text-slate-900 sm:text-5xl">Choose the plan that fits your funnels</h1>
           <p className="mx-auto mt-4 max-w-3xl text-lg text-slate-600">
             Start free, pick a plan when you&apos;re ready. Every subscription includes battle-tested AI analysis,
@@ -76,14 +76,14 @@ export default function PricingPage() {
               key={plan.name}
               className={`flex flex-col rounded-3xl border bg-white p-8 shadow-xl transition hover:shadow-2xl ${
                 plan.highlight
-                  ? 'border-indigo-300 ring-4 ring-indigo-200'
+                  ? 'border-primary-300 ring-4 ring-primary-200'
                   : 'border-slate-200'
               }`}
             >
               <div className="flex items-baseline justify-between">
                 <h2 className="text-2xl font-bold text-slate-900">{plan.name}</h2>
                 {plan.highlight && (
-                  <span className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
+                  <span className="rounded-full bg-accent-600 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
                     Most Popular
                   </span>
                 )}
@@ -95,7 +95,7 @@ export default function PricingPage() {
                 href={plan.checkoutUrl}
                 className={`mt-8 inline-flex w-full items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold shadow-lg transition ${
                   plan.highlight
-                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700'
+                    ? 'bg-gradient-to-r from-primary-600 to-accent-500 text-white hover:from-primary-700 hover:to-accent-600'
                     : 'bg-slate-900 text-white hover:bg-slate-800'
                 }`}
               >
@@ -105,7 +105,7 @@ export default function PricingPage() {
               <ul className="mt-8 space-y-3 text-sm text-slate-600">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-3">
-                    <span className="mt-0.5 inline-flex h-2.5 w-2.5 rounded-full bg-indigo-500" aria-hidden="true" />
+                    <span className="mt-0.5 inline-flex h-2.5 w-2.5 rounded-full bg-accent-500" aria-hidden="true" />
                     <span>{feature}</span>
                   </li>
                 ))}
@@ -126,7 +126,7 @@ export default function PricingPage() {
             <div className="flex flex-col gap-4">
               <Link
                 href="mailto:sales@funnelanalyzerpro.com"
-                className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:text-indigo-700"
+                className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-primary-200 hover:text-primary-700"
               >
                 Talk with sales
               </Link>

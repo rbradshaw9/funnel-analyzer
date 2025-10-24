@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Funnel Analyzer Pro Checkout Left Column</title>
+  <style>
+    :root {
+      color-scheme: light only;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: transparent;
+    }
+
+    .fa-checkout-pro {
+      color: #f8fafc;
+      background: linear-gradient(140deg, #020817 0%, #0b2555 42%, #1d4ed8 85%, #2563eb 100%);
+      padding: 32px 30px 36px;
+      border-radius: 30px;
+      box-shadow: 0 32px 80px -30px rgba(6, 32, 89, 0.8);
+      border: 1px solid rgba(37, 99, 235, 0.45);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .fa-checkout-pro * {
+      box-sizing: border-box;
+    }
+
+    .fa-checkout-pro::before {
+      content: "";
+      position: absolute;
+      inset: -40px auto auto -80px;
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      background: radial-gradient(circle at center, rgba(37, 99, 235, 0.55), rgba(37, 99, 235, 0));
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .fa-checkout-pro::after {
+      content: "";
+      position: absolute;
+      inset: auto -60px -120px auto;
+      width: 260px;
+      height: 260px;
+      border-radius: 999px;
+      background: radial-gradient(circle at center, rgba(251, 146, 60, 0.45), rgba(251, 146, 60, 0));
+      pointer-events: none;
+    }
+
+    .fa-award {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 18px;
+      border-radius: 999px;
+      background: rgba(251, 146, 60, 0.22);
+      color: #fef3c7;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .fa-heading {
+      margin: 20px 0 0;
+      font-size: 36px;
+      line-height: 1.1;
+      font-weight: 800;
+      color: #f9fafb;
+      letter-spacing: -0.01em;
+    }
+
+    .fa-price {
+      margin: 14px 0 0;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      color: rgba(226, 232, 240, 0.92);
+      font-size: 32px;
+      font-weight: 700;
+    }
+
+    .fa-price strong {
+      font-size: 44px;
+      letter-spacing: -0.03em;
+      color: #f97316;
+    }
+
+    .fa-subline {
+      margin: 18px 0 0;
+      font-size: 16px;
+      color: rgba(226, 232, 240, 0.85);
+      line-height: 1.7;
+      max-width: 540px;
+    }
+
+    .fa-metric-bar {
+      margin: 24px 0 0;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 16px 18px;
+      border-radius: 18px;
+      background: rgba(3, 22, 53, 0.4);
+      color: rgba(226, 232, 240, 0.92);
+      font-size: 14px;
+    }
+
+    .fa-metric-bar strong {
+      font-size: 18px;
+      letter-spacing: 0.05em;
+      color: #fef08a;
+    }
+
+    .fa-feature-grid {
+      margin: 28px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 16px;
+    }
+
+    .fa-feature-grid li {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      padding: 16px 18px;
+      background: rgba(2, 16, 43, 0.55);
+      border-radius: 20px;
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      color: rgba(226, 232, 240, 0.95);
+      box-shadow: 0 18px 38px -26px rgba(3, 22, 53, 0.9);
+    }
+
+    .fa-feature-grid li::before {
+      content: "";
+      width: 13px;
+      height: 13px;
+      margin-top: 4px;
+      border-radius: 999px;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, #f97316 0%, #fb923c 50%, #facc15 100%);
+      box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.18);
+    }
+
+    .fa-feature-grid span {
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .fa-divider {
+      margin: 32px 0 28px;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(249, 115, 22, 0), rgba(249, 115, 22, 0.7), rgba(249, 115, 22, 0));
+    }
+
+    .fa-upgrade-stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .fa-upgrade-card {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 16px;
+      align-items: center;
+      padding: 18px 20px;
+      border-radius: 22px;
+      background: rgba(3, 25, 58, 0.6);
+      border: 1px solid rgba(37, 99, 235, 0.38);
+      color: rgba(226, 232, 240, 0.96);
+      box-shadow: 0 26px 60px -32px rgba(6, 32, 89, 0.92);
+    }
+
+    .fa-upgrade-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(249, 115, 22, 0.25) 0%, rgba(249, 146, 52, 0.55) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #0b1b3b;
+      font-size: 20px;
+      letter-spacing: 0.04em;
+    }
+
+    .fa-upgrade-card h3 {
+      margin: 0 0 6px;
+      font-size: 17px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #bfdbfe;
+    }
+
+    .fa-upgrade-card p {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .fa-testimonial {
+      margin: 28px 0 0;
+      padding: 24px 26px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, rgba(2, 20, 46, 0.9) 0%, rgba(11, 44, 90, 0.92) 100%);
+      border: 1px solid rgba(37, 99, 235, 0.32);
+      color: rgba(236, 254, 255, 0.95);
+      box-shadow: 0 24px 60px -34px rgba(3, 22, 53, 0.92);
+    }
+
+    .fa-testimonial p {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.8;
+    }
+
+    .fa-testimonial .fa-name {
+      margin-top: 14px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: rgba(191, 219, 254, 0.78);
+    }
+
+    .fa-footer {
+      margin-top: 30px;
+      display: grid;
+      gap: 10px;
+      font-size: 13px;
+      color: rgba(226, 232, 240, 0.9);
+    }
+
+    .fa-footer strong {
+      color: #fef3c7;
+    }
+
+    @media (max-width: 640px) {
+      .fa-checkout-pro {
+        padding: 26px;
+      }
+
+      .fa-heading {
+        font-size: 30px;
+      }
+
+      .fa-price strong {
+        font-size: 38px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="fa-checkout-pro">
+  <div class="fa-award">Pro Plan &middot; Most Popular</div>
+  <h1 class="fa-heading">Scale-ready insights for agencies and growth teams</h1>
+  <div class="fa-price"><strong>$149</strong><span>/ month</span></div>
+  <p class="fa-subline">Unlock unlimited analyses, collaborative workspaces, and automation pathways designed for teams managing multiple funnels and clients.</p>
+
+    <div class="fa-metric-bar">
+      <strong>42%</strong>
+      <span>Average lift captured by teams using Funnel Analyzer Pro across the first 90 days.</span>
+    </div>
+
+    <ul class="fa-feature-grid">
+      <li><span>Unlimited workspaces, funnels, and saved analyses.</span></li>
+      <li><span>Run unlimited AI breakdowns with smart diffing and change alerts.</span></li>
+      <li><span>5 included seats with granular roles, plus guest access for clients.</span></li>
+      <li><span>CRM and Zapier integrations for live lifecycle automation.</span></li>
+      <li><span>White-label PDF reports, custom branding, and API access.</span></li>
+      <li><span>Priority chat support and a quarterly expert optimization audit.</span></li>
+    </ul>
+
+    <div class="fa-divider"></div>
+
+    <div class="fa-upgrade-stack">
+      <div class="fa-upgrade-card">
+    <div class="fa-upgrade-icon">ON</div>
+        <div>
+          <h3>Concierge onboarding</h3>
+          <p>We load your first funnels, configure tracking, and connect your CRM integrations so your team can ship improvements on day one.</p>
+        </div>
+      </div>
+      <div class="fa-upgrade-card">
+    <div class="fa-upgrade-icon">SL</div>
+        <div>
+          <h3>Service-level guarantee</h3>
+          <p>If response times slip beyond two hours during business hours, your next month is on us.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="fa-testimonial">
+      <p>“Our client dashboards used to take a full afternoon. Now our analysts drop AI reports into Slack within minutes. Funnel Analyzer Pro is the heartbeat of our conversion ops.”</p>
+      <div class="fa-name">— Malik H., Director of Growth, SignalPath Agency</div>
+    </div>
+
+    <div class="fa-footer">
+      <div><strong>Need custom terms?</strong> Email <strong>sales@funnelanalyzerpro.com</strong> and we will set up invoicing or a security review.</div>
+      <div>Have migration questions? Message <strong>support@funnelanalyzerpro.com</strong> and a specialist will help you map your funnels before you finish checkout.</div>
+    </div>
+  </div>
+</body>
+</html>

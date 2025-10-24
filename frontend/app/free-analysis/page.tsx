@@ -104,7 +104,7 @@ interface UnlockOverlayCardProps {
 function UnlockOverlayCard({ email, onEmailChange, onUnlock, isSendingEmail, emailSubmitted }: UnlockOverlayCardProps) {
   if (emailSubmitted) {
     return (
-      <div className="w-full max-w-sm rounded-2xl border border-indigo-100 bg-white/95 p-6 text-center shadow-2xl backdrop-blur">
+      <div className="w-full max-w-sm rounded-2xl border border-primary-100 bg-white/95 p-6 text-center shadow-2xl backdrop-blur">
         <div className="text-4xl mb-3">✅</div>
         <h3 className="text-2xl font-semibold text-gray-900 mb-2">Check your inbox</h3>
         <p className="text-sm text-gray-600">
@@ -123,15 +123,15 @@ function UnlockOverlayCard({ email, onEmailChange, onUnlock, isSendingEmail, ema
 
       <ul className="mt-4 space-y-2 text-sm text-gray-600">
         <li className="flex items-start gap-2">
-          <span className="mt-1 text-indigo-600">•</span>
+          <span className="mt-1 text-accent-500">•</span>
           <span>Unlimited funnel steps & split tests</span>
         </li>
         <li className="flex items-start gap-2">
-          <span className="mt-1 text-indigo-600">•</span>
+          <span className="mt-1 text-accent-500">•</span>
           <span>AI rewrite playbooks for hooks & CTAs</span>
         </li>
         <li className="flex items-start gap-2">
-          <span className="mt-1 text-indigo-600">•</span>
+          <span className="mt-1 text-accent-500">•</span>
           <span>Team-ready PDF exports & share links</span>
         </li>
       </ul>
@@ -142,12 +142,12 @@ function UnlockOverlayCard({ email, onEmailChange, onUnlock, isSendingEmail, ema
           value={email}
           onChange={(event) => onEmailChange(event.target.value)}
           placeholder="you@brand.com"
-          className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm font-medium focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+          className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm font-medium focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
         />
         <button
           onClick={onUnlock}
           disabled={isSendingEmail}
-          className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-indigo-700 hover:to-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-xl bg-gradient-to-r from-primary-600 to-accent-500 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-primary-700 hover:to-accent-600 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isSendingEmail ? 'Sending link…' : 'Email me the full report'}
         </button>
@@ -401,13 +401,13 @@ export default function FreeAnalysisPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
       {/* Header */}
       <TopNav
         rightSlot={
           <Link
             href={FUNNEL_ANALYZER_JOIN_URL}
-            className="text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+            className="text-sm font-semibold text-primary-600 hover:text-primary-700"
           >
             Pricing →
           </Link>
@@ -424,7 +424,7 @@ export default function FreeAnalysisPage() {
           >
             <h2 className="text-5xl font-extrabold text-gray-900 mb-6">
               Get Your Free
-              <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent">
                 {' '}Marketing Page Analysis
               </span>
             </h2>
@@ -446,13 +446,13 @@ export default function FreeAnalysisPage() {
                   onChange={(e) => setUrl(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleAnalyze()}
                   placeholder="https://example.com/your-page"
-                  className="flex-1 px-4 py-4 text-lg border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  className="flex-1 px-4 py-4 text-lg border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                   disabled={isAnalyzing}
                 />
                 <button
                   onClick={handleAnalyze}
                   disabled={isAnalyzing || !url.trim()}
-                  className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
+                  className="px-8 py-4 bg-gradient-to-r from-primary-600 to-accent-500 text-white font-bold rounded-xl hover:from-primary-700 hover:to-accent-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
                 >
                   {isAnalyzing ? 'Analyzing...' : 'Analyze Free'}
                 </button>
@@ -465,15 +465,15 @@ export default function FreeAnalysisPage() {
             {/* Trust Signals */}
             <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
               <div>
-                <div className="text-3xl font-bold text-indigo-600">500+</div>
+                <div className="text-3xl font-bold text-primary-600">500+</div>
                 <div className="text-sm text-gray-600">Pages Analyzed</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-indigo-600">AI-Powered</div>
+                <div className="text-3xl font-bold text-accent-500">AI-Powered</div>
                 <div className="text-sm text-gray-600">GPT-4o Analysis</div>
               </div>
               <div>
-                <div className="text-3xl font-bold text-indigo-600">Instant</div>
+                <div className="text-3xl font-bold text-primary-600">Instant</div>
                 <div className="text-sm text-gray-600">Results</div>
               </div>
             </div>
@@ -487,26 +487,26 @@ export default function FreeAnalysisPage() {
             animate={{ opacity: 1 }}
             className="text-center py-20"
           >
-            <div className="max-w-xl mx-auto bg-white rounded-2xl shadow-xl border border-indigo-100 p-8">
+            <div className="max-w-xl mx-auto bg-white rounded-2xl shadow-xl border border-primary-100 p-8">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-2xl font-bold text-gray-900">Analyzing Your Page…</h3>
-                <span className="text-sm font-medium text-indigo-600">
+                <span className="text-sm font-medium text-primary-600">
                   {elapsedSeconds}s elapsed
                 </span>
               </div>
               <p className="text-gray-600 mb-6">{progressMessage}</p>
-              <div className="h-3 w-full bg-indigo-100 rounded-full overflow-hidden">
+              <div className="h-3 w-full bg-primary-100 rounded-full overflow-hidden">
                 <motion.div
                   key={progress}
                   initial={{ width: `${Math.max(progress - 10, 0)}%` }}
                   animate={{ width: `${progress}%` }}
                   transition={{ duration: 0.6, ease: 'easeOut' }}
-                  className="h-full bg-gradient-to-r from-indigo-500 to-purple-600"
+                  className="h-full bg-gradient-to-r from-primary-500 to-accent-500"
                 />
               </div>
               <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
                 <span>Estimated time: ~{formatSeconds(estimatedTotalSeconds)}</span>
-                <span className="font-medium text-indigo-600">Hang tight — almost there!</span>
+                <span className="font-medium text-accent-600">Hang tight — almost there!</span>
               </div>
             </div>
           </motion.div>
@@ -545,8 +545,8 @@ export default function FreeAnalysisPage() {
                     />
                     <defs>
                       <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" className="text-indigo-600" stopColor="currentColor" />
-                        <stop offset="100%" className="text-purple-600" stopColor="currentColor" />
+                        <stop offset="0%" className="text-primary-600" stopColor="currentColor" />
+                        <stop offset="100%" className="text-accent-500" stopColor="currentColor" />
                       </linearGradient>
                     </defs>
                   </svg>
@@ -655,7 +655,7 @@ export default function FreeAnalysisPage() {
             </div>
 
             {/* Blurred Detailed Feedback */}
-            <div className="relative overflow-hidden rounded-2xl border border-indigo-100/60 bg-white p-8 shadow-xl">
+            <div className="relative overflow-hidden rounded-2xl border border-primary-100/60 bg-white p-8 shadow-xl">
               <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/40 via-white/75 to-white/95 backdrop-blur-[3px]" />
               <div className="relative" aria-hidden="true">
                 <h4 className="mb-4 font-semibold text-gray-900">Detailed Analysis</h4>
@@ -678,7 +678,7 @@ export default function FreeAnalysisPage() {
             </div>
 
             {/* Membership Value */}
-            <div className="mt-10 rounded-3xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/70 to-purple-50/60 p-8 shadow-lg">
+            <div className="mt-10 rounded-3xl border border-primary-100 bg-gradient-to-br from-white via-primary-50/70 to-accent-50/60 p-8 shadow-lg">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <h3 className="text-2xl font-bold text-gray-900">Everything you unlock with Pro</h3>
@@ -686,7 +686,7 @@ export default function FreeAnalysisPage() {
                     Free scans cover your first page. Funnel Analyzer Pro unlocks multi-step funnels, unlimited analyses, and deeper conversion playbooks.
                   </p>
                 </div>
-                <div className="text-left sm:text-right text-xs font-semibold uppercase tracking-[0.35em] text-indigo-500">
+                <div className="text-left sm:text-right text-xs font-semibold uppercase tracking-[0.35em] text-accent-600">
                   Pro Advantage
                 </div>
               </div>
@@ -701,13 +701,13 @@ export default function FreeAnalysisPage() {
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <a
                   href={FUNNEL_ANALYZER_JOIN_URL}
-                  className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-indigo-700 hover:to-purple-700"
+                  className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-accent-500 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-primary-700 hover:to-accent-600"
                 >
                   Upgrade to Funnel Analyzer Pro
                 </a>
                 <Link
                   href="/pricing"
-                  className="inline-flex items-center justify-center rounded-xl border border-indigo-200 px-6 py-3 text-sm font-semibold text-indigo-600 transition-colors hover:border-indigo-300 hover:text-indigo-700"
+                  className="inline-flex items-center justify-center rounded-xl border border-primary-200 px-6 py-3 text-sm font-semibold text-primary-600 transition-colors hover:border-primary-300 hover:text-primary-700"
                 >
                   See plan comparison
                 </Link>

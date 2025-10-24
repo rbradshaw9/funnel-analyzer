@@ -76,7 +76,7 @@ export function LoginButton({ className }: LoginButtonProps) {
         type="button"
         onClick={() => setOpen(true)}
         className={[
-          'text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors',
+          'text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors',
           className ?? '',
         ].filter(Boolean).join(' ')}
       >
@@ -104,14 +104,14 @@ export function LoginButton({ className }: LoginButtonProps) {
               <button
                 type="button"
                 onClick={() => { setMode('magic'); setStatusMessage(null); setErrorMessage(null); setSubmitting(false) }}
-                className={`rounded-full px-3 py-1 transition-colors ${mode === 'magic' ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-slate-100'}`}
+                className={`rounded-full px-3 py-1 transition-colors ${mode === 'magic' ? 'bg-primary-100 text-primary-700' : 'hover:bg-slate-100'}`}
               >
                 Magic link
               </button>
               <button
                 type="button"
                 onClick={() => { setMode('admin'); setStatusMessage(null); setErrorMessage(null); setSubmitting(false) }}
-                className={`rounded-full px-3 py-1 transition-colors ${mode === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'hover:bg-slate-100'}`}
+                className={`rounded-full px-3 py-1 transition-colors ${mode === 'admin' ? 'bg-accent-100 text-accent-700' : 'hover:bg-slate-100'}`}
               >
                 Admin
               </button>
@@ -130,7 +130,7 @@ export function LoginButton({ className }: LoginButtonProps) {
                     autoFocus
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
                     placeholder="you@example.com"
                   />
                 </div>
@@ -138,7 +138,7 @@ export function LoginButton({ className }: LoginButtonProps) {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-indigo-700 hover:to-purple-700 disabled:opacity-60"
+                  className="w-full rounded-xl bg-gradient-to-r from-primary-600 to-accent-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-primary-700 hover:to-accent-600 disabled:opacity-60"
                 >
                   {submitting ? 'Sending magic link…' : 'Email me a login link'}
                 </button>
@@ -156,7 +156,7 @@ export function LoginButton({ className }: LoginButtonProps) {
                     autoFocus
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
                     placeholder="admin@example.com"
                   />
                 </div>
@@ -170,7 +170,7 @@ export function LoginButton({ className }: LoginButtonProps) {
                     required
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                    className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
                     placeholder="••••••••"
                   />
                 </div>

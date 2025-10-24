@@ -15,7 +15,7 @@ interface TopNavProps {
 
 export function TopNav({ rightSlot, translucent = true, sticky = true, className, showLoginButton = true }: TopNavProps) {
   const headerClasses = [
-    'border-b border-slate-200',
+    'border-b border-primary-100/60',
     translucent ? 'bg-white/85 backdrop-blur-md' : 'bg-white',
     sticky ? 'sticky top-0 z-40' : '',
     className ?? '',

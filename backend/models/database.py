@@ -21,7 +21,7 @@ class User(Base):
     status = Column(String(50), nullable=False, default="active", server_default="active")
     role = Column(String(50), nullable=False, default="member", server_default="member")
     status_reason = Column(String(255), nullable=True)
-    status_last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    status_last_updated = Column(DateTime(timezone=True), nullable=True, onupdate=func.now)
     subscription_id = Column(String(150), nullable=True, index=True)
     thrivecart_customer_id = Column(String(150), nullable=True, index=True)
     access_expires_at = Column(DateTime(timezone=True), nullable=True)

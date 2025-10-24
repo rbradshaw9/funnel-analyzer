@@ -137,7 +137,7 @@ export default function Home() {
     : `${Math.max(displayedPagesAnalyzed, 0).toLocaleString()}+`
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+  <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
       {/* Header */}
       <TopNav
         rightSlot={
@@ -147,7 +147,7 @@ export default function Home() {
             </Link>
             <Link
               href={FUNNEL_ANALYZER_JOIN_URL}
-              className="inline-flex items-center px-5 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold shadow-md hover:from-indigo-700 hover:to-purple-700 transition-colors"
+              className="inline-flex items-center px-5 py-2 rounded-lg bg-gradient-to-r from-primary-600 to-accent-500 text-white text-sm font-semibold shadow-md hover:from-primary-700 hover:to-accent-600 transition-colors"
             >
               View Pricing
             </Link>
@@ -164,13 +164,13 @@ export default function Home() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="inline-block px-4 py-2 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold mb-6">
+            <div className="inline-block px-4 py-2 bg-primary-100 text-primary-700 rounded-full text-sm font-semibold mb-6">
               ✨ Powered by GPT-4o AI
             </div>
             
             <h2 className="text-5xl lg:text-6xl font-extrabold text-gray-900 mb-6 leading-tight">
               Turn Your Marketing Pages Into
-              <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent">
                 {' '}Conversion Machines
               </span>
             </h2>
@@ -183,7 +183,7 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-4 mb-8">
               <Link
                 href="/free-analysis"
-                className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl text-center"
+                className="px-8 py-4 bg-gradient-to-r from-primary-600 to-accent-500 text-white font-bold rounded-xl hover:from-primary-700 hover:to-accent-600 transition-all shadow-lg hover:shadow-xl text-center"
               >
                 Start Free Analysis →
               </Link>
@@ -230,9 +230,9 @@ export default function Home() {
             <div className="bg-white rounded-3xl shadow-2xl p-10 border border-slate-200">
               <div className="flex flex-col items-center mb-10">
                 <div
-                  className="relative flex items-center justify-center w-48 h-48 rounded-full shadow-[0_25px_60px_rgba(99,102,241,0.25)]"
+                  className="relative flex items-center justify-center w-48 h-48 rounded-full shadow-[0_25px_60px_rgba(37,99,235,0.25)]"
                   style={{
-                    background: `conic-gradient(#4f46e5 ${overallScoreDeg}deg, #e2e8f0 ${overallScoreDeg}deg)`
+                    background: `conic-gradient(#2563eb ${overallScoreDeg}deg, #e2e8f0 ${overallScoreDeg}deg)`
                   }}
                 >
                   <div className="absolute inset-4 rounded-full bg-white flex flex-col items-center justify-center shadow-inner">
@@ -306,7 +306,7 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setActiveMetric(null)}
-              className="mt-6 w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition"
+              className="mt-6 w-full rounded-xl bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 transition"
             >
               Got it
             </button>
@@ -316,22 +316,22 @@ export default function Home() {
 
       {/* Social Proof */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
+        <div className="bg-white rounded-2xl shadow-lg p-8 border border-primary-100/60">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             <div>
-              <div className="text-4xl font-bold text-indigo-600 mb-2">{pagesAnalyzedDisplay}</div>
+              <div className="text-4xl font-bold text-primary-600 mb-2">{pagesAnalyzedDisplay}</div>
               <div className="text-sm text-gray-600">Pages Analyzed</div>
             </div>
             <div>
-              <div className="text-4xl font-bold text-indigo-600 mb-2">87%</div>
+              <div className="text-4xl font-bold text-primary-600 mb-2">87%</div>
               <div className="text-sm text-gray-600">Avg. Score Improvement</div>
             </div>
             <div>
-              <div className="text-4xl font-bold text-indigo-600 mb-2">10s</div>
+              <div className="text-4xl font-bold text-primary-600 mb-2">10s</div>
               <div className="text-sm text-gray-600">Average Analysis Time</div>
             </div>
             <div>
-              <div className="text-4xl font-bold text-indigo-600 mb-2">24/7</div>
+              <div className="text-4xl font-bold text-primary-600 mb-2">24/7</div>
               <div className="text-sm text-gray-600">Instant Availability</div>
             </div>
           </div>
@@ -369,13 +369,13 @@ export default function Home() {
       </section>
 
       {/* Features */}
-      <section className="bg-gradient-to-r from-indigo-600 to-purple-600 py-20">
+  <section className="bg-gradient-to-r from-primary-600 to-accent-500 py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h3 className="text-4xl font-extrabold text-white mb-4">
               Everything You Need to Optimize
             </h3>
-            <p className="text-xl text-indigo-100">
+            <p className="text-xl text-primary-50/90">
               Comprehensive analysis powered by artificial intelligence
             </p>
           </div>
@@ -399,7 +399,7 @@ export default function Home() {
               >
                 <div className="text-4xl mb-3">{feature.icon}</div>
                 <h4 className="text-xl font-bold text-white mb-2">{feature.title}</h4>
-                <p className="text-indigo-100">{feature.desc}</p>
+                <p className="text-primary-50/80">{feature.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -408,7 +408,7 @@ export default function Home() {
 
       {/* CTA Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl p-12 text-center border border-indigo-200">
+  <div className="bg-gradient-to-br from-primary-50 to-accent-50 rounded-3xl p-12 text-center border border-primary-100/60">
           <h3 className="text-4xl font-extrabold text-gray-900 mb-4">
             Ready to Optimize Your Funnel?
           </h3>
@@ -419,14 +419,14 @@ export default function Home() {
           
           <Link
             href="/free-analysis"
-            className="inline-block px-10 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold text-lg rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-xl hover:shadow-2xl hover:scale-105"
+            className="inline-block px-10 py-5 bg-gradient-to-r from-primary-600 to-accent-500 text-white font-bold text-lg rounded-xl hover:from-primary-700 hover:to-accent-600 transition-all shadow-xl hover:shadow-2xl hover:scale-105"
           >
             Analyze Your Page Free →
           </Link>
 
           <p className="text-sm text-gray-500 mt-6">
             Want unlimited funnels, advanced insights, and team access?{' '}
-            <Link href={FUNNEL_ANALYZER_JOIN_URL} className="text-indigo-600 hover:text-indigo-700 font-semibold">
+            <Link href={FUNNEL_ANALYZER_JOIN_URL} className="text-primary-600 hover:text-primary-700 font-semibold">
               View Funnel Analyzer Pro plans
             </Link>
           </p>
@@ -470,7 +470,7 @@ export default function Home() {
 function StepCard({ number, title, description }: { number: string; title: string; description: string }) {
   return (
     <div className="text-center">
-      <div className="w-12 h-12 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">
+      <div className="w-12 h-12 bg-gradient-to-r from-primary-600 to-accent-500 text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">
         {number}
       </div>
       <h3 className="text-xl font-semibold text-slate-900 mb-2">{title}</h3>

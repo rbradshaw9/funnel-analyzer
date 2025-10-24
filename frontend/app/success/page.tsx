@@ -54,7 +54,7 @@ function PurchaseSuccessContent() {
   const plan = isPlanKey(planParam) ? PLAN_LIBRARY[planParam] : DEFAULT_PLAN
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
       <TopNav />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -77,7 +77,7 @@ function PurchaseSuccessContent() {
           <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
               href="/dashboard"
-              className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:from-indigo-700 hover:to-purple-700"
+              className="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-primary-600 to-accent-500 px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:from-primary-700 hover:to-accent-600"
             >
               Go to the dashboard
             </Link>
@@ -93,23 +93,23 @@ function PurchaseSuccessContent() {
         <section className="mt-16 grid gap-6 md:grid-cols-2">
           <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-soft">
             <h2 className="text-xl font-semibold text-slate-900">What happens next</h2>
-            <ol className="mt-4 space-y-4 text-left text-sm text-slate-600">
+                        <ol className="mt-4 space-y-4 text-left text-sm text-slate-600">
               <li className="flex items-start gap-3">
-                <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white">1</span>
+                <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent-600 text-sm font-semibold text-white">1</span>
                 <div>
                   <p className="font-semibold text-slate-800">Open the magic-link email</p>
                   <p className="mt-1 text-slate-600">Click the secure sign-in link to activate your workspace and set a password if prompted.</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white">2</span>
+                <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent-600 text-sm font-semibold text-white">2</span>
                 <div>
                   <p className="font-semibold text-slate-800">Visit the dashboard</p>
                   <p className="mt-1 text-slate-600">Upload your first funnel or import a previous free analysis to unlock the full report builder.</p>
                 </div>
               </li>
               <li className="flex items-start gap-3">
-                <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white">3</span>
+                <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent-600 text-sm font-semibold text-white">3</span>
                 <div>
                   <p className="font-semibold text-slate-800">Invite collaborators (optional)</p>
                   <p className="mt-1 text-slate-600">Forward the access email to teammates or add them from the dashboard settings panel.</p>
@@ -132,11 +132,11 @@ function PurchaseSuccessContent() {
         </section>
 
         <section className="mt-16">
-          <div className="rounded-3xl border border-indigo-200 bg-indigo-50 px-6 py-8 sm:px-10">
-            <h3 className="text-lg font-semibold text-indigo-900">Need anything else?</h3>
-            <p className="mt-2 text-sm text-indigo-800">
+          <div className="rounded-3xl border border-accent-200 bg-accent-50 px-6 py-8 sm:px-10">
+            <h3 className="text-lg font-semibold text-accent-900">Need anything else?</h3>
+            <p className="mt-2 text-sm text-accent-800">
               If you have trouble accessing your account, need to upgrade/downgrade, or want to add an upsell after checkout,
-              reply to the onboarding email or reach us directly at <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-indigo-900 underline">{SUPPORT_EMAIL}</a>.
+              reply to the onboarding email or reach us directly at <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-accent-900 underline">{SUPPORT_EMAIL}</a>.
               Our team typically responds within one business day.
             </p>
           </div>
@@ -148,11 +148,11 @@ function PurchaseSuccessContent() {
 
 function LoadingState() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
       <TopNav />
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <section className="text-center">
-          <div className="inline-flex items-center gap-2 rounded-full bg-indigo-100 px-4 py-1.5 text-sm font-semibold text-indigo-600">
+          <div className="inline-flex items-center gap-2 rounded-full bg-primary-100 px-4 py-1.5 text-sm font-semibold text-primary-600">
             Preparing your account...
           </div>
         </section>
