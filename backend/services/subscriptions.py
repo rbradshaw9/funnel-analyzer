@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -10,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.database import User
+from ..utils.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +54,17 @@ _PLAN_KEYS = (
     "offer",
     "products[0][name]",
     "products.0.name",
+)
+
+_PRODUCT_ID_KEYS = (
+    "subscription[product_id]",
+    "subscription.product_id",
+    "product_id",
+    "main_product_id",
+    "product[id]",
+    "product.id",
+    "products[0][id]",
+    "products.0.id",
 )
 
 _SUBSCRIPTION_ID_KEYS = (
@@ -258,7 +271,10 @@ def _status_from_event(event_type: Optional[str]) -> Optional[str]:
     return None
 
 
-def _derive_status_and_reason(event_type: Optional[str], explicit_status: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+def _derive_status_and_reason(
+    event_type: Optional[str],
+    explicit_status: Optional[str],
+) -> tuple[Optional[str], Optional[str]]:
     status_from_payload = _normalize_status(explicit_status)
     if status_from_payload:
         reason = f"ThriveCart reported status {explicit_status}"
@@ -281,10 +297,58 @@ def _extract_datetime(payload: Dict[str, Any], keys: Iterable[str]) -> Optional[
     return _parse_timestamp(raw_value)
 
 
+def _canonical_plan(plan_value: Optional[str], product_id: Optional[str]) -> Optional[str]:
+    if plan_value:
+        normalized = plan_value.strip().lower()
+        basic_names = {name.strip().lower() for name in settings.THRIVECART_BASIC_PLAN_NAMES or []}
+        pro_names = {name.strip().lower() for name in settings.THRIVECART_PRO_PLAN_NAMES or []}
+
+        if normalized in basic_names or "basic" in normalized:
+            return "basic"
+        if normalized in pro_names or "pro" in normalized or "growth" in normalized:
+            return "pro"
+
+    if product_id:
+        normalized_id = product_id.strip().lower()
+        basic_ids = {pid.strip().lower() for pid in settings.THRIVECART_BASIC_PRODUCT_IDS or []}
+        pro_ids = {pid.strip().lower() for pid in settings.THRIVECART_PRO_PRODUCT_IDS or []}
+
+        if normalized_id in basic_ids or "basic" in normalized_id:
+            return "basic"
+        if normalized_id in pro_ids or "pro" in normalized_id or "growth" in normalized_id:
+            return "pro"
+
+    return None
+
+
+@dataclass
+class MembershipUpdateResult:
+    """Details describing how a ThriveCart payload affected a user."""
+
+    user: User
+    created: bool
+    updated: bool
+    status_changed: bool
+    plan_changed: bool
+    previous_status: Optional[str]
+    previous_plan: Optional[str]
+    plan_slug: Optional[str]
+
+    @property
+    def just_activated(self) -> bool:
+        if self.user.status != "active":
+            return False
+        if self.created and self.previous_status is None:
+            return True
+        if self.status_changed and (self.previous_status or "").lower() != "active":
+            return True
+        return False
+
+
 async def apply_thrivecart_membership_update(
     session: AsyncSession,
     payload: Dict[str, Any],
-) -> Optional[User]:
+) -> Optional[MembershipUpdateResult]:
     """Update or create a user record based on a ThriveCart webhook payload."""
 
     if not isinstance(payload, dict):
@@ -311,6 +375,9 @@ async def apply_thrivecart_membership_update(
         created = True
         logger.info("Created user %s from ThriveCart webhook", email)
 
+    previous_status = user.status if not created else None
+    previous_plan = user.plan if not created else None
+
     updated = created
     now = datetime.now(timezone.utc)
 
@@ -335,12 +402,22 @@ async def apply_thrivecart_membership_update(
         user.status_reason = None
         updated = True
 
-    plan_value = _coerce_str(_lookup(payload, _PLAN_KEYS))
-    if not plan_value and status == "active" and user.plan == "free":
-        plan_value = "member"
-    if plan_value and plan_value != user.plan:
+    raw_plan_value = _coerce_str(_lookup(payload, _PLAN_KEYS))
+    product_id = _coerce_str(_lookup(payload, _PRODUCT_ID_KEYS))
+    plan_slug = _canonical_plan(raw_plan_value, product_id)
+
+    plan_value: Optional[str] = plan_slug or raw_plan_value
+    if not plan_value and status == "active" and (user.plan or "free") == "free":
+        plan_value = plan_slug or "member"
+
+    plan_changed = False
+    if plan_value and plan_value != (user.plan or None):
         user.plan = plan_value
         updated = True
+        plan_changed = True
+
+    if not plan_slug and user.plan:
+        plan_slug = _canonical_plan(user.plan, product_id)
 
     subscription_id = _coerce_str(_lookup(payload, _SUBSCRIPTION_ID_KEYS))
     if subscription_id and subscription_id != (user.subscription_id or None):
@@ -371,10 +448,20 @@ async def apply_thrivecart_membership_update(
         await session.commit()
         await session.refresh(user)
         logger.info(
-            "Applied ThriveCart membership update for %s (status=%s, event=%s)",
+            "Applied ThriveCart membership update for %s (status=%s, event=%s, plan=%s)",
             email,
             user.status,
             event_type,
+            user.plan,
         )
 
-    return user
+    return MembershipUpdateResult(
+        user=user,
+        created=created,
+        updated=updated,
+        status_changed=status_changed,
+        plan_changed=plan_changed,
+        previous_status=previous_status,
+        previous_plan=previous_plan,
+        plan_slug=plan_slug,
+    )

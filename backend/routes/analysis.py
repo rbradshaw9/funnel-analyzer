@@ -3,7 +3,7 @@
 import asyncio
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db.session import get_db_session
@@ -12,14 +12,37 @@ from ..models.schemas import AnalysisEmailRequest, AnalysisRequest, AnalysisResp
 from ..services.analyzer import analyze_funnel
 from ..services.notifications import send_analysis_email
 from ..services.reports import get_report_by_id
+from ..utils.config import settings
+from ..utils.rate_limiter import (
+    CompositeRateLimiter,
+    RateLimitExceeded,
+    SlidingWindowRateLimiter,
+)
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+analysis_rate_limiter = CompositeRateLimiter()
+analysis_rate_limiter.register(
+    "ip",
+    SlidingWindowRateLimiter(
+        limit=settings.ANALYSIS_RATE_LIMIT_PER_IP,
+        window_seconds=settings.ANALYSIS_RATE_LIMIT_WINDOW_SECONDS,
+    ),
+)
+analysis_rate_limiter.register(
+    "user",
+    SlidingWindowRateLimiter(
+        limit=settings.ANALYSIS_RATE_LIMIT_PER_USER,
+        window_seconds=settings.ANALYSIS_RATE_LIMIT_WINDOW_SECONDS,
+    ),
+)
 
 
 @router.post("/analyze", response_model=AnalysisResponse, status_code=200)
 async def analyze_funnel_endpoint(
     request: AnalysisRequest,
+    raw_request: Request,
     session: AsyncSession = Depends(get_db_session),
     user_id: int | None = Query(default=None, description="Identifier for the authenticated user"),
 ):
@@ -33,6 +56,23 @@ async def analyze_funnel_endpoint(
     4. Returns structured scores and feedback
     """
     try:
+        client_ip = raw_request.client.host if raw_request.client else "unknown"
+
+        try:
+            await analysis_rate_limiter.check(
+                {
+                    "ip": f"ip:{client_ip}",
+                    "user": f"user:{user_id}" if user_id is not None else None,
+                }
+            )
+        except RateLimitExceeded as exc:  # pragma: no cover - trivial guard
+            retry_after = max(int(exc.retry_after), 1)
+            raise HTTPException(
+                status_code=429,
+                detail="Too many analysis requests. Please wait before retrying.",
+                headers={"Retry-After": str(retry_after)},
+            ) from exc
+
         logger.info(f"Received analysis request for {len(request.urls)} URLs")
 
         # Convert Pydantic URLs to strings

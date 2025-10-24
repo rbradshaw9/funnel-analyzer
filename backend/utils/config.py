@@ -3,8 +3,10 @@ Configuration management using Pydantic settings.
 Loads environment variables with validation.
 """
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -60,6 +62,16 @@ class Settings(BaseSettings):
 
     # Automation / integrations
     THRIVECART_WEBHOOK_SECRET: Optional[str] = None
+    THRIVECART_BASIC_PRODUCT_IDS: list[str] = Field(default_factory=list)
+    THRIVECART_PRO_PRODUCT_IDS: list[str] = Field(default_factory=list)
+    THRIVECART_BASIC_PLAN_NAMES: list[str] = Field(default_factory=lambda: [
+        "Funnel Analyzer Basic",
+        "Funnel Analyzer Basic Plan",
+    ])
+    THRIVECART_PRO_PLAN_NAMES: list[str] = Field(default_factory=lambda: [
+        "Funnel Analyzer Pro",
+        "Funnel Analyzer Growth Pro",
+    ])
     MAUTIC_BASE_URL: Optional[str] = None
     MAUTIC_CLIENT_ID: Optional[str] = None
     MAUTIC_CLIENT_SECRET: Optional[str] = None
@@ -69,6 +81,9 @@ class Settings(BaseSettings):
     # Analysis settings
     MAX_URLS_PER_ANALYSIS: int = 10
     SCRAPE_TIMEOUT_SECONDS: int = 30
+    ANALYSIS_RATE_LIMIT_PER_IP: int = 10
+    ANALYSIS_RATE_LIMIT_PER_USER: int = 25
+    ANALYSIS_RATE_LIMIT_WINDOW_SECONDS: int = 3600
     
 
 settings = Settings()

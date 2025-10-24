@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..db.session import get_db_session
 from ..models.database import WebhookEvent
 from ..services.mautic import sync_thrivecart_event
+from ..services.onboarding import send_magic_link_onboarding
 from ..services.subscriptions import apply_thrivecart_membership_update
 from ..services.webhooks import WebhookResult, handle_thrivecart_webhook
 from ..utils.config import settings
@@ -63,13 +64,24 @@ async def thrivecart_webhook(
         raise
 
     updated_user_id = None
+    membership_result = None
     if result.event:
         try:
-            user = await apply_thrivecart_membership_update(session, result.event.payload)
-            if user:
-                updated_user_id = user.id
+            membership_result = await apply_thrivecart_membership_update(session, result.event.payload)
+            if membership_result:
+                updated_user_id = membership_result.user.id
         except Exception as exc:  # noqa: BLE001 - defensive logging for webhook resilience
             logger.exception("Failed to apply ThriveCart membership update: %s", exc)
+
+    if membership_result and membership_result.just_activated:
+        try:
+            await send_magic_link_onboarding(
+                session,
+                membership_result.user,
+                plan=membership_result.plan_slug,
+            )
+        except Exception as exc:  # pragma: no cover - email failures should not break webhook
+            logger.exception("Failed to send onboarding magic link: %s", exc)
 
     if result.event:
         task = asyncio.create_task(sync_thrivecart_event(result.event.payload))
@@ -80,6 +92,8 @@ async def thrivecart_webhook(
         response_payload["event_id"] = result.event.id
     if updated_user_id is not None:
         response_payload["user_id"] = updated_user_id
+    if membership_result and membership_result.plan_slug:
+        response_payload["plan"] = membership_result.plan_slug
 
     return JSONResponse(response_payload, status_code=result.status)
 

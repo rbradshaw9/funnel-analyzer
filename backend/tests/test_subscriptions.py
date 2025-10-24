@@ -34,11 +34,14 @@ def test_thrivecart_payment_activates_user():
                     "portal_access_url": "https://portal.funnelanalyzerpro.com/account",
                 },
             }
-            user = await apply_thrivecart_membership_update(session, payload)
-            assert user is not None
+            result = await apply_thrivecart_membership_update(session, payload)
+            assert result is not None
+            user = result.user
             assert user.email == "member@example.com"
-            assert user.plan == "Funnel Analyzer Pro"
+            assert user.plan == "pro"
+            assert result.plan_slug == "pro"
             assert user.status == "active"
+            assert result.just_activated is True
             assert user.subscription_id == "sub_123"
             assert user.thrivecart_customer_id == "cust_456"
             assert user.portal_update_url == "https://portal.funnelanalyzerpro.com/account"
@@ -79,7 +82,9 @@ def test_thrivecart_failed_payment_sets_past_due():
                 },
                 "customer": {"email": "trouble@example.com"},
             }
-            user = await apply_thrivecart_membership_update(session, failure_payload)
+            result = await apply_thrivecart_membership_update(session, failure_payload)
+            assert result is not None
+            user = result.user
             assert user.status == "past_due"
             assert user.is_active == 0
             assert user.access_expires_at is not None
