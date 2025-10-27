@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { analyzeFunnel, sendAnalysisEmail } from '@/lib/api';
+import { analyzeFunnel } from '@/lib/api';
 import type { AnalysisResult } from '@/types';
 import { TopNav } from '@/components/TopNav';
 import { FUNNEL_ANALYZER_JOIN_URL } from '@/lib/externalLinks';
@@ -94,80 +94,12 @@ const formatSeconds = (value?: number | null) => {
   return `${value.toFixed(1)}s`;
 };
 
-interface UnlockOverlayCardProps {
-  email: string;
-  onEmailChange: (value: string) => void;
-  onUnlock: () => void;
-  isSendingEmail: boolean;
-  emailSubmitted: boolean;
-}
-
-function UnlockOverlayCard({ email, onEmailChange, onUnlock, isSendingEmail, emailSubmitted }: UnlockOverlayCardProps) {
-  if (emailSubmitted) {
-    return (
-      <div className="w-full max-w-sm rounded-2xl border border-primary-100 bg-white/95 p-6 text-center shadow-2xl backdrop-blur">
-        <div className="text-4xl mb-3">✅</div>
-        <h3 className="text-2xl font-semibold text-gray-900 mb-2">Check your inbox</h3>
-        <p className="text-sm text-gray-600">
-          We just sent the full report your way. Stay tuned while we guide you to the pricing page.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-full max-w-sm rounded-2xl border border-slate-200/80 bg-white/95 p-6 shadow-[0_28px_60px_-35px_rgba(79,70,229,0.65)] backdrop-blur">
-      <h3 className="text-lg font-semibold text-gray-900">Unlock the full report</h3>
-      <p className="mt-2 text-sm text-gray-600">
-        Get the executive summary, page-by-page breakdown, and AI-powered recommendations delivered instantly.
-      </p>
-
-      <ul className="mt-4 space-y-2 text-sm text-gray-600">
-        <li className="flex items-start gap-2">
-          <span className="mt-1 text-accent-500">•</span>
-          <span>Unlimited funnel steps & split tests</span>
-        </li>
-        <li className="flex items-start gap-2">
-          <span className="mt-1 text-accent-500">•</span>
-          <span>AI rewrite playbooks for hooks & CTAs</span>
-        </li>
-        <li className="flex items-start gap-2">
-          <span className="mt-1 text-accent-500">•</span>
-          <span>Team-ready PDF exports & share links</span>
-        </li>
-      </ul>
-
-      <div className="mt-5 flex flex-col gap-3">
-        <input
-          type="email"
-          value={email}
-          onChange={(event) => onEmailChange(event.target.value)}
-          placeholder="you@brand.com"
-          className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm font-medium focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
-        />
-        <button
-          onClick={onUnlock}
-          disabled={isSendingEmail}
-          className="w-full rounded-xl bg-gradient-to-r from-primary-600 to-accent-500 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:from-primary-700 hover:to-accent-600 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isSendingEmail ? 'Sending link…' : 'Email me the full report'}
-        </button>
-      </div>
-
-      <p className="mt-4 text-center text-xs text-gray-400">
-        No spam—just your full analysis and pro conversion resources.
-      </p>
-    </div>
-  );
-}
-
 export default function FreeAnalysisPage() {
   const [url, setUrl] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
-  const [email, setEmail] = useState('');
-  const [emailSubmitted, setEmailSubmitted] = useState(false);
-  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<AuthMode>('signup');
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState('Initializing analysis…');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -175,6 +107,18 @@ export default function FreeAnalysisPage() {
     ...DEFAULT_STAGE_ESTIMATES,
   }));
   const token = useAuthStore((state) => state.token);
+
+  const resetAuth = useAuthStore((state) => state.reset);
+
+  const {
+    token: authToken,
+    loading: authLoading,
+    error: authError,
+    accessGranted,
+    statusMessage: authStatusMessage,
+    statusReason: authStatusReason,
+    userId,
+  } = useAuthValidation();
 
   const estimatedTotalSeconds = useMemo(() => sumDurations(stageEstimates), [stageEstimates]);
 
@@ -339,14 +283,11 @@ export default function FreeAnalysisPage() {
     setProgress(8);
     setProgressMessage('Queueing your analysis…');
     setResult(null);
-  setEmail('');
-  setEmailSubmitted(false);
 
     try {
       setUrl(sanitizedUrl);
       const analysis = await analyzeFunnel([sanitizedUrl], { token });
       setResult(analysis);
-      setEmail(analysis.recipient_email ?? '');
       setProgress(100);
       setProgressMessage('Analysis ready!');
     } catch (error) {
@@ -400,6 +341,32 @@ export default function FreeAnalysisPage() {
     if (score >= 70) return 'from-green-500 to-green-600';
     if (score >= 40) return 'from-yellow-500 to-yellow-600';
     return 'from-red-500 to-red-600';
+  };
+
+  const canViewFullContent = Boolean(authToken && accessGranted);
+  const showAuthPrompt = !canViewFullContent;
+  const promptStatusMessage = (() => {
+    if (authToken) {
+      if (authLoading) {
+        return 'Verifying your membership…';
+      }
+      if (!accessGranted) {
+        return authStatusMessage || authStatusReason || 'Your membership needs attention.';
+      }
+      return null;
+    }
+    return 'Create a free account to unlock the full analysis.';
+  })();
+  const promptErrorMessage = authError ?? null;
+  const promptDisabled = authLoading && Boolean(authToken);
+
+  const openAuthModal = (mode: AuthMode) => {
+    setAuthModalMode(mode);
+    setAuthModalOpen(true);
+  };
+
+  const handleSignOut = () => {
+    resetAuth();
   };
 
   return (
@@ -586,24 +553,29 @@ export default function FreeAnalysisPage() {
                 )}
               </div>
 
-              {/* Blurred Summary */}
               <div className="relative overflow-hidden rounded-2xl border border-indigo-100/80 bg-white/60 p-6">
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/30 via-white/60 to-white/90 backdrop-blur-[2px]" />
-                <div className="relative" aria-hidden="true">
+                {showAuthPrompt && (
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/30 via-white/60 to-white/90 backdrop-blur-[2px]" />
+                )}
+                <div
+                  className={`relative ${showAuthPrompt ? 'select-none text-gray-600/90 blur-[1.5px]' : ''}`}
+                  aria-hidden={showAuthPrompt}
+                >
                   <h4 className="mb-2 font-semibold text-gray-900">Executive Summary</h4>
-                  <p className="select-none text-gray-600/90 blur-[1.5px]">
-                    {result.summary}
-                  </p>
+                  <p>{result.summary}</p>
                 </div>
-                <div className="relative z-20 mt-6 flex justify-end">
-                  <UnlockOverlayCard
-                    email={email}
-                    onEmailChange={setEmail}
-                    onUnlock={handleUnlockReport}
-                    isSendingEmail={isSendingEmail}
-                    emailSubmitted={emailSubmitted}
-                  />
-                </div>
+                {showAuthPrompt && (
+                  <div className="relative z-20 mt-6 flex justify-end">
+                    <AuthPromptCard
+                      onSelectMode={openAuthModal}
+                      statusMessage={promptStatusMessage}
+                      errorMessage={promptErrorMessage}
+                      disabled={promptDisabled}
+                      showSignOut={Boolean(authToken)}
+                      onSignOut={authToken ? handleSignOut : undefined}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -656,27 +628,34 @@ export default function FreeAnalysisPage() {
               )}
             </div>
 
-            {/* Blurred Detailed Feedback */}
             <div className="relative overflow-hidden rounded-2xl border border-primary-100/60 bg-white p-8 shadow-xl">
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/40 via-white/75 to-white/95 backdrop-blur-[3px]" />
-              <div className="relative" aria-hidden="true">
+              {showAuthPrompt && (
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/40 via-white/75 to-white/95 backdrop-blur-[3px]" />
+              )}
+              <div
+                className={`relative ${showAuthPrompt ? 'select-none text-gray-600/90 blur-[2px]' : ''}`}
+                aria-hidden={showAuthPrompt}
+              >
                 <h4 className="mb-4 font-semibold text-gray-900">Detailed Analysis</h4>
                 {result.pages.map((page, idx) => (
-                  <div key={idx} className="mb-6 select-none text-gray-600/90 blur-[2px]">
+                  <div key={idx} className="mb-6">
                     <h5 className="mb-2 font-medium text-gray-700">{page.title}</h5>
                     <p>{page.feedback}</p>
                   </div>
                 ))}
               </div>
-              <div className="relative z-20 mt-6 flex justify-end">
-                <UnlockOverlayCard
-                  email={email}
-                  onEmailChange={setEmail}
-                  onUnlock={handleUnlockReport}
-                  isSendingEmail={isSendingEmail}
-                  emailSubmitted={emailSubmitted}
-                />
-              </div>
+              {showAuthPrompt && (
+                <div className="relative z-20 mt-6 flex justify-end">
+                  <AuthPromptCard
+                    onSelectMode={openAuthModal}
+                    statusMessage={promptStatusMessage}
+                    errorMessage={promptErrorMessage}
+                    disabled={promptDisabled}
+                    showSignOut={Boolean(authToken)}
+                    onSignOut={authToken ? handleSignOut : undefined}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Membership Value */}
@@ -718,6 +697,11 @@ export default function FreeAnalysisPage() {
           </motion.div>
         )}
       </main>
+      <AuthModal
+        open={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        defaultMode={authModalMode}
+      />
     </div>
   );
 }
