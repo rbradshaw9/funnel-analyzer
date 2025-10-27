@@ -361,6 +361,24 @@ async def apply_thrivecart_membership_update(
         logger.warning("ThriveCart payload must be a dictionary")
         return None
 
+    # Extract product ID first for filtering
+    product_id = _coerce_str(_lookup(payload, _PRODUCT_ID_KEYS))
+    
+    # Check if this is a Funnel Analyzer product
+    if product_id:
+        normalized_product_id = product_id.strip()
+        basic_ids = {pid.strip() for pid in settings.THRIVECART_BASIC_PRODUCT_IDS or []}
+        pro_ids = {pid.strip() for pid in settings.THRIVECART_PRO_PRODUCT_IDS or []}
+        all_valid_product_ids = basic_ids | pro_ids
+        
+        if all_valid_product_ids and normalized_product_id not in all_valid_product_ids:
+            logger.info(
+                "Skipping ThriveCart webhook for non-Funnel Analyzer product_id=%s (valid IDs: %s)",
+                product_id,
+                all_valid_product_ids
+            )
+            return None
+
     email_value = _lookup(payload, _EMAIL_KEYS)
     email_str = _coerce_str(email_value)
     if not email_str:

@@ -165,8 +165,8 @@ async def ensure_user_additional_columns(conn: AsyncConnection) -> None:
 
     dialect = conn.dialect.name
 
-    ColumnDef = tuple[str, str, str, Optional[str], Optional[str]]
-    columns: Sequence[ColumnDef] = (
+    # Column definition: (name, postgres_def, sqlite_def, postgres_backfill, sqlite_backfill)
+    columns: Sequence[tuple[str, str, str, Optional[str], Optional[str]]] = (
         (
             "status",
             "VARCHAR(50) DEFAULT 'active'",

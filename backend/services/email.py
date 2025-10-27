@@ -4,14 +4,18 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-try:
+if TYPE_CHECKING:
     from sendgrid import SendGridAPIClient
     from sendgrid.helpers.mail import Mail
-except ImportError:  # pragma: no cover - optional dependency in some envs
-    SendGridAPIClient = None  # type: ignore[assignment]
-    Mail = None  # type: ignore[assignment]
+else:
+    try:
+        from sendgrid import SendGridAPIClient
+        from sendgrid.helpers.mail import Mail
+    except ImportError:  # pragma: no cover - optional dependency in some envs
+        SendGridAPIClient = None  # type: ignore[assignment,misc]
+        Mail = None  # type: ignore[assignment,misc]
 
 from ..utils.config import settings
 
@@ -21,7 +25,7 @@ logger = logging.getLogger(__name__)
 class EmailService:
     """Lightweight wrapper around SendGrid to avoid scattering SDK calls."""
 
-    def __init__(self, client: SendGridAPIClient, default_from: str, default_reply_to: Optional[str]) -> None:
+    def __init__(self, client: "SendGridAPIClient", default_from: str, default_reply_to: Optional[str]) -> None:
         self._client = client
         self._default_from = default_from
         self._default_reply_to = default_reply_to

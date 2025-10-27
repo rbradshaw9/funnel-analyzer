@@ -6,7 +6,7 @@ import asyncio
 import base64
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 from playwright.async_api import async_playwright, Browser, Page
 
