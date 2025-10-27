@@ -32,7 +32,8 @@ class User(Base):
     # OAuth fields
     oauth_provider = Column(String(50), nullable=True)  # 'google', 'github', etc.
     oauth_provider_id = Column(String(255), nullable=True, index=True)  # Provider's user ID
-    oauth_refresh_token = Column(String(512), nullable=True)  # For token refresh
+    oauth_refresh_token = Column(String(512), nullable=True)  # For OAuth token refresh
+    refresh_token_hash = Column(String(255), nullable=True)  # For JWT refresh token
     
     # Profile fields
     company = Column(String(255), nullable=True)

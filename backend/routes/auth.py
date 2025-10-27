@@ -23,8 +23,10 @@ from ..models.schemas import (
     MemberLoginResponse,
     MemberRegistrationRequest,
     MemberRegistrationResponse,
+    RefreshTokenRequest,
+    RefreshTokenResponse,
 )
-from ..services.auth import create_jwt_token, create_magic_link_token, validate_jwt_token
+from ..services.auth import create_jwt_token, create_magic_link_token, create_refresh_token, validate_jwt_token, validate_refresh_token
 from ..services.email import get_email_service
 from ..services.onboarding import send_magic_link_onboarding
 from ..services.passwords import hash_password, verify_password
@@ -73,9 +75,10 @@ def _build_portal_message(status: str | None) -> str:
     return "Token is valid"
 
 
-def _build_session_payload(*, user: User, token: str, expires_delta: timedelta) -> dict:
+def _build_session_payload(*, user: User, token: str, refresh_token: str, expires_delta: timedelta) -> dict:
     return {
         "access_token": token,
+        "refresh_token": refresh_token,
         "expires_in": int(expires_delta.total_seconds()),
         "user_id": user.id,
         "email": user.email,
@@ -125,6 +128,10 @@ async def register_member(
         expires_in=expires_delta,
         token_type="session",
     )
+    
+    # Create refresh token
+    refresh_token, refresh_hash = await create_refresh_token(user.id, user.email)
+    user.refresh_token_hash = refresh_hash
 
     await session.commit()
 
@@ -133,7 +140,7 @@ async def register_member(
     except Exception:  # noqa: BLE001 - onboarding is best-effort
         logger.exception("Failed to trigger onboarding email for %s", email)
 
-    payload = _build_session_payload(user=user, token=token, expires_delta=expires_delta)
+    payload = _build_session_payload(user=user, token=token, refresh_token=refresh_token, expires_delta=expires_delta)
     return MemberRegistrationResponse(**payload)
 
 
@@ -169,8 +176,13 @@ async def member_login(
         expires_in=expires_delta,
         token_type="session",
     )
+    
+    # Create refresh token
+    refresh_token, refresh_hash = await create_refresh_token(user.id, user.email)
+    user.refresh_token_hash = refresh_hash
+    await session.commit()
 
-    payload = _build_session_payload(user=user, token=token, expires_delta=expires_delta)
+    payload = _build_session_payload(user=user, token=token, refresh_token=refresh_token, expires_delta=expires_delta)
     return MemberLoginResponse(**payload)
 
 
@@ -302,5 +314,57 @@ async def admin_login(
     return AdminLoginResponse(
         access_token=token,
         token_type="bearer",
+        expires_in=int(expires_delta.total_seconds()),
+    )
+
+
+@router.post("/refresh", response_model=RefreshTokenResponse)
+async def refresh_access_token(
+    request: RefreshTokenRequest,
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Exchange a valid refresh token for a new access token and refresh token."""
+
+    # Find user by validating refresh token
+    stmt = select(User)
+    result = await session.execute(stmt)
+    users = result.scalars().all()
+    
+    user = None
+    for candidate in users:
+        if candidate.refresh_token_hash:
+            validation = await validate_refresh_token(request.refresh_token, candidate.refresh_token_hash)
+            if validation.get("valid"):
+                user = candidate
+                break
+    
+    if user is None:
+        logger.warning("Refresh token validation failed: no matching user found")
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    
+    # Check if user account is active
+    if not user.is_active or not _access_granted(user):
+        logger.warning("Refresh blocked for user %s: account inactive", user.email)
+        raise HTTPException(status_code=403, detail="Account inactive")
+    
+    # Generate new access token
+    expires_delta = timedelta(hours=settings.JWT_EXPIRATION_HOURS)
+    access_token = await create_jwt_token(
+        user.id,
+        user.email,
+        expires_in=expires_delta,
+        token_type="session",
+    )
+    
+    # Rotate refresh token (create new one and invalidate old)
+    new_refresh_token, new_refresh_hash = await create_refresh_token(user.id, user.email)
+    user.refresh_token_hash = new_refresh_hash
+    await session.commit()
+    
+    logger.info("Successfully refreshed tokens for user %s", user.email)
+    
+    return RefreshTokenResponse(
+        access_token=access_token,
+        refresh_token=new_refresh_token,
         expires_in=int(expires_delta.total_seconds()),
     )

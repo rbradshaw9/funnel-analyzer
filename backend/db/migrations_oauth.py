@@ -24,6 +24,7 @@ async def ensure_user_oauth_columns(conn: AsyncConnection) -> None:
         ("oauth_provider", "VARCHAR(50)", "VARCHAR(50)"),
         ("oauth_provider_id", "VARCHAR(255)", "VARCHAR(255)"),
         ("oauth_refresh_token", "VARCHAR(512)", "VARCHAR(512)"),
+        ("refresh_token_hash", "VARCHAR(255)", "VARCHAR(255)"),
         ("company", "VARCHAR(200)", "VARCHAR(200)"),
         ("job_title", "VARCHAR(100)", "VARCHAR(100)"),
         ("avatar_url", "VARCHAR(512)", "VARCHAR(512)"),

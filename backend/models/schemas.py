@@ -245,6 +245,7 @@ class SessionResponse(BaseModel):
     """Standard bearer token envelope returned after authentication."""
 
     access_token: str
+    refresh_token: str = Field(..., description="Refresh token for obtaining new access tokens")
     token_type: Literal["bearer"] = "bearer"
     expires_in: int = Field(..., ge=0, description="Token lifetime in seconds")
     user_id: int
@@ -277,6 +278,21 @@ class AdminLoginResponse(BaseModel):
     access_token: str
     token_type: Literal["bearer"] = "bearer"
     expires_in: int = Field(..., ge=0, description="Token lifetime in seconds")
+
+
+class RefreshTokenRequest(BaseModel):
+    """Payload for refresh token request."""
+
+    refresh_token: str = Field(..., description="The refresh token to exchange for a new access token")
+
+
+class RefreshTokenResponse(BaseModel):
+    """Response containing new access token and optionally new refresh token."""
+
+    access_token: str
+    refresh_token: str = Field(..., description="New refresh token (tokens are rotated on use)")
+    token_type: Literal["bearer"] = "bearer"
+    expires_in: int = Field(..., ge=0, description="Access token lifetime in seconds")
 
 
 class PublicStatsResponse(BaseModel):
