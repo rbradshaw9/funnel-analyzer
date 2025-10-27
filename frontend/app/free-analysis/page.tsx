@@ -7,9 +7,6 @@ import { analyzeFunnel } from '@/lib/api';
 import type { AnalysisResult } from '@/types';
 import { TopNav } from '@/components/TopNav';
 import { FUNNEL_ANALYZER_JOIN_URL } from '@/lib/externalLinks';
-import { useAuthValidation } from '@/hooks/useAuthValidation';
-import { AuthModal, type AuthMode } from '@/components/AuthModal';
-import { AuthPromptCard } from '@/components/AuthPromptCard';
 import { useAuthStore } from '@/store/authStore';
 
 type StageKey = 'scrape' | 'screenshot' | 'analysis' | 'summary';
@@ -109,6 +106,7 @@ export default function FreeAnalysisPage() {
   const [stageEstimates, setStageEstimates] = useState<Record<StageKey, number>>(() => ({
     ...DEFAULT_STAGE_ESTIMATES,
   }));
+  const token = useAuthStore((state) => state.token);
 
   const resetAuth = useAuthStore((state) => state.reset);
 
@@ -288,10 +286,7 @@ export default function FreeAnalysisPage() {
 
     try {
       setUrl(sanitizedUrl);
-      const analysis = await analyzeFunnel([sanitizedUrl], {
-        userId: typeof userId === 'number' ? userId : undefined,
-        token: authToken ?? undefined,
-      });
+      const analysis = await analyzeFunnel([sanitizedUrl], { token });
       setResult(analysis);
       setProgress(100);
       setProgressMessage('Analysis ready!');
@@ -300,6 +295,39 @@ export default function FreeAnalysisPage() {
       alert('Analysis failed. Please try again.');
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleUnlockReport = async () => {
+    if (!result) {
+      alert('Run an analysis first to unlock the report.');
+      return;
+    }
+
+    if (!email.trim() || !email.includes('@')) {
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    try {
+      setIsSendingEmail(true);
+      await sendAnalysisEmail(result.analysis_id, email.trim(), token);
+      setEmailSubmitted(true);
+      setEmail(email.trim());
+      setResult((prev) => (prev ? { ...prev, recipient_email: email.trim() } : prev));
+
+      setTimeout(() => {
+  window.location.href = FUNNEL_ANALYZER_JOIN_URL;
+      }, 3000);
+    } catch (err) {
+      console.error('Failed to send analysis email:', err);
+      alert(
+        err instanceof Error
+          ? err.message
+          : 'We could not email the full report. Please try again shortly.'
+      );
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 

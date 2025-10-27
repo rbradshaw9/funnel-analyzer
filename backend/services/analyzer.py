@@ -9,10 +9,9 @@ from typing import Any, List, Optional
 
 import httpx
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.database import Analysis, AnalysisPage, User
+from ..models.database import Analysis, AnalysisPage
 from ..models.schemas import AnalysisResponse
 from ..services.screenshot import get_screenshot_service
 from ..services.llm_provider import get_llm_provider
@@ -366,22 +365,9 @@ async def analyze_funnel(
 
 
 async def _resolve_user_id(session: AsyncSession, provided_user_id: Optional[int]) -> int:
-    """Return the user ID to use for the analysis, creating the default user if necessary."""
+    """Return the authenticated user ID or raise when missing."""
 
-    if provided_user_id is not None:
-        return provided_user_id
+    if provided_user_id is None:
+        raise ValueError("Authenticated user is required for analysis requests")
 
-    query = select(User).where(User.email == settings.DEFAULT_USER_EMAIL)
-    result = await session.execute(query)
-    user = result.scalar_one_or_none()
-
-    if user is None:
-        user = User(
-            email=settings.DEFAULT_USER_EMAIL,
-            full_name=settings.DEFAULT_USER_NAME,
-            is_active=1,
-        )
-        session.add(user)
-        await session.flush()
-
-    return user.id
+    return provided_user_id

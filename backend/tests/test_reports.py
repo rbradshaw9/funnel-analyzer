@@ -4,7 +4,7 @@ from unittest.mock import patch
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from backend.models.database import Analysis, AnalysisPage, Base, User
-from backend.services.reports import delete_report
+from backend.services.reports import delete_report, get_report_by_id, get_user_reports
 
 
 def _run_async(coro):
@@ -156,6 +156,47 @@ def test_delete_report_returns_none_when_not_found():
         async with Session() as session:
             result = await delete_report(session=session, analysis_id=9999, user_id=1)
             assert result is None
+
+        await engine.dispose()
+
+    _run_async(scenario())
+
+
+def test_report_queries_reject_cross_user_access():
+    async def scenario() -> None:
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        Session = async_sessionmaker(engine, expire_on_commit=False)
+
+        async with Session() as session:
+            owner = User(email="owner@example.com", plan="pro", status="active", is_active=1)
+            intruder = User(email="intruder@example.com", plan="basic", status="active", is_active=1)
+            session.add_all([owner, intruder])
+            await session.flush()
+
+            analysis = Analysis(
+                user_id=owner.id,
+                urls=["https://example.com"],
+                scores={"clarity": 80, "value": 81, "proof": 82, "design": 83, "flow": 84},
+                overall_score=82,
+                summary="summary",
+                detailed_feedback=[],
+                pipeline_metrics=None,
+                analysis_duration_seconds=10,
+            )
+            session.add(analysis)
+            await session.commit()
+
+            detail = await get_report_by_id(session, analysis.id, user_id=intruder.id)
+            assert detail is None
+
+            listing = await get_user_reports(session, user_id=intruder.id)
+            assert listing == {"reports": [], "total": 0}
+
+            deletion = await delete_report(session=session, analysis_id=analysis.id, user_id=intruder.id)
+            assert deletion is None
 
         await engine.dispose()
 
