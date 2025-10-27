@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { analyzeFunnel } from '@/lib/api';
 import type { AnalysisResult } from '@/types';
@@ -97,7 +97,7 @@ const formatSeconds = (value?: number | null) => {
   return `${value.toFixed(1)}s`;
 };
 
-export default function FreeAnalysisPage() {
+function FreeAnalysisContent() {
   const [url, setUrl] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
@@ -675,5 +675,36 @@ export default function FreeAnalysisPage() {
         defaultMode={authModalMode}
       />
     </div>
+  );
+}
+
+function FreeAnalysisFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
+      <TopNav
+        rightSlot={
+          <Link
+            href={FUNNEL_ANALYZER_JOIN_URL}
+            className="text-sm font-semibold text-primary-600 hover:text-primary-700"
+          >
+            Pricing →
+          </Link>
+        }
+      />
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="flex items-center justify-center py-24">
+          <p className="text-sm font-medium text-gray-500">Preparing your free analysis…</p>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default function FreeAnalysisPage() {
+  return (
+    <Suspense fallback={<FreeAnalysisFallback />}>
+      <FreeAnalysisContent />
+    </Suspense>
   );
 }
