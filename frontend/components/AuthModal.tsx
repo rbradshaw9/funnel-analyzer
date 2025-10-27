@@ -1,10 +1,9 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
-import { loginAccount, registerAccount } from '@/lib/api'
+import { requestMagicLink } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
-import type { AuthCredentialsResponse } from '@/types'
 
 export type AuthMode = 'signup' | 'login'
 
@@ -12,25 +11,17 @@ interface AuthModalProps {
   open: boolean
   onClose: () => void
   defaultMode?: AuthMode
-  onAuthenticated?: (response: AuthCredentialsResponse) => void
 }
-
-const NAME_PLACEHOLDER = 'Taylor Johnson'
 const EMAIL_PLACEHOLDER = 'taylor@example.com'
 
-export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticated }: AuthModalProps) {
+export function AuthModal({ open, onClose, defaultMode = 'signup' }: AuthModalProps) {
   const [mode, setMode] = useState<AuthMode>(defaultMode)
-  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const setToken = useAuthStore((state) => state.setToken)
   const setError = useAuthStore((state) => state.setError)
-
-  const successTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!open) {
@@ -41,31 +32,19 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
     setErrorMessage(null)
   }, [defaultMode, open])
 
-  useEffect(() => () => {
-    if (successTimeout.current) {
-      clearTimeout(successTimeout.current)
-      successTimeout.current = null
-    }
-  }, [])
-
   if (!open) {
     return null
   }
 
   const resetForm = () => {
-    setName('')
     setEmail('')
-    setPassword('')
     setSuccessMessage(null)
     setErrorMessage(null)
     setSubmitting(false)
+    setError(null)
   }
 
   const handleClose = () => {
-    if (successTimeout.current) {
-      clearTimeout(successTimeout.current)
-      successTimeout.current = null
-    }
     resetForm()
     onClose()
   }
@@ -81,38 +60,26 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
     setSuccessMessage(null)
 
     const normalizedEmail = email.trim().toLowerCase()
-    const normalizedName = name.trim()
-
+    if (!normalizedEmail) {
+      setErrorMessage('Please enter a valid email address to continue.')
+      setSubmitting(false)
+      return
+    }
     try {
-      let response: AuthCredentialsResponse
+      const response = await requestMagicLink(normalizedEmail)
 
-      if (mode === 'signup') {
-        response = await registerAccount({
-          email: normalizedEmail,
-          password,
-          name: normalizedName || undefined,
-        })
-      } else {
-        response = await loginAccount(normalizedEmail, password)
-      }
+      const message =
+        response.message ??
+        (mode === 'signup'
+          ? 'Check your email for a secure link to confirm your account.'
+          : 'Check your email for a secure login link.')
 
-      if (!response.token) {
-        setErrorMessage('We could not verify your session token. Please try again.')
-        return
-      }
-
-      setToken(response.token)
-      setError(null)
-
-      const message = mode === 'signup' ? 'Account created! Unlocking your report…' : 'Welcome back! Unlocking your report…'
       setSuccessMessage(message)
-
-      successTimeout.current = setTimeout(() => {
-        onAuthenticated?.(response)
-        handleClose()
-      }, 1200)
+      setError(null)
     } catch (error: any) {
-      setErrorMessage(error?.message || 'We could not process your request. Please try again.')
+      const message = error?.message || 'We could not process your request. Please try again.'
+      setErrorMessage(message)
+      setError(message)
     } finally {
       setSubmitting(false)
     }
@@ -169,23 +136,6 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
         </div>
 
         <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
-          {mode === 'signup' && (
-            <div>
-              <label htmlFor="auth-name" className="block text-sm font-semibold text-slate-700">
-                Full name
-              </label>
-              <input
-                id="auth-name"
-                type="text"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder={NAME_PLACEHOLDER}
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
-                autoComplete="name"
-              />
-            </div>
-          )}
-
           <div>
             <label htmlFor="auth-email" className="block text-sm font-semibold text-slate-700">
               Email address
@@ -198,28 +148,13 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
               onChange={(event) => setEmail(event.target.value)}
               placeholder={EMAIL_PLACEHOLDER}
               className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
-              autoComplete={mode === 'login' ? 'email' : 'username'}
+              autoComplete="email"
             />
-          </div>
-
-          <div>
-            <label htmlFor="auth-password" className="block text-sm font-semibold text-slate-700">
-              Password
-            </label>
-            <input
-              id="auth-password"
-              type="password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="••••••••"
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              minLength={8}
-            />
-            {mode === 'signup' && (
-              <p className="mt-1 text-xs text-slate-500">Use at least 8 characters to keep your account secure.</p>
-            )}
+            <p className="mt-1 text-xs text-slate-500">
+              {mode === 'signup'
+                ? 'We will email you a secure link to confirm your account and unlock your report.'
+                : 'We will email you a secure login link. Open it on this device to unlock your report.'}
+            </p>
           </div>
 
           <button
@@ -228,12 +163,10 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
             disabled={submitting || Boolean(successMessage)}
           >
             {submitting
-              ? mode === 'signup'
-                ? 'Creating account…'
-                : 'Logging in…'
+              ? 'Sending magic link…'
               : mode === 'signup'
-                ? 'Create free account'
-                : 'Log in'}
+                ? 'Email me an unlock link'
+                : 'Email me a login link'}
           </button>
         </form>
 
