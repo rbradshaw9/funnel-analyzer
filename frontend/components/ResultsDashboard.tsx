@@ -1,7 +1,10 @@
 'use client'
 
+import { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { FiDownload, FiRefreshCw } from 'react-icons/fi'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
 import ScoreCard from '@/components/ScoreCard'
 import PageAnalysisCard from '@/components/PageAnalysisCard'
 import { AnalysisResult } from '@/types'
@@ -11,17 +14,56 @@ interface Props {
 }
 
 export default function ResultsDashboard({ analysis }: Props) {
+  const reportRef = useRef<HTMLDivElement | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
+
   const handleNewAnalysis = () => {
     window.location.reload()
   }
 
-  const handleExportPDF = () => {
-    // TODO: Implement PDF export using jspdf + html2canvas
-    alert('PDF export coming soon!')
+  const handleExportPDF = async () => {
+    if (!reportRef.current || isExporting) return
+
+    setIsExporting(true)
+    try {
+      const element = reportRef.current
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+      })
+
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = pdf.internal.pageSize.getHeight()
+      const imgProps = pdf.getImageProperties(imgData)
+      const imgHeight = (imgProps.height * pdfWidth) / imgProps.width
+      let heightLeft = imgHeight
+      let position = 0
+
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight)
+      heightLeft -= pdfHeight
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight)
+        heightLeft -= pdfHeight
+      }
+
+      pdf.save(`funnel-analysis-${analysis.overall_score}.pdf`)
+    } catch (error) {
+      console.error('Failed to export PDF', error)
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   return (
     <motion.div
+      ref={reportRef}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -40,9 +82,18 @@ export default function ResultsDashboard({ analysis }: Props) {
         <div className="flex gap-3">
           <button
             onClick={handleExportPDF}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+            disabled={isExporting}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-70"
           >
-            <FiDownload /> Export PDF
+            {isExporting ? (
+              <>
+                <FiRefreshCw className="animate-spin" /> Exporting...
+              </>
+            ) : (
+              <>
+                <FiDownload /> Export PDF
+              </>
+            )}
           </button>
           <button
             onClick={handleNewAnalysis}
