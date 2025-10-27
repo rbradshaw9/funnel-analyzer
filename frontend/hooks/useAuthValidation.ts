@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 
 import { validateToken } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
@@ -22,25 +22,50 @@ interface AuthValidationResult {
 }
 
 export function useAuthValidation(): AuthValidationResult {
-  const searchParams = useSearchParams()
-  const tokenFromQuery = searchParams?.get('token') ?? null
-
+  const router = useRouter()
+  const pathname = usePathname()
   const token = useAuthStore((state) => state.token)
   const auth = useAuthStore((state) => state.auth)
   const loading = useAuthStore((state) => state.loading)
   const error = useAuthStore((state) => state.error)
+  const hydrate = useAuthStore((state) => state.hydrate)
   const setToken = useAuthStore((state) => state.setToken)
   const setAuth = useAuthStore((state) => state.setAuth)
   const setLoading = useAuthStore((state) => state.setLoading)
   const setError = useAuthStore((state) => state.setError)
 
   useEffect(() => {
-    const current = useAuthStore.getState().token
-    if (current === tokenFromQuery) {
+    hydrate()
+  }, [hydrate])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
       return
     }
-    setToken(tokenFromQuery)
-  }, [tokenFromQuery, setToken])
+
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const queryToken = params.get('token')
+      if (!queryToken) {
+        return
+      }
+
+      const current = useAuthStore.getState().token
+      if (current !== queryToken) {
+        setToken(queryToken)
+      }
+
+      params.delete('token')
+      const nextQuery = params.toString()
+      const expectedSearch = nextQuery ? `?${nextQuery}` : ''
+      if (window.location.search !== expectedSearch) {
+        const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname
+        router.replace(nextUrl, { scroll: false })
+      }
+    } catch (error) {
+      console.warn('Failed to read auth token from URL search params', error)
+    }
+  }, [pathname, router, setToken])
 
   useEffect(() => {
     if (!token) {
