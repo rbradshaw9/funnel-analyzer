@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_HOURS: int = 24
     MAGIC_LINK_EXPIRATION_MINUTES: int = 30
+    AUTH0_DOMAIN: Optional[str] = None
+    AUTH0_CLIENT_ID: Optional[str] = None
+    AUTH0_CLIENT_SECRET: Optional[str] = None
+    AUTH0_AUDIENCE: Optional[str] = None
 
     # Default demo user (used until real auth integration is completed)
     DEFAULT_USER_EMAIL: str = "demo@funnelanalyzer.pro"

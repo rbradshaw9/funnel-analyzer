@@ -2,7 +2,7 @@ import axios from 'axios'
 import type {
   AnalysisResult,
   AdminLoginResponse,
-  AuthCredentialsResponse,
+  OAuthLoginResponse,
   AuthResponse,
   LoginPayload,
   MagicLinkResponse,
@@ -164,6 +164,18 @@ export async function adminLogin(email: string, password: string): Promise<Admin
     return response.data
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Invalid credentials')
+  }
+}
+
+export async function exchangeAuth0Code(code: string, redirectUri: string): Promise<OAuthLoginResponse> {
+  try {
+    const response = await api.post<OAuthLoginResponse>('/api/auth/oauth/auth0/callback', {
+      code,
+      redirect_uri: redirectUri,
+    })
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Unable to complete Auth0 login')
   }
 }
 

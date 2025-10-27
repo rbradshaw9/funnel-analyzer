@@ -17,6 +17,8 @@ from ..models.schemas import (
     AdminLoginResponse,
     AuthValidateRequest,
     AuthValidateResponse,
+    OAuthCallbackRequest,
+    OAuthLoginResponse,
     MagicLinkRequest,
     MagicLinkResponse,
     MemberLoginRequest,
@@ -26,8 +28,8 @@ from ..models.schemas import (
 )
 from ..services.auth import create_jwt_token, create_magic_link_token, validate_jwt_token
 from ..services.email import get_email_service
-from ..services.onboarding import send_magic_link_onboarding
-from ..services.passwords import hash_password, verify_password
+from ..services.passwords import verify_password
+from ..services.oauth import get_auth0_client, OAuthExchangeError
 from ..utils.config import settings
 
 router = APIRouter()
@@ -50,6 +52,18 @@ async def _get_or_create_user(session: AsyncSession, email: str) -> User:
     await session.flush()
     logger.info("Created new user record for %s", email)
     return user
+
+
+async def _get_user_by_auth0_id(session: AsyncSession, provider_id: str) -> User | None:
+    stmt = select(User).where(User.auth0_user_id == provider_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def _get_user_by_email(session: AsyncSession, email: str) -> User | None:
+    stmt = select(User).where(User.email == email)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
 
 
 def _access_granted(user: User) -> bool:
@@ -273,6 +287,106 @@ async def validate_token(
         portal_update_url=user.portal_update_url,
         token_type=result.get("token_type"),
         expires_at=result.get("expires_at"),
+    )
+
+
+@router.post("/oauth/auth0/callback", response_model=OAuthLoginResponse)
+async def auth0_callback(
+    request: OAuthCallbackRequest,
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Exchange an Auth0 authorization code for a Funnel Analyzer JWT."""
+
+    client = get_auth0_client()
+    if client is None:
+        logger.error("Auth0 login attempted but integration is not configured")
+        raise HTTPException(status_code=503, detail="Auth0 integration not configured")
+
+    try:
+        profile = await client.exchange_code(request.code, str(request.redirect_uri))
+    except OAuthExchangeError as exc:
+        logger.warning("Auth0 code exchange failed: %s", exc)
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 - defensive logging
+        logger.exception("Unexpected Auth0 error: %s", exc)
+        raise HTTPException(status_code=500, detail="Auth0 login failed") from exc
+
+    email = _normalize_email(profile.email)
+    provider_id = profile.provider_id
+
+    user = await _get_user_by_auth0_id(session, provider_id)
+    created = False
+
+    if user is None:
+        user = await _get_user_by_email(session, email)
+        if user is None:
+            user = User(
+                email=email,
+                full_name=profile.name,
+                auth0_user_id=provider_id,
+                status="active",
+                plan="free",
+                is_active=1,
+            )
+            session.add(user)
+            created = True
+        else:
+            if user.auth0_user_id and user.auth0_user_id != provider_id:
+                await session.rollback()
+                logger.error(
+                    "Auth0 login for %s rejected: provider mismatch (existing=%s, incoming=%s)",
+                    email,
+                    user.auth0_user_id,
+                    provider_id,
+                )
+                raise HTTPException(
+                    status_code=409,
+                    detail="Email already linked to another Auth0 account",
+                )
+            user.auth0_user_id = provider_id
+            if profile.name and not user.full_name:
+                user.full_name = profile.name
+    else:
+        if user.email != email:
+            user.email = email
+        if profile.name and not user.full_name:
+            user.full_name = profile.name
+
+    await session.flush()
+    user_id = user.id
+
+    if not _access_granted(user):
+        await session.rollback()
+        logger.warning(
+            "Auth0 login blocked for %s (user_id=%s) due to inactive account",
+            email,
+            user_id,
+        )
+        raise HTTPException(status_code=403, detail="Account is not active")
+
+    expires_delta = timedelta(hours=settings.JWT_EXPIRATION_HOURS)
+    token = await create_jwt_token(
+        user_id,
+        user.email,
+        expires_in=expires_delta,
+        token_type="session",
+    )
+
+    await session.commit()
+
+    logger.info(
+        "Auth0 login successful for %s (user_id=%s, created=%s)",
+        email,
+        user_id,
+        created,
+    )
+
+    return OAuthLoginResponse(
+        access_token=token,
+        expires_in=int(expires_delta.total_seconds()),
+        user_id=user_id,
+        email=user.email,
+        provider="auth0",
     )
 
 

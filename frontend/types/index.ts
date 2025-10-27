@@ -168,6 +168,15 @@ export interface AdminLoginResponse {
   expires_in?: number
 }
 
+export interface OAuthLoginResponse {
+  access_token: string
+  token_type: 'bearer'
+  expires_in: number
+  user_id: number
+  email: string
+  provider: 'auth0'
+}
+
 export interface PublicStatsResponse {
   analyses_run: number
   pages_analyzed: number

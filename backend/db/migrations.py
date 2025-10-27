@@ -223,6 +223,13 @@ async def ensure_user_additional_columns(conn: AsyncConnection) -> None:
             None,
             None,
         ),
+        (
+            "auth0_user_id",
+            "VARCHAR(150) UNIQUE",
+            "VARCHAR(150) UNIQUE",
+            None,
+            None,
+        ),
     )
 
     for name, pg_def, sqlite_def, pg_backfill, sqlite_backfill in columns:
