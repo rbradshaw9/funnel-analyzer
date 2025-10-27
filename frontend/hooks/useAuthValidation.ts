@@ -29,12 +29,20 @@ export function useAuthValidation(): AuthValidationResult {
   const auth = useAuthStore((state) => state.auth)
   const loading = useAuthStore((state) => state.loading)
   const error = useAuthStore((state) => state.error)
+  const hydrate = useAuthStore((state) => state.hydrate)
   const setToken = useAuthStore((state) => state.setToken)
   const setAuth = useAuthStore((state) => state.setAuth)
   const setLoading = useAuthStore((state) => state.setLoading)
   const setError = useAuthStore((state) => state.setError)
 
   useEffect(() => {
+    hydrate()
+  }, [hydrate])
+
+  useEffect(() => {
+    if (!tokenFromQuery) {
+      return
+    }
     const current = useAuthStore.getState().token
     if (current === tokenFromQuery) {
       return
