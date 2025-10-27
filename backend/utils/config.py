@@ -62,6 +62,13 @@ class Settings(BaseSettings):
     EMAIL_DEFAULT_FROM: Optional[str] = "Funnel Analyzer Pro Reports <reports@funnelanalyzerpro.com>"
     EMAIL_DEFAULT_REPLY_TO: Optional[str] = "support@funnelanalyzerpro.com"
 
+    # OAuth providers
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    GITHUB_CLIENT_ID: Optional[str] = None
+    GITHUB_CLIENT_SECRET: Optional[str] = None
+    OAUTH_REDIRECT_URI: Optional[str] = None  # e.g. https://api.funnelanalyzerpro.com/api/auth/oauth/callback
+
     # Automation / integrations
     THRIVECART_WEBHOOK_SECRET: Optional[str] = None
     THRIVECART_BASIC_PRODUCT_IDS: list[str] = Field(default_factory=list)

@@ -20,6 +20,7 @@ from .migrations import (
     ensure_user_additional_columns,
     migration_lock,
 )
+from .migrations_oauth import ensure_user_oauth_columns
 from ..utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -67,6 +68,7 @@ async def init_db() -> None:
             await ensure_user_password_hash_column(conn)
             await ensure_user_plan_column(conn)
             await ensure_user_additional_columns(conn)
+            await ensure_user_oauth_columns(conn)
 
     async with AsyncSessionFactory() as session:
         default_email = (settings.DEFAULT_USER_EMAIL or "").strip().lower()

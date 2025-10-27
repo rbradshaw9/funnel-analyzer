@@ -28,6 +28,18 @@ class User(Base):
     portal_update_url = Column(String(2048), nullable=True)
     last_magic_link_sent_at = Column(DateTime(timezone=True), nullable=True)
     password_hash = Column(String(255), nullable=True)
+    
+    # OAuth fields
+    oauth_provider = Column(String(50), nullable=True)  # 'google', 'github', etc.
+    oauth_provider_id = Column(String(255), nullable=True, index=True)  # Provider's user ID
+    oauth_refresh_token = Column(String(512), nullable=True)  # For token refresh
+    
+    # Profile fields
+    company = Column(String(255), nullable=True)
+    job_title = Column(String(255), nullable=True)
+    avatar_url = Column(String(2048), nullable=True)
+    onboarding_completed = Column(Integer, default=0)  # 0 = incomplete, 1 = complete
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
