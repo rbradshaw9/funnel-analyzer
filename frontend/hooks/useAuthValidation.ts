@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 import { validateToken } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
@@ -23,7 +23,10 @@ interface AuthValidationResult {
 
 export function useAuthValidation(): AuthValidationResult {
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
   const tokenFromQuery = searchParams?.get('token') ?? null
+  const searchParamsString = searchParams.toString()
 
   const token = useAuthStore((state) => state.token)
   const auth = useAuthStore((state) => state.auth)
@@ -36,11 +39,23 @@ export function useAuthValidation(): AuthValidationResult {
 
   useEffect(() => {
     const current = useAuthStore.getState().token
-    if (current === tokenFromQuery) {
+
+    if (tokenFromQuery === null) {
       return
     }
-    setToken(tokenFromQuery)
-  }, [tokenFromQuery, setToken])
+
+    if (current !== tokenFromQuery) {
+      setToken(tokenFromQuery)
+    }
+
+    const params = new URLSearchParams(searchParamsString)
+    params.delete('token')
+
+    const nextQuery = params.toString()
+    const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname
+
+    router.replace(nextUrl, { scroll: false })
+  }, [tokenFromQuery, setToken, router, pathname, searchParamsString])
 
   useEffect(() => {
     if (!token) {
