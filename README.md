@@ -5,9 +5,9 @@
 A production-ready full-stack application that analyzes marketing funnels using GPT-4o. Users can input multiple funnel URLs (sales pages, order forms, upsells, thank-you pages) and receive comprehensive AI-powered analysis with scores for clarity, value, proof, design, and flow.
 
 ## 🎯 Overview
-# Seeded admin credentials (replace in real deployments)
-DEFAULT_ADMIN_EMAIL=rbradshaw@gmail.com
-DEFAULT_ADMIN_PASSWORD=MiR43Tx2-
+# Admin seeding (provide secure values in production deployments)
+DEFAULT_ADMIN_EMAIL=<your-admin-email>
+DEFAULT_ADMIN_PASSWORD=<your-admin-password>
 
 **Backend**: FastAPI (Python 3.11) on Railway  
 **Frontend**: Next.js 14 (App Router) on Vercel  
@@ -118,8 +118,10 @@ OPENAI_API_KEY=sk-your-actual-openai-key-here
 LLM_PROVIDER=openai
 DATABASE_URL=sqlite:///./funnel_analyzer.db  # SQLite for local dev
 JWT_SECRET=your-secret-minimum-32-characters
-DEFAULT_ADMIN_EMAIL=rbradshaw@gmail.com
-DEFAULT_ADMIN_PASSWORD=MiR43Tx2-
+# Provide BOTH DEFAULT_ADMIN_EMAIL and DEFAULT_ADMIN_PASSWORD to seed an admin user.
+# Leave them blank if you prefer to create the admin account manually.
+DEFAULT_ADMIN_EMAIL=
+DEFAULT_ADMIN_PASSWORD=
 ENVIRONMENT=development
 FRONTEND_URL=http://localhost:3001
 # Optional screenshot storage (S3, R2, Supabase)
@@ -150,7 +152,7 @@ NEXT_PUBLIC_JOIN_URL=https://funnelanalyzerpro.com/pricing
 ## 🔐 Authentication
 
 - **Magic link login** remains available for end users via email-based access.
-- **Admin credentials** are now seeded automatically using `DEFAULT_ADMIN_EMAIL` and `DEFAULT_ADMIN_PASSWORD`. Override these values in `.env` before deploying to production.
+- **Admin credentials** are only seeded when both `DEFAULT_ADMIN_EMAIL` and `DEFAULT_ADMIN_PASSWORD` are provided. Supply secure values via environment variables in production deployments.
 - Admin logins issue a JWT for the dashboard; the frontend `Login` button falls back to the magic link flow if the credentials route is not needed.
 
 ### 3. Backend Setup & Run
