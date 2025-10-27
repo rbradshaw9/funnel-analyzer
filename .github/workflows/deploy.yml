@@ -33,6 +33,32 @@ jobs:
           pip install flake8
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
 
+  test-backend:
+    name: Test backend (pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run pytest
+        run: pytest
+
   lint-frontend:
     name: Lint frontend (Next.js)
     runs-on: ubuntu-latest
@@ -56,9 +82,16 @@ jobs:
       - name: Run lint
         run: npm run lint --if-present
 
+  test-frontend:
+    name: Test frontend (placeholder)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Placeholder
+        run: echo "Frontend tests are not yet implemented."
+
   deploy:
     name: Deploy applications
-    needs: [lint-backend, lint-frontend]
+    needs: [lint-backend, test-backend, lint-frontend, test-frontend]
     runs-on: ubuntu-latest
     env:
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
