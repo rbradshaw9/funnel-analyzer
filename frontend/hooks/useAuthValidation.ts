@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 import { validateToken } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
@@ -22,8 +21,7 @@ interface AuthValidationResult {
 }
 
 export function useAuthValidation(): AuthValidationResult {
-  const searchParams = useSearchParams()
-  const tokenFromQuery = searchParams?.get('token') ?? null
+  const [tokenFromQuery, setTokenFromQuery] = useState<string | null>(null)
 
   const token = useAuthStore((state) => state.token)
   const auth = useAuthStore((state) => state.auth)
@@ -38,6 +36,21 @@ export function useAuthValidation(): AuthValidationResult {
   useEffect(() => {
     hydrate()
   }, [hydrate])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const queryToken = params.get('token')
+      setTokenFromQuery(queryToken)
+    } catch (error) {
+      console.warn('Failed to read auth token from URL search params', error)
+      setTokenFromQuery(null)
+    }
+  }, [])
 
   useEffect(() => {
     if (!tokenFromQuery) {
