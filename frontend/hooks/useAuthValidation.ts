@@ -25,7 +25,6 @@ export function useAuthValidation(): AuthValidationResult {
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
-  const tokenFromQuery = searchParams?.get('token') ?? null
   const searchParamsString = searchParams.toString()
 
   const token = useAuthStore((state) => state.token)
@@ -40,6 +39,7 @@ export function useAuthValidation(): AuthValidationResult {
 
   useEffect(() => {
     const current = useAuthStore.getState().token
+    const tokenFromQuery = searchParams?.get('token') ?? null
 
     if (tokenFromQuery === null) {
       return
@@ -56,7 +56,7 @@ export function useAuthValidation(): AuthValidationResult {
     const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname
 
     router.replace(nextUrl, { scroll: false })
-  }, [tokenFromQuery, setToken, router, pathname, searchParamsString])
+  }, [pathname, router, searchParams, searchParamsString, setToken])
 
   useEffect(() => {
     if (!token) {
