@@ -5,7 +5,7 @@ Pydantic schemas for request/response validation.
 from datetime import datetime
 from typing import Dict, List, Optional, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, AnyHttpUrl, field_validator
 
 
 class AnalysisRequest(BaseModel):
@@ -181,7 +181,7 @@ class AuthValidateRequest(BaseModel):
 
 class AuthValidateResponse(BaseModel):
     """JWT validation response."""
-    
+
     valid: bool
     user_id: Optional[int] = None
     email: Optional[str] = None
@@ -194,6 +194,25 @@ class AuthValidateResponse(BaseModel):
     portal_update_url: Optional[str] = None
     token_type: Optional[str] = None
     expires_at: Optional[datetime] = None
+
+
+class OAuthCallbackRequest(BaseModel):
+    """Payload exchanged when an OAuth provider redirects back."""
+
+    code: str = Field(..., description="Authorization code returned by Auth0")
+    redirect_uri: AnyHttpUrl = Field(..., description="Redirect URI used when initiating Auth0 login")
+    state: Optional[str] = Field(default=None, description="Opaque state returned by Auth0")
+
+
+class OAuthLoginResponse(BaseModel):
+    """Response returned after completing an OAuth login."""
+
+    access_token: str
+    token_type: Literal["bearer"] = "bearer"
+    expires_in: int
+    user_id: int
+    email: EmailStr
+    provider: Literal["auth0"]
 
 
 class ReportListItem(BaseModel):

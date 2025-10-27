@@ -152,6 +152,34 @@ NEXT_PUBLIC_JOIN_URL=https://funnelanalyzerpro.com/pricing
 - **Magic link login** remains available for end users via email-based access.
 - **Admin credentials** are now seeded automatically using `DEFAULT_ADMIN_EMAIL` and `DEFAULT_ADMIN_PASSWORD`. Override these values in `.env` before deploying to production.
 - Admin logins issue a JWT for the dashboard; the frontend `Login` button falls back to the magic link flow if the credentials route is not needed.
+- **Auth0 social login** can be enabled for end users. Configure the environment variables below and the login modal will display a "Continue with Auth0" button that redirects users through the OAuth flow.
+
+### Auth0 configuration
+
+1. Create an Auth0 application (Regular Web App) and note the **Domain**, **Client ID**, and **Client Secret**.
+2. Add the following callback URL in Auth0: `https://<your-frontend-domain>/auth/callback` (update to match your deployment). The same value must be stored in `NEXT_PUBLIC_AUTH0_REDIRECT_URI`.
+3. Define the required environment variables:
+
+   **Backend (`backend/.env`):**
+
+   ```env
+   AUTH0_DOMAIN=your-tenant.us.auth0.com
+   AUTH0_CLIENT_ID=your-client-id
+   AUTH0_CLIENT_SECRET=your-client-secret
+   # Optional: request a custom API audience
+   AUTH0_AUDIENCE=https://api.example.com
+   ```
+
+   **Frontend (`frontend/.env.local`):**
+
+   ```env
+   NEXT_PUBLIC_AUTH0_DOMAIN=your-tenant.us.auth0.com
+   NEXT_PUBLIC_AUTH0_CLIENT_ID=your-client-id
+   NEXT_PUBLIC_AUTH0_REDIRECT_URI=https://localhost:3001/auth/callback
+   NEXT_PUBLIC_API_URL=http://localhost:3000  # existing API URL if not already set
+   ```
+
+4. Redeploy/restart both services so the new settings are available. The frontend detects `code` + `state` parameters on the redirect URI, exchanges them with `/api/auth/oauth/auth0/callback`, then saves the returned Funnel Analyzer JWT in the auth store.
 
 ### 3. Backend Setup & Run
 
@@ -209,6 +237,7 @@ The frontend will be available at: `http://localhost:3001`
 | POST | `/api/analyze` | Analyze funnel URLs (returns scores + feedback) |
 | POST | `/api/analyze/{analysis_id}/email` | Trigger email delivery for an existing report |
 | POST | `/api/auth/validate` | Validate JWT token |
+| POST | `/api/auth/oauth/auth0/callback` | Exchange an Auth0 authorization code for a Funnel Analyzer JWT |
 | POST | `/api/webhooks/thrivecart` | Receive ThriveCart purchase webhooks |
 | GET | `/api/reports/{user_id}` | Get user's past reports |
 | GET | `/api/reports/detail/{analysis_id}` | Get detailed report |
