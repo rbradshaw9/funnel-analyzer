@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 import { validateToken } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
@@ -22,8 +22,12 @@ interface AuthValidationResult {
 }
 
 export function useAuthValidation(): AuthValidationResult {
+  const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
+  const tokenFromQuery = searchParams?.get('token') ?? null
+  const searchParamsString = searchParams.toString()
+
   const token = useAuthStore((state) => state.token)
   const auth = useAuthStore((state) => state.auth)
   const loading = useAuthStore((state) => state.loading)
@@ -35,37 +39,24 @@ export function useAuthValidation(): AuthValidationResult {
   const setError = useAuthStore((state) => state.setError)
 
   useEffect(() => {
-    hydrate()
-  }, [hydrate])
+    const current = useAuthStore.getState().token
 
-  useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (tokenFromQuery === null) {
       return
     }
 
-    try {
-      const params = new URLSearchParams(window.location.search)
-      const queryToken = params.get('token')
-      if (!queryToken) {
-        return
-      }
-
-      const current = useAuthStore.getState().token
-      if (current !== queryToken) {
-        setToken(queryToken)
-      }
-
-      params.delete('token')
-      const nextQuery = params.toString()
-      const expectedSearch = nextQuery ? `?${nextQuery}` : ''
-      if (window.location.search !== expectedSearch) {
-        const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname
-        router.replace(nextUrl, { scroll: false })
-      }
-    } catch (error) {
-      console.warn('Failed to read auth token from URL search params', error)
+    if (current !== tokenFromQuery) {
+      setToken(tokenFromQuery)
     }
-  }, [pathname, router, setToken])
+
+    const params = new URLSearchParams(searchParamsString)
+    params.delete('token')
+
+    const nextQuery = params.toString()
+    const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname
+
+    router.replace(nextUrl, { scroll: false })
+  }, [tokenFromQuery, setToken, router, pathname, searchParamsString])
 
   useEffect(() => {
     if (!token) {

@@ -84,53 +84,61 @@ async def init_db() -> None:
                 )
                 await session.commit()
 
-        admin_email = (settings.DEFAULT_ADMIN_EMAIL or "").strip().lower()
-        admin_password = (settings.DEFAULT_ADMIN_PASSWORD or "").strip()
+        admin_email_raw = settings.DEFAULT_ADMIN_EMAIL or ""
+        admin_password_raw = settings.DEFAULT_ADMIN_PASSWORD or ""
+        admin_email = admin_email_raw.strip().lower()
+        admin_password = admin_password_raw.strip()
 
-        if admin_email:
-            if not admin_password:
-                logger.warning("DEFAULT_ADMIN_EMAIL is set but DEFAULT_ADMIN_PASSWORD is missing; skipping admin seeding")
-            else:
-                result = await session.execute(select(User).where(User.email == admin_email))
-                admin = result.scalar_one_or_none()
-                password_matches = verify_password(admin_password, admin.password_hash) if admin else False
+        if admin_email and admin_password:
+            result = await session.execute(select(User).where(User.email == admin_email))
+            admin = result.scalar_one_or_none()
+            password_matches = verify_password(admin_password, admin.password_hash) if admin else False
 
-                if admin is None:
-                    session.add(
-                        User(
-                            email=admin_email,
-                            full_name=settings.DEFAULT_ADMIN_NAME,
-                            is_active=1,
-                            role="admin",
-                            password_hash=hash_password(admin_password),
-                            status="active",
-                            plan="pro",
-                        )
+            if admin is None:
+                session.add(
+                    User(
+                        email=admin_email,
+                        full_name=settings.DEFAULT_ADMIN_NAME,
+                        is_active=1,
+                        role="admin",
+                        password_hash=hash_password(admin_password),
+                        status="active",
+                        plan="pro",
                     )
-                    await session.commit()
-                else:
-                    updated = False
-                    if admin.role != "admin":
-                        admin.role = "admin"
-                        updated = True
-                    if not password_matches:
-                        admin.password_hash = hash_password(admin_password)
-                        updated = True
-                    if settings.DEFAULT_ADMIN_NAME and admin.full_name != settings.DEFAULT_ADMIN_NAME:
-                        admin.full_name = settings.DEFAULT_ADMIN_NAME
-                        updated = True
-                    if admin.is_active != 1:
-                        admin.is_active = 1
-                        updated = True
-                    if admin.status != "active":
-                        admin.status = "active"
-                        updated = True
-                    if admin.plan != "pro":
-                        admin.plan = "pro"
-                        updated = True
+                )
+                await session.commit()
+            else:
+                updated = False
+                if admin.role != "admin":
+                    admin.role = "admin"
+                    updated = True
+                if not password_matches:
+                    admin.password_hash = hash_password(admin_password)
+                    updated = True
+                if settings.DEFAULT_ADMIN_NAME and admin.full_name != settings.DEFAULT_ADMIN_NAME:
+                    admin.full_name = settings.DEFAULT_ADMIN_NAME
+                    updated = True
+                if admin.is_active != 1:
+                    admin.is_active = 1
+                    updated = True
+                if admin.status != "active":
+                    admin.status = "active"
+                    updated = True
+                if admin.plan != "pro":
+                    admin.plan = "pro"
+                    updated = True
 
-                    if updated:
-                        await session.commit()
+                if updated:
+                    await session.commit()
+        else:
+            if admin_email_raw.strip() or admin_password_raw.strip():
+                logger.warning(
+                    "Admin account seeding skipped: both DEFAULT_ADMIN_EMAIL and DEFAULT_ADMIN_PASSWORD must be provided."
+                )
+            else:
+                logger.warning(
+                    "Admin account seeding skipped: DEFAULT_ADMIN_EMAIL and DEFAULT_ADMIN_PASSWORD are not set."
+                )
 
 
 async def reset_db() -> None:
