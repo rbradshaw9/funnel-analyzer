@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 import { validateToken } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
@@ -35,6 +35,8 @@ export function useAuthValidation(): AuthValidationResult {
     hydrate()
   }, [hydrate])
 
+  const [tokenFromQuery, setTokenFromQuery] = useState<string | null>(null)
+
   useEffect(() => {
     if (typeof window === 'undefined') {
       return
@@ -43,14 +45,13 @@ export function useAuthValidation(): AuthValidationResult {
     try {
       const currentUrl = new URL(window.location.href)
       const queryToken = currentUrl.searchParams.get('token')
+
       if (!queryToken) {
+        setTokenFromQuery(null)
         return
       }
 
-      const current = useAuthStore.getState().token
-      if (current !== queryToken) {
-        setToken(queryToken)
-      }
+      setTokenFromQuery(queryToken)
 
       currentUrl.searchParams.delete('token')
       const relativePath = `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`
@@ -60,8 +61,22 @@ export function useAuthValidation(): AuthValidationResult {
       }
     } catch (error) {
       console.warn('Failed to read auth token from URL search params', error)
+      setTokenFromQuery(null)
     }
-  }, [setToken])
+  }, [])
+
+  useEffect(() => {
+    if (!tokenFromQuery) {
+      return
+    }
+
+    const current = useAuthStore.getState().token
+    if (current !== tokenFromQuery) {
+      setToken(tokenFromQuery)
+    }
+
+    setTokenFromQuery(null)
+  }, [tokenFromQuery, setToken, setTokenFromQuery])
 
   useEffect(() => {
     if (!token) {
