@@ -116,9 +116,6 @@ export default function FreeAnalysisPage() {
     token: authToken,
     loading: authLoading,
     error: authError,
-    accessGranted,
-    statusMessage: authStatusMessage,
-    statusReason: authStatusReason,
     userId,
   } = useAuthValidation();
 
@@ -315,22 +312,11 @@ export default function FreeAnalysisPage() {
     return 'from-red-500 to-red-600';
   };
 
-  const canViewFullContent = Boolean(authToken && accessGranted);
+  const canViewFullContent = Boolean(authToken);
   const showAuthPrompt = !canViewFullContent;
-  const promptStatusMessage = (() => {
-    if (authToken) {
-      if (authLoading) {
-        return 'Verifying your membership…';
-      }
-      if (!accessGranted) {
-        return authStatusMessage || authStatusReason || 'Your membership needs attention.';
-      }
-      return null;
-    }
-    return 'Create a free account to unlock the full analysis.';
-  })();
+  const promptStatusMessage = authToken ? null : 'Create a free account to unlock the full analysis.';
   const promptErrorMessage = authError ?? null;
-  const promptDisabled = authLoading && Boolean(authToken);
+  const promptDisabled = authLoading;
 
   const openAuthModal = (mode: AuthMode) => {
     setAuthModalMode(mode);
