@@ -1,13 +1,13 @@
-"""
-Reports route - Retrieve past analysis reports.
-"""
+"""Reports route - Retrieve past analysis reports."""
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db.session import get_db_session
+from ..models.database import User
 from ..models.schemas import AnalysisResponse, ReportDeleteResponse, ReportListResponse
 from ..services.reports import delete_report, get_report_by_id, get_user_reports
+from .dependencies import get_current_user
 import logging
 
 router = APIRouter()
@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 @router.get("/detail/{analysis_id}", response_model=AnalysisResponse)
 async def get_report_detail(
     analysis_id: int,
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
-    user_id: int | None = Query(default=None, ge=1, description="Optional user ownership check"),
 ):
     """
     Get detailed analysis report by ID.
@@ -26,9 +26,9 @@ async def get_report_detail(
     Returns complete analysis with all pages, scores, and feedback.
     """
     try:
-        logger.info(f"Fetching detailed report for analysis {analysis_id}")
-        
-        result = await get_report_by_id(session, analysis_id, user_id=user_id)
+        logger.info(f"Fetching detailed report for analysis %s (user %s)", analysis_id, current_user.id)
+
+        result = await get_report_by_id(session, analysis_id, user_id=current_user.id)
         
         if not result:
             raise HTTPException(status_code=404, detail="Report not found")
@@ -45,13 +45,13 @@ async def get_report_detail(
 @router.delete("/detail/{analysis_id}", response_model=ReportDeleteResponse)
 async def remove_report_detail(
     analysis_id: int,
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
-    user_id: int | None = Query(default=None, ge=1, description="Optional user ownership check"),
 ):
     """Delete an analysis and purge any persisted screenshots."""
 
     try:
-        result = await delete_report(session=session, analysis_id=analysis_id, user_id=user_id)
+        result = await delete_report(session=session, analysis_id=analysis_id, user_id=current_user.id)
     except Exception as exc:  # noqa: BLE001
         logger.error("Failed to delete report %s: %s", analysis_id, exc, exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to delete report") from exc
@@ -62,9 +62,9 @@ async def remove_report_detail(
     return {"status": "deleted", **result}
 
 
-@router.get("/{user_id}", response_model=ReportListResponse)
+@router.get("", response_model=ReportListResponse)
 async def get_reports(
-    user_id: int,
+    current_user: User = Depends(get_current_user),
     limit: int = Query(default=10, le=100),
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_db_session),
@@ -75,9 +75,19 @@ async def get_reports(
     Returns paginated list of analyses with summary information.
     """
     try:
-        logger.info(f"Fetching reports for user {user_id}, limit={limit}, offset={offset}")
-        
-        result = await get_user_reports(session, user_id=user_id, limit=limit, offset=offset)
+        logger.info(
+            "Fetching reports for user %s, limit=%s, offset=%s",
+            current_user.id,
+            limit,
+            offset,
+        )
+
+        result = await get_user_reports(
+            session,
+            user_id=current_user.id,
+            limit=limit,
+            offset=offset,
+        )
 
         return result
 

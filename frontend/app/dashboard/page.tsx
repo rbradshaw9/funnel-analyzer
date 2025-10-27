@@ -51,7 +51,7 @@ function DashboardContent() {
 
   const fetchReports = useCallback(
     async ({ offset = 0, append = false }: { offset?: number; append?: boolean } = {}) => {
-    if (!userId) {
+    if (!userId || !token) {
       setReports([])
       setReportsTotal(0)
       setReportsError(null)
@@ -70,7 +70,7 @@ function DashboardContent() {
       setActionError(null)
 
       try {
-        const response = await getReports(userId, PAGE_SIZE, offset)
+        const response = await getReports({ limit: PAGE_SIZE, offset, token })
 
         setReports((prev) => (append ? [...prev, ...response.reports] : response.reports))
         setReportsTotal(response.total)
@@ -89,36 +89,36 @@ function DashboardContent() {
         }
       }
     },
-    [userId],
+    [userId, token],
   )
 
   useEffect(() => {
-    if (!userId) {
+    if (!userId || !token) {
       setReports([])
       setReportsTotal(0)
       return
     }
 
     void fetchReports({ offset: 0, append: false })
-  }, [userId, fetchReports])
+  }, [userId, token, fetchReports])
 
   useEffect(() => {
-    if (!userId || !currentAnalysis) {
+    if (!userId || !token || !currentAnalysis) {
       return
     }
 
     void fetchReports({ offset: 0, append: false })
-  }, [userId, currentAnalysis, fetchReports])
+  }, [userId, token, currentAnalysis, fetchReports])
 
   const handleViewReport = useCallback(async (analysisId: number) => {
-    if (!userId) {
+    if (!userId || !token) {
       return
     }
 
     setViewingReportId(analysisId)
     setActionError(null)
     try {
-      const detail = await getReportDetail(analysisId, { userId })
+      const detail = await getReportDetail(analysisId, { token })
       setCurrentAnalysis(detail)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (error: any) {
@@ -126,10 +126,10 @@ function DashboardContent() {
     } finally {
       setViewingReportId(null)
     }
-  }, [userId, setCurrentAnalysis])
+  }, [userId, token, setCurrentAnalysis])
 
   const handleDeleteReport = useCallback(async (analysisId: number) => {
-    if (!userId) {
+    if (!userId || !token) {
       return
     }
 
@@ -141,7 +141,7 @@ function DashboardContent() {
     setDeletingReportId(analysisId)
     setActionError(null)
     try {
-      await deleteReport(analysisId, { userId })
+      await deleteReport(analysisId, { token })
       setReports((prev) => prev.filter((report) => report.analysis_id !== analysisId))
       setReportsTotal((prev) => (prev > 0 ? prev - 1 : 0))
       if (currentAnalysis?.analysis_id === analysisId) {
@@ -152,25 +152,25 @@ function DashboardContent() {
     } finally {
       setDeletingReportId(null)
     }
-  }, [userId, currentAnalysis, setCurrentAnalysis])
+  }, [userId, token, currentAnalysis, setCurrentAnalysis])
 
   const reportCount = reports.length
 
   const handleRefreshReports = useCallback(() => {
-    if (!userId) {
+    if (!userId || !token) {
       return
     }
 
     void fetchReports({ offset: 0, append: false })
-  }, [userId, fetchReports])
+  }, [userId, token, fetchReports])
 
   const handleLoadMore = useCallback(() => {
-    if (!userId) {
+    if (!userId || !token) {
       return
     }
 
     void fetchReports({ offset: reportCount, append: true })
-  }, [userId, reportCount, fetchReports])
+  }, [userId, token, reportCount, fetchReports])
 
   const showMembershipAction = Boolean(token && !accessGranted && !authLoading && !authError)
   const hasReports = reportCount > 0

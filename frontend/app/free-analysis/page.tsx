@@ -7,6 +7,7 @@ import { analyzeFunnel, sendAnalysisEmail } from '@/lib/api';
 import type { AnalysisResult } from '@/types';
 import { TopNav } from '@/components/TopNav';
 import { FUNNEL_ANALYZER_JOIN_URL } from '@/lib/externalLinks';
+import { useAuthStore } from '@/store/authStore';
 
 type StageKey = 'scrape' | 'screenshot' | 'analysis' | 'summary';
 
@@ -173,6 +174,7 @@ export default function FreeAnalysisPage() {
   const [stageEstimates, setStageEstimates] = useState<Record<StageKey, number>>(() => ({
     ...DEFAULT_STAGE_ESTIMATES,
   }));
+  const token = useAuthStore((state) => state.token);
 
   const estimatedTotalSeconds = useMemo(() => sumDurations(stageEstimates), [stageEstimates]);
 
@@ -342,7 +344,7 @@ export default function FreeAnalysisPage() {
 
     try {
       setUrl(sanitizedUrl);
-      const analysis = await analyzeFunnel([sanitizedUrl]);
+      const analysis = await analyzeFunnel([sanitizedUrl], { token });
       setResult(analysis);
       setEmail(analysis.recipient_email ?? '');
       setProgress(100);
@@ -368,7 +370,7 @@ export default function FreeAnalysisPage() {
 
     try {
       setIsSendingEmail(true);
-      await sendAnalysisEmail(result.analysis_id, email.trim());
+      await sendAnalysisEmail(result.analysis_id, email.trim(), token);
       setEmailSubmitted(true);
       setEmail(email.trim());
       setResult((prev) => (prev ? { ...prev, recipient_email: email.trim() } : prev));

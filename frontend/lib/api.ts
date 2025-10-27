@@ -21,8 +21,25 @@ const api = axios.create({
 
 interface AnalyzeFunnelOptions {
   email?: string
-  userId?: number | null
+  token?: string | null
 }
+
+interface ReportListOptions {
+  limit?: number
+  offset?: number
+  token?: string | null
+}
+
+interface ReportDetailOptions {
+  token?: string | null
+}
+
+interface DeleteReportOptions {
+  token?: string | null
+}
+
+const authHeaders = (token?: string | null) =>
+  token ? { Authorization: `Bearer ${token}` } : undefined
 
 export async function analyzeFunnel(urls: string[], options: AnalyzeFunnelOptions = {}): Promise<AnalysisResult> {
   try {
@@ -32,12 +49,9 @@ export async function analyzeFunnel(urls: string[], options: AnalyzeFunnelOption
       payload.email = options.email
     }
 
-    const params: Record<string, number> = {}
-    if (typeof options.userId === 'number') {
-      params.user_id = options.userId
-    }
-
-    const response = await api.post<AnalysisResult>('/api/analyze', payload, { params })
+    const response = await api.post<AnalysisResult>('/api/analyze', payload, {
+      headers: authHeaders(options.token),
+    })
     return response.data
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to analyze funnel')
@@ -53,10 +67,13 @@ export async function validateToken(token: string): Promise<AuthResponse> {
   }
 }
 
-export async function getReports(userId: number, limit = 10, offset = 0): Promise<ReportListResponse> {
+export async function getReports(options: ReportListOptions = {}): Promise<ReportListResponse> {
   try {
-    const response = await api.get<ReportListResponse>(`/api/reports/${userId}`, {
+    const { limit = 10, offset = 0, token } = options
+
+    const response = await api.get<ReportListResponse>('/api/reports', {
       params: { limit, offset },
+      headers: authHeaders(token),
     })
     return response.data
   } catch (error: any) {
@@ -64,22 +81,13 @@ export async function getReports(userId: number, limit = 10, offset = 0): Promis
   }
 }
 
-interface ReportDetailOptions {
-  userId?: number
-}
-
 export async function getReportDetail(
   analysisId: number,
   options: ReportDetailOptions = {},
 ): Promise<AnalysisResult> {
   try {
-    const params: Record<string, number> = {}
-    if (typeof options.userId === 'number') {
-      params.user_id = options.userId
-    }
-
     const response = await api.get<AnalysisResult>(`/api/reports/detail/${analysisId}`, {
-      params,
+      headers: authHeaders(options.token),
     })
     return response.data
   } catch (error: any) {
@@ -87,22 +95,13 @@ export async function getReportDetail(
   }
 }
 
-interface DeleteReportOptions {
-  userId?: number
-}
-
 export async function deleteReport(
   analysisId: number,
   options: DeleteReportOptions = {},
 ): Promise<ReportDeleteResponse> {
   try {
-    const params: Record<string, number> = {}
-    if (typeof options.userId === 'number') {
-      params.user_id = options.userId
-    }
-
     const response = await api.delete<ReportDeleteResponse>(`/api/reports/detail/${analysisId}`, {
-      params,
+      headers: authHeaders(options.token),
     })
     return response.data
   } catch (error: any) {
@@ -110,9 +109,13 @@ export async function deleteReport(
   }
 }
 
-export async function sendAnalysisEmail(analysisId: number, email: string): Promise<void> {
+export async function sendAnalysisEmail(analysisId: number, email: string, token?: string | null): Promise<void> {
   try {
-    await api.post(`/api/analyze/${analysisId}/email`, { email })
+    await api.post(
+      `/api/analyze/${analysisId}/email`,
+      { email },
+      { headers: authHeaders(token) },
+    )
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to send analysis email')
   }

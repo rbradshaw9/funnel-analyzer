@@ -3,11 +3,12 @@
 import asyncio
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db.session import get_db_session
-from ..models.database import Analysis
+from ..models.database import Analysis, User
 from ..models.schemas import AnalysisEmailRequest, AnalysisRequest, AnalysisResponse
 from ..services.analyzer import analyze_funnel
 from ..services.notifications import send_analysis_email
@@ -18,6 +19,7 @@ from ..utils.rate_limiter import (
     RateLimitExceeded,
     SlidingWindowRateLimiter,
 )
+from .dependencies import get_current_user
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -43,8 +45,8 @@ analysis_rate_limiter.register(
 async def analyze_funnel_endpoint(
     request: AnalysisRequest,
     raw_request: Request,
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
-    user_id: int | None = Query(default=None, description="Identifier for the authenticated user"),
 ):
     """
     Analyze a marketing funnel by URLs.
@@ -62,7 +64,7 @@ async def analyze_funnel_endpoint(
             await analysis_rate_limiter.check(
                 {
                     "ip": f"ip:{client_ip}",
-                    "user": f"user:{user_id}" if user_id is not None else None,
+                    "user": f"user:{current_user.id}",
                 }
             )
         except RateLimitExceeded as exc:  # pragma: no cover - trivial guard
@@ -81,7 +83,7 @@ async def analyze_funnel_endpoint(
         result = await analyze_funnel(
             url_strings,
             session=session,
-            user_id=user_id,
+            user_id=current_user.id,
             recipient_email=request.email,
         )
 
@@ -94,6 +96,8 @@ async def analyze_funnel_endpoint(
     except ValueError as e:
         logger.error(f"Validation error: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Analysis failed: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Analysis failed. Please try again.")
@@ -103,15 +107,22 @@ async def analyze_funnel_endpoint(
 async def resend_analysis_email(
     analysis_id: int,
     payload: AnalysisEmailRequest,
+    current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
     """Trigger an email delivery for an existing analysis report."""
 
-    analysis = await session.get(Analysis, analysis_id)
+    stmt = select(Analysis).where(Analysis.id == analysis_id, Analysis.user_id == current_user.id)
+    result = await session.execute(stmt)
+    analysis = result.scalar_one_or_none()
     if analysis is None:
         raise HTTPException(status_code=404, detail="Analysis not found")
 
-    report_payload = await get_report_by_id(analysis_id=analysis_id, session=session)
+    report_payload = await get_report_by_id(
+        session=session,
+        analysis_id=analysis_id,
+        user_id=current_user.id,
+    )
     if report_payload is None:
         raise HTTPException(status_code=404, detail="Analysis not found")
 

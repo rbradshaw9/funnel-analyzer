@@ -56,14 +56,16 @@ async def get_user_reports(
 async def get_report_by_id(
     session: AsyncSession,
     analysis_id: int,
-    user_id: Optional[int] = None,
+    *,
+    user_id: int,
 ) -> Optional[dict]:
-    """Retrieve a single analysis with its detail pages."""
+    """Retrieve a single analysis with its detail pages for the authenticated user."""
 
-    stmt = select(Analysis).options(selectinload(Analysis.pages)).where(Analysis.id == analysis_id)
-
-    if user_id is not None:
-        stmt = stmt.where(Analysis.user_id == user_id)
+    stmt = (
+        select(Analysis)
+        .options(selectinload(Analysis.pages))
+        .where(Analysis.id == analysis_id, Analysis.user_id == user_id)
+    )
 
     result = await session.execute(stmt)
     analysis = result.scalar_one_or_none()
@@ -118,7 +120,7 @@ async def delete_report(
     session: AsyncSession,
     analysis_id: int,
     *,
-    user_id: Optional[int] = None,
+    user_id: int,
 ) -> Optional[Dict[str, Any]]:
     """Delete an analysis and remove any stored assets.
 
@@ -127,9 +129,11 @@ async def delete_report(
     to the requesting user).
     """
 
-    stmt = select(Analysis).options(selectinload(Analysis.pages)).where(Analysis.id == analysis_id)
-    if user_id is not None:
-        stmt = stmt.where(Analysis.user_id == user_id)
+    stmt = (
+        select(Analysis)
+        .options(selectinload(Analysis.pages))
+        .where(Analysis.id == analysis_id, Analysis.user_id == user_id)
+    )
 
     result = await session.execute(stmt)
     analysis = result.scalar_one_or_none()

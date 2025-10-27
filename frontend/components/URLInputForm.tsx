@@ -18,7 +18,7 @@ export default function URLInputForm({ isLocked = false }: URLInputFormProps) {
   const [error, setError] = useState<string>('')
   const [recipientEmail, setRecipientEmail] = useState<string>('')
   const { setAnalyzing, setCurrentAnalysis } = useAnalysisStore()
-  const auth = useAuthStore((state) => state.auth)
+  const token = useAuthStore((state) => state.token)
 
   useEffect(() => {
     if (!isLocked && error === LOCK_MESSAGE) {
@@ -83,7 +83,7 @@ export default function URLInputForm({ isLocked = false }: URLInputFormProps) {
       
       const result = await analyzeFunnel(validUrls, {
         email: trimmedEmail || undefined,
-        userId: auth?.user_id ?? undefined,
+        token,
       })
       setCurrentAnalysis(result)
     } catch (err: any) {
