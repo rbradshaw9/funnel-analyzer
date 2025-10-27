@@ -7,6 +7,7 @@ from datetime import datetime, timezone, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db.session import get_db_session
@@ -18,10 +19,15 @@ from ..models.schemas import (
     AuthValidateResponse,
     MagicLinkRequest,
     MagicLinkResponse,
+    MemberLoginRequest,
+    MemberLoginResponse,
+    MemberRegistrationRequest,
+    MemberRegistrationResponse,
 )
 from ..services.auth import create_jwt_token, create_magic_link_token, validate_jwt_token
 from ..services.email import get_email_service
-from ..services.passwords import verify_password
+from ..services.onboarding import send_magic_link_onboarding
+from ..services.passwords import hash_password, verify_password
 from ..utils.config import settings
 
 router = APIRouter()
@@ -65,6 +71,107 @@ def _build_portal_message(status: str | None) -> str:
     if status == "canceled":
         return "Subscription canceled"
     return "Token is valid"
+
+
+def _build_session_payload(*, user: User, token: str, expires_delta: timedelta) -> dict:
+    return {
+        "access_token": token,
+        "expires_in": int(expires_delta.total_seconds()),
+        "user_id": user.id,
+        "email": user.email,
+        "plan": user.plan,
+    }
+
+
+@router.post("/register", response_model=MemberRegistrationResponse, status_code=201)
+async def register_member(
+    request: MemberRegistrationRequest,
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Create a password-based member account."""
+
+    email = _normalize_email(request.email)
+
+    stmt = select(User).where(User.email == email)
+    result = await session.execute(stmt)
+    if result.scalar_one_or_none() is not None:
+        logger.info("Registration attempt rejected for existing email %s", email)
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+    password_hash = hash_password(request.password)
+
+    user = User(
+        email=email,
+        full_name=request.full_name,
+        password_hash=password_hash,
+        plan="free",
+        status="active",
+        is_active=1,
+        role="member",
+    )
+
+    session.add(user)
+    try:
+        await session.flush()
+    except IntegrityError:
+        await session.rollback()
+        logger.info("Registration race condition detected for %s", email)
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+    expires_delta = timedelta(hours=settings.JWT_EXPIRATION_HOURS)
+    token = await create_jwt_token(
+        user.id,
+        user.email,
+        expires_in=expires_delta,
+        token_type="session",
+    )
+
+    await session.commit()
+
+    try:
+        await send_magic_link_onboarding(session=session, user=user, plan=user.plan)
+    except Exception:  # noqa: BLE001 - onboarding is best-effort
+        logger.exception("Failed to trigger onboarding email for %s", email)
+
+    payload = _build_session_payload(user=user, token=token, expires_delta=expires_delta)
+    return MemberRegistrationResponse(**payload)
+
+
+@router.post("/login", response_model=MemberLoginResponse)
+async def member_login(
+    request: MemberLoginRequest,
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Authenticate a member using email and password."""
+
+    email = _normalize_email(request.email)
+
+    stmt = select(User).where(User.email == email)
+    result = await session.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        logger.warning("Member login failed for %s: account not found", email)
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    if not verify_password(request.password, user.password_hash):
+        logger.warning("Member login failed for %s: incorrect password", email)
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    if not user.is_active or not _access_granted(user):
+        logger.warning("Member login blocked for %s: inactive account", email)
+        raise HTTPException(status_code=403, detail="Account inactive")
+
+    expires_delta = timedelta(hours=settings.JWT_EXPIRATION_HOURS)
+    token = await create_jwt_token(
+        user.id,
+        user.email,
+        expires_in=expires_delta,
+        token_type="session",
+    )
+
+    payload = _build_session_payload(user=user, token=token, expires_delta=expires_delta)
+    return MemberLoginResponse(**payload)
 
 
 @router.post("/magic-link", response_model=MagicLinkResponse)
