@@ -167,6 +167,17 @@ export async function adminLogin(email: string, password: string): Promise<Admin
   }
 }
 
+export async function refreshAccessToken(refreshToken: string): Promise<AuthCredentialsResponse> {
+  try {
+    const response = await api.post<AuthCredentialsResponse>('/api/auth/refresh', { 
+      refresh_token: refreshToken 
+    })
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to refresh token')
+  }
+}
+
 export async function getPublicStats(): Promise<PublicStatsResponse> {
   try {
     const response = await api.get<PublicStatsResponse>('/api/metrics/stats')

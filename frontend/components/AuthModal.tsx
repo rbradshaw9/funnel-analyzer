@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { loginAccount, registerAccount } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import type { AuthCredentialsResponse } from '@/types'
+import { OAuthButton } from './OAuthButton'
 
 export type AuthMode = 'signup' | 'login'
 
@@ -18,6 +19,10 @@ interface AuthModalProps {
 const NAME_PLACEHOLDER = 'Taylor Johnson'
 const EMAIL_PLACEHOLDER = 'taylor@example.com'
 
+const getApiUrl = () => {
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+}
+
 export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticated }: AuthModalProps) {
   const [mode, setMode] = useState<AuthMode>(defaultMode)
   const [name, setName] = useState('')
@@ -28,6 +33,7 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const setToken = useAuthStore((state) => state.setToken)
+  const setTokens = useAuthStore((state) => state.setTokens)
   const setError = useAuthStore((state) => state.setError)
 
   const successTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -70,6 +76,14 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
     onClose()
   }
 
+  const handleOAuthLogin = (provider: 'google' | 'github') => {
+    const apiUrl = getApiUrl()
+    const oauthUrl = `${apiUrl}/api/auth/oauth/${provider}`
+    
+    // Redirect to OAuth provider
+    window.location.href = oauthUrl
+  }
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (submitting || successMessage) {
@@ -101,7 +115,12 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
         return
       }
 
-      setToken(response.token)
+      // Store both access token and refresh token
+      if (response.refresh_token) {
+        setTokens(response.token, response.refresh_token)
+      } else {
+        setToken(response.token)
+      }
       setError(null)
 
       const message = mode === 'signup' ? 'Account created! Unlocking your report…' : 'Welcome back! Unlocking your report…'
@@ -168,7 +187,28 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
           </button>
         </div>
 
-        <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
+        {/* OAuth Buttons */}
+        <div className="mt-6 space-y-3">
+          <OAuthButton 
+            provider="google" 
+            onClick={() => handleOAuthLogin('google')}
+            disabled={submitting || Boolean(successMessage)}
+          />
+          <OAuthButton 
+            provider="github" 
+            onClick={() => handleOAuthLogin('github')}
+            disabled={submitting || Boolean(successMessage)}
+          />
+        </div>
+
+        {/* Divider */}
+        <div className="my-6 flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-200" />
+          <span className="text-xs font-medium text-slate-400">or continue with email</span>
+          <div className="h-px flex-1 bg-slate-200" />
+        </div>
+
+        <form className="space-y-4" onSubmit={handleSubmit}>
           {mode === 'signup' && (
             <div>
               <label htmlFor="auth-name" className="block text-sm font-semibold text-slate-700">
