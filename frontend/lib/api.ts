@@ -1,10 +1,12 @@
 import axios from 'axios'
-import {
+import type {
   AnalysisResult,
   AdminLoginResponse,
   AuthCredentialsResponse,
   AuthResponse,
+  LoginPayload,
   MagicLinkResponse,
+  RegisterPayload,
   ReportDeleteResponse,
   ReportListResponse,
   PublicStatsResponse,
@@ -137,12 +139,6 @@ export async function requestMagicLink(email: string): Promise<MagicLinkResponse
   }
 }
 
-interface RegisterPayload {
-  email: string
-  password: string
-  name?: string
-}
-
 export async function registerAccount(payload: RegisterPayload): Promise<AuthCredentialsResponse> {
   try {
     const response = await api.post<AuthCredentialsResponse>('/register', payload)
@@ -154,7 +150,8 @@ export async function registerAccount(payload: RegisterPayload): Promise<AuthCre
 
 export async function loginAccount(email: string, password: string): Promise<AuthCredentialsResponse> {
   try {
-    const response = await api.post<AuthCredentialsResponse>('/login', { email, password })
+    const payload: LoginPayload = { email, password }
+    const response = await api.post<AuthCredentialsResponse>('/login', payload)
     return response.data
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Invalid email or password')
