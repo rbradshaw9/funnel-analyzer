@@ -245,6 +245,44 @@ class ReportDeleteResponse(BaseModel):
     storage_available: bool
 
 
+class MemberRegistrationRequest(BaseModel):
+    """Payload for creating a password-based member account."""
+
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=128)
+    full_name: Optional[str] = Field(default=None, max_length=255)
+
+
+class MemberLoginRequest(BaseModel):
+    """Credentials used for authenticating an existing member."""
+
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=128)
+
+
+class SessionResponse(BaseModel):
+    """Standard bearer token envelope returned after authentication."""
+
+    access_token: str
+    token_type: Literal["bearer"] = "bearer"
+    expires_in: int = Field(..., ge=0, description="Token lifetime in seconds")
+    user_id: int
+    email: EmailStr
+    plan: str = Field(..., description="Member plan identifier")
+
+
+class MemberRegistrationResponse(SessionResponse):
+    """Registration response containing the initial session token."""
+
+    status: Literal["registered"] = "registered"
+
+
+class MemberLoginResponse(SessionResponse):
+    """Login response containing a refreshed session token."""
+
+    status: Literal["authenticated"] = "authenticated"
+
+
 class AdminLoginRequest(BaseModel):
     """Payload for admin credential login."""
 

@@ -23,6 +23,7 @@ const api = axios.create({
 interface AnalyzeFunnelOptions {
   email?: string
   userId?: number | null
+  token?: string | null
 }
 
 export async function analyzeFunnel(urls: string[], options: AnalyzeFunnelOptions = {}): Promise<AnalysisResult> {
@@ -38,7 +39,15 @@ export async function analyzeFunnel(urls: string[], options: AnalyzeFunnelOption
       params.user_id = options.userId
     }
 
-    const response = await api.post<AnalysisResult>('/api/analyze', payload, { params })
+    const headers: Record<string, string> = {}
+    if (options.token) {
+      headers.Authorization = `Bearer ${options.token}`
+    }
+
+    const response = await api.post<AnalysisResult>('/api/analyze', payload, {
+      params,
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
+    })
     return response.data
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to analyze funnel')
@@ -125,6 +134,30 @@ export async function requestMagicLink(email: string): Promise<MagicLinkResponse
     return response.data
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to send magic link')
+  }
+}
+
+interface RegisterPayload {
+  email: string
+  password: string
+  name?: string
+}
+
+export async function registerAccount(payload: RegisterPayload): Promise<AuthCredentialsResponse> {
+  try {
+    const response = await api.post<AuthCredentialsResponse>('/register', payload)
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to create account')
+  }
+}
+
+export async function loginAccount(email: string, password: string): Promise<AuthCredentialsResponse> {
+  try {
+    const response = await api.post<AuthCredentialsResponse>('/login', { email, password })
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Invalid email or password')
   }
 }
 

@@ -181,3 +181,12 @@ export interface PublicStatsResponse {
   analyses_run: number
   pages_analyzed: number
 }
+
+export interface AuthCredentialsResponse {
+  token: string
+  refresh_token?: string | null
+  expires_at?: string | null
+  user_id?: number
+  email?: string
+  message?: string
+}
