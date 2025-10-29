@@ -3,9 +3,14 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { FiMail, FiEdit, FiTrash2, FiEye } from "react-icons/fi"
+import { FiMail, FiEdit, FiTrash2, FiEye, FiCode } from "react-icons/fi"
 import AdminLayout from "@/components/AdminLayout"
 import { useAuthStore } from "@/store/authStore"
+import dynamic from "next/dynamic"
+import "react-quill/dist/quill.snow.css"
+
+// Dynamically import ReactQuill to avoid SSR issues
+const ReactQuill = dynamic(() => import("react-quill"), { ssr: false })
 
 interface EmailTemplate {
   id: number
@@ -35,11 +40,24 @@ export default function EmailTemplatesPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null)
   const [editMode, setEditMode] = useState(false)
   const [previewMode, setPreviewMode] = useState(false)
+  const [codeMode, setCodeMode] = useState(false)
   
   const [editSubject, setEditSubject] = useState("")
   const [editHtmlContent, setEditHtmlContent] = useState("")
   const [editTextContent, setEditTextContent] = useState("")
   const [saveLoading, setSaveLoading] = useState(false)
+
+  // Quill editor modules
+  const modules = {
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ["bold", "italic", "underline", "strike"],
+      [{ list: "ordered" }, { list: "bullet" }],
+      [{ color: [] }, { background: [] }],
+      ["link"],
+      ["clean"],
+    ],
+  }
 
   useEffect(() => {
     if (!token) {
@@ -222,12 +240,28 @@ export default function EmailTemplatesPage() {
                   </h2>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setPreviewMode(!previewMode)}
+                      onClick={() => {
+                        setPreviewMode(!previewMode)
+                        if (!previewMode) setCodeMode(false)
+                      }}
                       className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg flex items-center gap-2"
                     >
                       <FiEye className="h-4 w-4" />
                       {previewMode ? "Edit" : "Preview"}
                     </button>
+                    {editMode && !previewMode && (
+                      <button
+                        onClick={() => setCodeMode(!codeMode)}
+                        className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-2 ${
+                          codeMode
+                            ? "bg-slate-100 text-slate-900"
+                            : "text-slate-700 hover:bg-slate-100"
+                        }`}
+                      >
+                        <FiCode className="h-4 w-4" />
+                        {codeMode ? "Visual" : "Code"}
+                      </button>
+                    )}
                     {!editMode ? (
                       <button
                         onClick={() => setEditMode(true)}
@@ -296,15 +330,33 @@ export default function EmailTemplatesPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        HTML Content
-                      </label>
-                      <textarea
-                        value={editHtmlContent}
-                        onChange={(e) => setEditHtmlContent(e.target.value)}
-                        rows={10}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                      />
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-sm font-medium text-slate-700">
+                          HTML Content
+                        </label>
+                        <span className="text-xs text-slate-500">
+                          {codeMode ? "Raw HTML" : "Visual Editor"}
+                        </span>
+                      </div>
+                      {codeMode ? (
+                        <textarea
+                          value={editHtmlContent}
+                          onChange={(e) => setEditHtmlContent(e.target.value)}
+                          rows={15}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                        />
+                      ) : (
+                        <div className="border border-slate-300 rounded-lg overflow-hidden">
+                          <ReactQuill
+                            theme="snow"
+                            value={editHtmlContent}
+                            onChange={setEditHtmlContent}
+                            modules={modules}
+                            className="bg-white"
+                            style={{ minHeight: "300px" }}
+                          />
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -315,6 +367,7 @@ export default function EmailTemplatesPage() {
                         onChange={(e) => setEditTextContent(e.target.value)}
                         rows={6}
                         className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                        placeholder="Plain text version for email clients that don't support HTML"
                       />
                     </div>
                   </div>

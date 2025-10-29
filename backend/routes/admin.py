@@ -476,23 +476,54 @@ async def get_email_template(
         # Return default template from email_templates.py
         from ..services import email_templates
         
-        defaults = {
-            "magic_link": "Magic Link Login",
-            "welcome": "Welcome Email",
-            "analysis_complete": "Analysis Complete",
-            "password_reset": "Password Reset"
+        # Get default template content
+        defaults_map = {
+            "magic_link": {
+                "label": "Magic Link Login",
+                "generator": lambda: email_templates.magic_link_email(
+                    magic_link_url="https://example.com/login?token=DEMO_TOKEN",
+                    expires_minutes=15,
+                    user_email="user@example.com"
+                )
+            },
+            "welcome": {
+                "label": "Welcome Email",
+                "generator": lambda: email_templates.welcome_email(
+                    user_name="John Doe",
+                    magic_link_url="https://example.com/dashboard",
+                    plan="free"
+                )
+            },
+            "analysis_complete": {
+                "label": "Analysis Complete",
+                "generator": lambda: email_templates.analysis_complete_email(
+                    user_name="John Doe",
+                    analysis_url="https://example.com/analysis/123",
+                    overall_score=75,
+                    top_issue="Improve value proposition clarity"
+                )
+            },
+            "password_reset": {
+                "label": "Password Reset",
+                "generator": lambda: email_templates.password_reset_email(
+                    reset_url="https://example.com/reset?token=DEMO_TOKEN",
+                    user_email="user@example.com"
+                )
+            }
         }
         
-        if template_name not in defaults:
+        if template_name not in defaults_map:
             raise HTTPException(status_code=404, detail="Template not found")
+        
+        default_data = defaults_map[template_name]["generator"]()
         
         return EmailTemplateSchema(
             id=0,
             name=template_name,
-            subject=defaults[template_name],
-            html_content="<!-- Default template from code -->",
-            text_content="Default template from code",
-            description=f"Default {defaults[template_name]} template",
+            subject=default_data["subject"],
+            html_content=default_data["html"],
+            text_content=default_data["text"],
+            description=f"Default {defaults_map[template_name]['label']} template",
             is_custom=False,
             created_at=datetime.now(timezone.utc),
             updated_at=None,
