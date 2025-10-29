@@ -13,13 +13,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from sqlalchemy import text
-from backend.db.session import get_async_engine
+from backend.db.session import engine
 
 
 async def add_email_templates_table():
     """Add email_templates table to database."""
-    
-    engine = get_async_engine()
     
     async with engine.begin() as conn:
         # Check if table exists
