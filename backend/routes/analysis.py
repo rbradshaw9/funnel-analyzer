@@ -103,7 +103,20 @@ async def analyze_funnel_endpoint(
         filtered_result = filter_analysis_by_plan(result, user_plan)
 
         if request.email:
-            asyncio.create_task(send_analysis_email(recipient_email=request.email, analysis=filtered_result))
+            # Send email in background but with proper error handling
+            email_task = asyncio.create_task(send_analysis_email(recipient_email=request.email, analysis=filtered_result))
+            
+            def handle_email_result(task):
+                try:
+                    sent = task.result()
+                    if sent:
+                        logger.info(f"✅ Analysis email sent successfully to {request.email}")
+                    else:
+                        logger.warning(f"❌ Failed to send analysis email to {request.email}")
+                except Exception as e:
+                    logger.error(f"❌ Email task failed for {request.email}: {str(e)}")
+            
+            email_task.add_done_callback(handle_email_result)
 
         logger.info(f"Analysis completed with overall score: {filtered_result.overall_score}")
         return filtered_result
