@@ -207,7 +207,7 @@ async def analyze_funnel(
                     page_content.url,
                     viewport_width=1440,
                     viewport_height=900,
-                    full_page=False,
+                    full_page=True,  # Capture entire page from top to bottom
                 )
             )
 
