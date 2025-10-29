@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { FiChevronDown, FiChevronUp } from "react-icons/fi"
@@ -63,9 +63,9 @@ export default function AdminPage() {
     } else {
       setLoading(false)
     }
-  }, [token, filterPlan, filterStatus, searchTerm])
+  }, [token, filterPlan, filterStatus, searchTerm, loadData])
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
       
@@ -106,7 +106,7 @@ export default function AdminPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [token, filterPlan, filterStatus, searchTerm])
 
   const deleteUser = async (userId: number, email: string) => {
     if (!confirm(`Are you sure you want to delete user ${email}? This cannot be undone.`)) {

@@ -224,7 +224,7 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
 
         {mode === 'forgot-password' && (
           <p className="mt-3 text-sm text-slate-600">
-            Enter your email address and we'll send you a link to reset your password.
+            Enter your email address and we&apos;ll send you a link to reset your password.
           </p>
         )}
 

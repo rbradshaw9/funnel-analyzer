@@ -135,9 +135,18 @@ async def analyze_funnel(
     page_analyses = []
     screenshot_service = None
     storage_service = get_storage_service()
+    
+    if not storage_service:
+        logger.warning(
+            "⚠️  S3 storage not configured - screenshots will NOT be saved or displayed. "
+            "Set AWS_S3_BUCKET, AWS_S3_ACCESS_KEY_ID, AWS_S3_SECRET_ACCESS_KEY in Railway."
+        )
+    else:
+        logger.info("✓ S3 storage configured - screenshots will be uploaded")
 
     try:
         screenshot_service = await get_screenshot_service()
+        logger.info("✓ Screenshot service (Playwright) initialized successfully")
     except Exception as screenshot_error:
         logger.warning(f"Screenshot service unavailable, continuing without visuals: {screenshot_error}")
     
@@ -264,6 +273,9 @@ async def analyze_funnel(
                 if screenshot_asset:
                     screenshot_url = screenshot_asset.url
                     screenshot_uploaded = True
+                    logger.info(
+                        f"✓ Screenshot uploaded for {page_content.url}: {screenshot_url}"
+                    )
             except Exception as upload_error:  # noqa: BLE001 - log and continue
                 logger.warning(
                     "Failed to upload screenshot for %s: %s",
@@ -283,6 +295,9 @@ async def analyze_funnel(
                     if screenshot_asset:
                         screenshot_url = screenshot_asset.url
                         screenshot_uploaded = True
+                        logger.info(
+                            f"✓ Deferred screenshot uploaded for {page_content.url}: {screenshot_url}"
+                        )
             except asyncio.CancelledError:
                 pass
             except Exception as late_capture_error:  # noqa: BLE001

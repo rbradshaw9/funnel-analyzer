@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { FiX, FiExternalLink } from "react-icons/fi";
 
 interface UserAnalysis {
@@ -25,13 +25,7 @@ export default function UserAnalysesModal({ isOpen, onClose, userId, userEmail }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isOpen) {
-      loadAnalyses();
-    }
-  }, [isOpen, userId]);
-
-  const loadAnalyses = async () => {
+  const loadAnalyses = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -62,7 +56,13 @@ export default function UserAnalysesModal({ isOpen, onClose, userId, userEmail }
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadAnalyses();
+    }
+  }, [isOpen, loadAnalyses]);
 
   if (!isOpen) return null;
 

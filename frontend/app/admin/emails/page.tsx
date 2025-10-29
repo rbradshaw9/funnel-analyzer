@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { FiMail, FiEdit, FiTrash2, FiEye, FiCode } from "react-icons/fi"
@@ -59,15 +59,7 @@ export default function EmailTemplatesPage() {
     ],
   }
 
-  useEffect(() => {
-    if (!token) {
-      router.push("/admin")
-      return
-    }
-    loadTemplates()
-  }, [token, router])
-
-  const loadTemplates = async () => {
+  const loadTemplates = useCallback(async () => {
     try {
       setLoading(true)
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/email-templates`, {
@@ -88,6 +80,16 @@ export default function EmailTemplatesPage() {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }, [token])
+
+  useEffect(() => {
+    if (!token) {
+      router.push("/admin")
+      return
+    }
+    loadTemplates()
+  }, [token, router, loadTemplates])
     }
   }
 
