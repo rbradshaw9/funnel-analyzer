@@ -31,10 +31,9 @@ async def google_login(request: Request):
     if not redirect_uri:
         raise HTTPException(status_code=500, detail="OAuth redirect URI not configured")
     
-    # Add provider to callback URL
-    callback_uri = f"{redirect_uri}?provider=google"
-    
-    return await oauth.google.authorize_redirect(request, callback_uri)
+    # Use exact redirect URI registered with Google
+    # Provider is determined from the state parameter or URL path
+    return await oauth.google.authorize_redirect(request, redirect_uri, state="provider:google")
 
 
 @router.get("/github")
@@ -46,19 +45,30 @@ async def github_login(request: Request):
     if not redirect_uri:
         raise HTTPException(status_code=500, detail="OAuth redirect URI not configured")
     
-    # Add provider to callback URL
-    callback_uri = f"{redirect_uri}?provider=github"
-    
-    return await oauth.github.authorize_redirect(request, callback_uri)
+    # Use exact redirect URI registered with GitHub
+    # Provider is determined from the state parameter or URL path
+    return await oauth.github.authorize_redirect(request, redirect_uri, state="provider:github")
 
 
 @router.get("/callback")
 async def oauth_callback(
     request: Request,
-    provider: str,
     db: AsyncSession = Depends(get_db_session),
 ):
     """Handle OAuth callback from provider."""
+    # Extract provider from state parameter
+    state = request.query_params.get("state", "")
+    provider = None
+    
+    # Parse provider from state (format: "provider:google" or "provider:github")
+    if state.startswith("provider:"):
+        provider = state.split(":", 1)[1]
+    
+    if not provider or provider not in ["google", "github"]:
+        logger.error(f"Invalid or missing provider in OAuth callback. State: {state}")
+        frontend_url = settings.FRONTEND_URL or "http://localhost:3001"
+        return RedirectResponse(f"{frontend_url}/auth/error?message=Invalid+OAuth+provider")
+    
     validate_oauth_config(provider)
     
     # Get OAuth client for provider
@@ -76,25 +86,30 @@ async def oauth_callback(
         return RedirectResponse(f"{frontend_url}/auth/error?message=OAuth+authentication+failed")
     
     # Extract user information based on provider
-    if provider == "google":
-        user_info = extract_user_info_from_google(token)
-    elif provider == "github":
-        # GitHub requires additional API call to get user data
-        user_response = await client.get("user", token=token)
-        user_data = user_response.json()
-        
-        # If email is private, fetch from emails endpoint
-        if not user_data.get("email"):
-            emails_response = await client.get("user/emails", token=token)
-            emails = emails_response.json()
-            for email_obj in emails:
-                if email_obj.get("primary") and email_obj.get("verified"):
-                    user_data["email"] = email_obj["email"]
-                    break
-        
-        user_info = extract_user_info_from_github(token, user_data)
-    else:
-        raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")
+    try:
+        if provider == "google":
+            user_info = extract_user_info_from_google(token)
+        elif provider == "github":
+            # GitHub requires additional API call to get user data
+            user_response = await client.get("user", token=token)
+            user_data = user_response.json() if hasattr(user_response, 'json') else user_response
+            
+            # If email is private, fetch from emails endpoint
+            if not user_data.get("email"):
+                emails_response = await client.get("user/emails", token=token)
+                emails = emails_response.json() if hasattr(emails_response, 'json') else emails_response
+                for email_obj in emails:
+                    if email_obj.get("primary") and email_obj.get("verified"):
+                        user_data["email"] = email_obj["email"]
+                        break
+            
+            user_info = extract_user_info_from_github(token, user_data)
+        else:
+            raise HTTPException(status_code=400, detail=f"Unsupported provider: {provider}")
+    except Exception as e:
+        logger.error(f"Failed to extract user info from {provider}: {e}", exc_info=True)
+        frontend_url = settings.FRONTEND_URL or "http://localhost:3001"
+        return RedirectResponse(f"{frontend_url}/auth/error?message=Failed+to+retrieve+user+information")
     
     email = user_info.get("email")
     provider_id = user_info.get("provider_id")

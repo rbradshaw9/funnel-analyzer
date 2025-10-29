@@ -45,6 +45,8 @@ const DEFAULT_STAGE_ESTIMATES: Record<StageKey, number> = {
 };
 
 const STORAGE_KEY_STAGE_ESTIMATES = 'faStageEstimates';
+const STORAGE_KEY_ANALYSIS_RESULT = 'faAnalysisResult';
+const STORAGE_KEY_ANALYSIS_URL = 'faAnalysisUrl';
 const MIN_STAGE_SECONDS = 0.8;
 const MAX_STAGE_SECONDS = 60;
 
@@ -121,6 +123,40 @@ function FreeAnalysisContent() {
     statusReason: authStatusReason,
     userId,
   } = useAuthValidation();
+
+  // Restore saved analysis results on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const savedResult = window.sessionStorage.getItem(STORAGE_KEY_ANALYSIS_RESULT);
+      const savedUrl = window.sessionStorage.getItem(STORAGE_KEY_ANALYSIS_URL);
+      
+      if (savedResult && savedUrl) {
+        const parsed = JSON.parse(savedResult) as AnalysisResult;
+        setResult(parsed);
+        setUrl(savedUrl);
+      }
+    } catch (error) {
+      console.warn('Failed to restore analysis results', error);
+      // Clear invalid data
+      window.sessionStorage.removeItem(STORAGE_KEY_ANALYSIS_RESULT);
+      window.sessionStorage.removeItem(STORAGE_KEY_ANALYSIS_URL);
+    }
+  }, []);
+
+  // Save analysis results when they change
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    if (result && url) {
+      try {
+        window.sessionStorage.setItem(STORAGE_KEY_ANALYSIS_RESULT, JSON.stringify(result));
+        window.sessionStorage.setItem(STORAGE_KEY_ANALYSIS_URL, url);
+      } catch (error) {
+        console.warn('Failed to save analysis results', error);
+      }
+    }
+  }, [result, url]);
 
   const estimatedTotalSeconds = useMemo(() => sumDurations(stageEstimates), [stageEstimates]);
 
@@ -281,6 +317,12 @@ function FreeAnalysisContent() {
     const sanitizedUrl = url.trim().split(/\s+/)[0] ?? '';
     if (!sanitizedUrl) return;
 
+    // Clear any previous results from storage
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.removeItem(STORAGE_KEY_ANALYSIS_RESULT);
+      window.sessionStorage.removeItem(STORAGE_KEY_ANALYSIS_URL);
+    }
+
     setIsAnalyzing(true);
     setProgress(8);
     setProgressMessage('Queueing your analysis…');
@@ -346,12 +388,36 @@ function FreeAnalysisContent() {
       {/* Header */}
       <TopNav
         rightSlot={
-          <Link
-            href={FUNNEL_ANALYZER_JOIN_URL}
-            className="text-sm font-semibold text-primary-600 hover:text-primary-700"
-          >
-            Pricing →
-          </Link>
+          result ? (
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => {
+                  setResult(null);
+                  setUrl('');
+                  if (typeof window !== 'undefined') {
+                    window.sessionStorage.removeItem(STORAGE_KEY_ANALYSIS_RESULT);
+                    window.sessionStorage.removeItem(STORAGE_KEY_ANALYSIS_URL);
+                  }
+                }}
+                className="text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors"
+              >
+                ← New Analysis
+              </button>
+              <Link
+                href="/pricing"
+                className="text-sm font-semibold text-primary-600 hover:text-primary-700"
+              >
+                Compare Plans →
+              </Link>
+            </div>
+          ) : (
+            <Link
+              href={FUNNEL_ANALYZER_JOIN_URL}
+              className="text-sm font-semibold text-primary-600 hover:text-primary-700"
+            >
+              Pricing →
+            </Link>
+          )
         }
       />
 
