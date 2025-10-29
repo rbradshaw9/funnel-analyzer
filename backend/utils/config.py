@@ -3,9 +3,10 @@ Configuration management using Pydantic settings.
 Loads environment variables with validation.
 """
 
-from typing import Optional
+from typing import Optional, Union
+import json
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -71,8 +72,8 @@ class Settings(BaseSettings):
 
     # Automation / integrations
     THRIVECART_WEBHOOK_SECRET: Optional[str] = None
-    THRIVECART_BASIC_PRODUCT_IDS: list[str] = Field(default_factory=list)
-    THRIVECART_PRO_PRODUCT_IDS: list[str] = Field(default_factory=list)
+    THRIVECART_BASIC_PRODUCT_IDS: Union[list[str], str] = Field(default_factory=list)
+    THRIVECART_PRO_PRODUCT_IDS: Union[list[str], str] = Field(default_factory=list)
     THRIVECART_BASIC_PLAN_NAMES: list[str] = Field(default_factory=lambda: [
         "Funnel Analyzer Basic",
         "Funnel Analyzer Basic Plan",
@@ -81,6 +82,30 @@ class Settings(BaseSettings):
         "Funnel Analyzer Pro",
         "Funnel Analyzer Growth Pro",
     ])
+    
+    @field_validator('THRIVECART_BASIC_PRODUCT_IDS', 'THRIVECART_PRO_PRODUCT_IDS', mode='before')
+    @classmethod
+    def parse_product_ids(cls, v):
+        """Parse product IDs from various formats (JSON array, CSV, single value)."""
+        if not v:
+            return []
+        if isinstance(v, list):
+            return [str(item) for item in v]
+        if isinstance(v, str):
+            # Try parsing as JSON first
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return [str(item) for item in parsed]
+                return [str(parsed)]
+            except (json.JSONDecodeError, ValueError):
+                # Try comma-separated values
+                if ',' in v:
+                    return [item.strip() for item in v.split(',') if item.strip()]
+                # Single value
+                return [v.strip()]
+        # Handle integers or other types
+        return [str(v)]
     MAUTIC_BASE_URL: Optional[str] = None
     MAUTIC_CLIENT_ID: Optional[str] = None
     MAUTIC_CLIENT_SECRET: Optional[str] = None
