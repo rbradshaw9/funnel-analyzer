@@ -187,7 +187,7 @@ export default function URLInputForm({ isLocked = false }: URLInputFormProps) {
             <option value="other">Other / General Business</option>
           </select>
           <p className="mt-2 text-xs text-slate-500">
-            We'll customize recommendations based on your industry standards.
+            We&apos;ll customize recommendations based on your industry standards.
           </p>
         </div>
 

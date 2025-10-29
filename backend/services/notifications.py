@@ -11,6 +11,41 @@ from .email import get_email_service
 logger = logging.getLogger(__name__)
 
 
+def _get_merge_data(recipient_email: str, analysis: AnalysisResponse) -> dict:
+    """Get merge data for email templates."""
+    # Extract user name from email or use fallback
+    user_name = "valued customer"
+    if recipient_email:
+        # Try to extract name from email (e.g., john.doe@example.com -> John Doe)
+        local_part = recipient_email.split('@')[0]
+        if '.' in local_part:
+            parts = local_part.split('.')
+            user_name = ' '.join(part.capitalize() for part in parts)
+        else:
+            user_name = local_part.capitalize()
+    
+    return {
+        'user_name': user_name,
+        'user_email': recipient_email,
+        'overall_score': analysis.overall_score,
+        'total_pages': len(analysis.pages),
+        'analysis_date': analysis.created_at.strftime('%B %d, %Y') if analysis.created_at else 'Today',
+        'first_page_url': analysis.pages[0].url if analysis.pages else '',
+        'company_name': 'Funnel Analyzer Pro',
+        'support_email': 'ryan@funnelanalyzerpro.com',
+        'dashboard_url': 'https://funnelanalyzerpro.com/dashboard',
+        'report_url': f'https://funnelanalyzerpro.com/reports/{analysis.analysis_id}' if hasattr(analysis, 'analysis_id') else 'https://funnelanalyzerpro.com/dashboard'
+    }
+
+
+def _apply_merge_codes(template: str, merge_data: dict) -> str:
+    """Apply merge codes to email template."""
+    for key, value in merge_data.items():
+        placeholder = f"{{{{{key}}}}}"
+        template = template.replace(placeholder, str(value))
+    return template
+
+
 async def send_analysis_email(*, recipient_email: str, analysis: AnalysisResponse) -> bool:
     """Send a concise analysis recap to the recipient, if email is configured."""
     email_service = get_email_service()
@@ -18,7 +53,11 @@ async def send_analysis_email(*, recipient_email: str, analysis: AnalysisRespons
         logger.info("Email service unavailable; skipping analysis notification")
         return False
 
-    subject = f"Your Funnel Analyzer Pro Report (Score: {analysis.overall_score}/100)"
+    # Get merge data
+    merge_data = _get_merge_data(recipient_email, analysis)
+    
+    subject = f"{{{{user_name}}}}, Your Funnel Analysis Report (Score: {{{{overall_score}}}}/100)"
+    subject = _apply_merge_codes(subject, merge_data)
 
     summary_html = html.escape(analysis.summary).replace("\n", "<br />")
     page_rows = []
@@ -43,7 +82,8 @@ async def send_analysis_email(*, recipient_email: str, analysis: AnalysisRespons
         score_color = "#dc2626"  # dark red
         score_status = "Critical Issues"
 
-    body_html = f"""
+    # Create email template with merge codes
+    body_template = """
     <!DOCTYPE html>
     <html>
     <head>
@@ -59,8 +99,8 @@ async def send_analysis_email(*, recipient_email: str, analysis: AnalysisRespons
                         <!-- Header -->
                         <tr>
                             <td style="padding: 32px 32px 24px 32px; text-align: center; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 12px 12px 0 0;">
-                                <h1 style="margin: 0; color: white; font-size: 28px; font-weight: bold;">🚀 Your Funnel Analysis Report</h1>
-                                <p style="margin: 8px 0 0 0; color: #e0e7ff; font-size: 16px;">Professional conversion optimization insights</p>
+                                <h1 style="margin: 0; color: white; font-size: 28px; font-weight: bold;">🚀 Hi {{user_name}}, Your Funnel Analysis is Ready!</h1>
+                                <p style="margin: 8px 0 0 0; color: #e0e7ff; font-size: 16px;">Professional insights for {{total_pages}} page{{s}} analyzed on {{analysis_date}}</p>
                             </td>
                         </tr>
                         
