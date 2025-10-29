@@ -311,6 +311,33 @@ class SetPasswordResponse(BaseModel):
     message: str = "Password has been set successfully"
 
 
+class ForgotPasswordRequest(BaseModel):
+    """Request to initiate password reset flow."""
+
+    email: EmailStr = Field(..., description="Email address for password reset")
+
+
+class ForgotPasswordResponse(BaseModel):
+    """Response after password reset email sent."""
+
+    status: Literal["email_sent"] = "email_sent"
+    message: str = "If an account exists with this email, a password reset link has been sent"
+
+
+class ResetPasswordRequest(BaseModel):
+    """Request to reset password with token."""
+
+    token: str = Field(..., min_length=1, description="Password reset token from email")
+    password: str = Field(..., min_length=8, max_length=128, description="New password")
+
+
+class ResetPasswordResponse(BaseModel):
+    """Response after successful password reset."""
+
+    status: Literal["password_reset"] = "password_reset"
+    message: str = "Password has been reset successfully"
+
+
 class PublicStatsResponse(BaseModel):
     """Aggregate statistics suitable for public surfaces."""
 

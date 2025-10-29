@@ -17,6 +17,8 @@ from ..models.schemas import (
     AdminLoginResponse,
     AuthValidateRequest,
     AuthValidateResponse,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
     MagicLinkRequest,
     MagicLinkResponse,
     MemberLoginRequest,
@@ -25,6 +27,8 @@ from ..models.schemas import (
     MemberRegistrationResponse,
     RefreshTokenRequest,
     RefreshTokenResponse,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
     SetPasswordRequest,
     SetPasswordResponse,
 )
@@ -403,3 +407,126 @@ async def set_password(
     logger.info(f"Password successfully set for user {user.email}")
     
     return SetPasswordResponse()
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Initiate password reset flow by sending reset email."""
+    
+    email = _normalize_email(request.email)
+    
+    # Find user by email
+    stmt = select(User).where(User.email == email)
+    result = await session.execute(stmt)
+    user = result.scalar_one_or_none()
+    
+    # Always return success to prevent email enumeration
+    if not user:
+        logger.info(f"Password reset requested for non-existent email: {email}")
+        return ForgotPasswordResponse()
+    
+    # Generate password reset token (valid for 1 hour)
+    expires_delta = timedelta(hours=1)
+    reset_token = await create_jwt_token(
+        user.id,
+        user.email,
+        expires_in=expires_delta,
+        token_type="password_reset"
+    )
+    
+    # Send password reset email
+    email_service = get_email_service()
+    if email_service:
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
+        try:
+            await email_service.send_email(
+                to_email=user.email,
+                subject="Reset Your Password - Funnel Analyzer Pro",
+                html_content=f"""
+                <html>
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <h2>Reset Your Password</h2>
+                    <p>Hi {user.name or 'there'},</p>
+                    <p>We received a request to reset your password for Funnel Analyzer Pro.</p>
+                    <p>Click the button below to reset your password:</p>
+                    <p style="margin: 30px 0;">
+                        <a href="{reset_url}" 
+                           style="background-color: #4F46E5; color: white; padding: 12px 24px; 
+                                  text-decoration: none; border-radius: 6px; display: inline-block;">
+                            Reset Password
+                        </a>
+                    </p>
+                    <p>Or copy and paste this link into your browser:</p>
+                    <p style="color: #6B7280; word-break: break-all;">{reset_url}</p>
+                    <p style="margin-top: 30px; color: #6B7280; font-size: 14px;">
+                        This link will expire in 1 hour. If you didn't request a password reset, 
+                        you can safely ignore this email.
+                    </p>
+                    <p style="margin-top: 30px; color: #6B7280; font-size: 14px;">
+                        Thanks,<br>
+                        The Funnel Analyzer Pro Team
+                    </p>
+                </body>
+                </html>
+                """,
+                text_content=f"""
+Reset Your Password
+
+Hi {user.name or 'there'},
+
+We received a request to reset your password for Funnel Analyzer Pro.
+
+Click the link below to reset your password:
+{reset_url}
+
+This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.
+
+Thanks,
+The Funnel Analyzer Pro Team
+                """
+            )
+            logger.info(f"Password reset email sent to {user.email}")
+        except Exception as e:
+            logger.error(f"Failed to send password reset email to {user.email}: {e}")
+            # Still return success to prevent email enumeration
+    else:
+        logger.warning(f"Email service not configured, cannot send reset link to {user.email}")
+    
+    return ForgotPasswordResponse()
+
+
+@router.post("/reset-password", response_model=ResetPasswordResponse)
+async def reset_password(
+    request: ResetPasswordRequest,
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Reset password using valid reset token."""
+    
+    # Validate reset token
+    validation = await validate_jwt_token(request.token)
+    if not validation.get("valid"):
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    
+    # Verify it's a password reset token
+    if validation.get("type") != "password_reset":
+        raise HTTPException(status_code=400, detail="Invalid token type")
+    
+    user_id = validation.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Invalid token payload")
+    
+    # Get user from database
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Hash and update password
+    user.password_hash = hash_password(request.password)
+    await session.commit()
+    
+    logger.info(f"Password successfully reset for user {user.email}")
+    
+    return ResetPasswordResponse()
