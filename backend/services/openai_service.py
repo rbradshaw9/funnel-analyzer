@@ -25,7 +25,8 @@ class OpenAIService:
         page_content: PageContent,
         page_number: int,
         total_pages: int,
-        screenshot_base64: Optional[str] = None
+        screenshot_base64: Optional[str] = None,
+        visual_elements: Optional[Dict] = None,
     ) -> Dict:
         """
         Analyze a single page using GPT-4o with Vision.
@@ -35,6 +36,7 @@ class OpenAIService:
             page_number: Position in funnel (1-indexed)
             total_pages: Total number of pages in funnel
             screenshot_base64: Optional base64 encoded screenshot for visual analysis
+            visual_elements: Optional extracted visual data (CTAs, images, etc.) from screenshot
             
         Returns:
             Dict with scores, feedback, and specific recommendations
@@ -49,6 +51,7 @@ class OpenAIService:
                 page_number=page_number,
                 total_pages=total_pages,
                 include_visual=bool(screenshot_base64),
+                visual_elements=visual_elements,
             )
             
             # Build messages with optional vision
@@ -56,27 +59,41 @@ class OpenAIService:
                 {
                     "role": "system",
                     "content": (
-                        "You're a battle-tested funnel expert who's been in the trenches for 15+ years. "
-                        "You've optimized thousands of funnels and you know what actually works (and what's just marketing BS). "
-                        "\n\nYour style:\n"
-                        "• Talk like a real person, not a consultant - be direct and conversational\n"
-                        "• Point out what's broken and exactly how to fix it\n"
-                        "• Give specific examples, not theory ('change this headline to...' not 'consider improving messaging')\n"
-                        "• Focus on what actually moves the needle - no fluff\n"
-                        "\n\nWhat you care about:\n"
-                        "1. Can people instantly understand what you're selling? (clarity wins)\n"
-                        "2. Do they care? (benefits over features, every time)\n"
-                        "3. Do they believe you? (proof, specifics, real results)\n"
-                        "4. Is it stupid-easy to take action? (remove friction)\n"
-                        "5. Why should they act now? (urgency that actually makes sense)\n"
-                        "\n\nWhen you see visuals:\n"
-                        "• Does the page actually look like it would work on a phone? (most traffic is mobile)\n"
-                        "• What catches your eye first? (is it the right thing?)\n"
-                        "• Is there too much going on? (simplify, simplify, simplify)\n"
-                        "• Do the colors and layout help or hurt the message?\n"
-                        "\n\nBe honest. If something sucks, say so. If it's good, say that too. "
-                        "Your job is to help people make more money by fixing their funnels.\n"
-                        "\n\nReturn structured JSON only with your analysis."
+                        "You are a professional conversion optimization consultant with 15+ years of experience "
+                        "analyzing and improving marketing funnels. Your role is to provide clear, actionable analysis "
+                        "that helps marketers and funnel builders improve their conversion rates.\n"
+                        "\n"
+                        "ANALYSIS APPROACH:\n"
+                        "• Be specific and direct - identify exact issues and provide concrete solutions\n"
+                        "• Focus on elements that drive measurable conversion improvements\n"
+                        "• Provide precise recommendations (e.g., 'Change headline to: [exact text]' not 'improve messaging')\n"
+                        "• Prioritize high-impact changes over minor tweaks\n"
+                        "• Use clear, professional language that any marketer would understand\n"
+                        "\n"
+                        "CORE EVALUATION CRITERIA:\n"
+                        "1. **Clarity**: Can visitors immediately understand the offer and value proposition?\n"
+                        "2. **Value Proposition**: Are benefits clearly communicated? Is the offer compelling?\n"
+                        "3. **Trust & Proof**: Are there credible testimonials, data, case studies, or guarantees?\n"
+                        "4. **Call-to-Action**: Are CTAs clear, visible, and friction-free? Do they create urgency?\n"
+                        "5. **User Experience**: Is navigation intuitive? Does the flow guide visitors toward conversion?\n"
+                        "\n"
+                        "WHEN ANALYZING VISUALS (if screenshot provided):\n"
+                        "• Identify ALL call-to-action buttons by their visual appearance, text, and placement\n"
+                        "• Assess above-the-fold content - what's immediately visible without scrolling?\n"
+                        "• Evaluate mobile responsiveness and layout effectiveness\n"
+                        "• Check visual hierarchy - does design guide attention to key elements?\n"
+                        "• Identify missing or weak trust indicators (logos, badges, testimonials)\n"
+                        "\n"
+                        "WHEN ANALYZING TEXT CONTENT:\n"
+                        "• Scan for all CTA button text, links, and form submissions\n"
+                        "• Evaluate headline clarity and benefit-driven copy\n"
+                        "• Identify objection handling and urgency mechanisms\n"
+                        "• Check for specificity in claims (numbers, timeframes, guarantees)\n"
+                        "\n"
+                        "IMPORTANT: If you see CTA buttons in the screenshot OR in the scraped content, acknowledge them "
+                        "specifically in your analysis. Don't claim CTAs are missing if they exist.\n"
+                        "\n"
+                        "Return structured JSON only with your professional analysis."
                     ),
                 },
             ]
@@ -109,7 +126,7 @@ class OpenAIService:
             response = await self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=messages,
-                temperature=0.8,
+                temperature=0.2,  # Low temperature for consistent, deterministic analysis
                 max_tokens=3000,
                 response_format={"type": "json_object"},
             )
@@ -148,15 +165,15 @@ class OpenAIService:
                     {
                         "role": "system",
                         "content": (
-                            "You're a funnel expert who just finished analyzing someone's entire marketing funnel. "
-                            "Give them the straight truth about what's working and what needs to change. "
-                            "Be conversational, direct, and helpful - like you're talking to a friend who trusts your advice. "
-                            "Focus on what actually matters for making more sales."
+                            "You are a professional conversion optimization consultant providing an executive summary "
+                            "of a complete funnel analysis. Your summary should be clear, actionable, and focused on "
+                            "high-impact improvements that will drive measurable results. Use professional language "
+                            "that marketing and business professionals expect."
                         ),
                     },
                     {"role": "user", "content": prompt},
                 ],
-                temperature=0.7,
+                temperature=0.3,  # Low temperature for consistent summaries
                 max_tokens=500,
             )
             
@@ -174,6 +191,7 @@ class OpenAIService:
         page_number: int,
         total_pages: int,
         include_visual: bool,
+        visual_elements: Optional[Dict] = None,
     ) -> str:
         """Build the prompt for analyzing a single page with CRO expert guidance."""
 
@@ -186,10 +204,40 @@ class OpenAIService:
         videos = " | ".join(page.videos[:4]) if page.videos else "None detected"
         iframes = "\n".join([f"- {iframe['description']}: {iframe['src']}" for iframe in page.iframes[:4]]) if page.iframes else "None"
 
+        # Format visual elements data if available
+        visual_ctas = ""
+        if visual_elements and visual_elements.get("buttons"):
+            buttons = visual_elements["buttons"]
+            total_buttons = visual_elements.get("totalButtons", len(buttons))
+            visual_ctas = f"\n\nCTA BUTTONS DETECTED ON FULL PAGE ({total_buttons} total):\n"
+            for btn in buttons[:15]:  # Show top 15
+                text = btn.get("text", "").strip()
+                if not text:
+                    continue
+                tag = btn.get("tag", "")
+                href = btn.get("href", "")
+                visual_ctas += f"- '{text}' ({tag})"
+                if href:
+                    visual_ctas += f" → {href}"
+                visual_ctas += "\n"
+        
+        visual_images = ""
+        if visual_elements and visual_elements.get("images"):
+            images = visual_elements["images"]
+            total_images = visual_elements.get("totalImages", len(images))
+            visual_images = f"\n\nIMAGES DETECTED: {total_images} total images on page"
+            if images[:5]:
+                visual_images += "\nKey images:\n"
+                for img in images[:5]:  # Show top 5
+                    alt = img.get("alt", "No alt text")
+                    visual_images += f"- {alt}\n"
+
         visual_note = (
-            "You've got a screenshot to work with. Look at what actually grabs attention first, check if it works on mobile, and see if the layout helps or hurts."
+            "FULL PAGE SCREENSHOT PROVIDED: This screenshot captures the ENTIRE page from top to bottom. "
+            "Analyze all sections - hero, body content, testimonials, CTAs throughout the page, footer, etc. "
+            "The visual element data below shows ALL buttons and images found on the complete page, not just above-the-fold."
             if include_visual
-            else "No screenshot available, but you can still give solid advice based on the copy and structure."
+            else "No screenshot available. Base analysis on scraped text content, headings, CTAs, and page structure."
         )
         
         iframe_note = ""
@@ -201,92 +249,129 @@ class OpenAIService:
             )
 
         return f"""
-Alright, you're looking at page {page_number} of {total_pages} in this funnel. Give it to them straight - what's working, what's broken, and exactly how to fix it.
+Analyze page {page_number} of {total_pages} in this marketing funnel. Provide specific, actionable recommendations for improving conversion rates.
 
 {visual_note}{iframe_note}
 
-Here's what we're working with:
-- Position in funnel: {page_type}
+PAGE CONTEXT:
+- Funnel Position: {page_type}
 - URL: {page.url}
 - Page Title: {page.title}
-- Meta description: {page.meta_description or 'None'}
+- Meta Description: {page.meta_description or 'Not provided'}
 
-Main Headlines:
+CONTENT ANALYSIS:
+
+Headlines & Subheadings:
 {headings}
 
-The actual copy on the page:
+Body Copy (key sections):
 {key_content}
 
-Call-to-action buttons:
-{ctas}
+Call-to-Action Elements:
+{ctas}{visual_ctas}
 
-Forms on the page: {forms}
+Forms Detected: {forms}
 
-Videos/media: {videos}
+Video/Media Elements: {videos}{visual_images}
 
-Embedded iframes (order forms, embedded pages, etc.):
+Embedded iframes/order forms:
 {iframes}
 
-Give me your analysis in JSON format. Be specific and actionable - not "improve the headline" but "change the headline to: [exact text]".
+ANALYSIS REQUIREMENTS:
+
+1. **Identify ALL CTAs**: Look for CTA buttons in both the screenshot (if provided) and the scraped content above. 
+   List every CTA you find with its exact text.
+
+2. **Evaluate Current State**: What's working well? What specific elements are hurting conversion?
+
+3. **Provide Exact Recommendations**: Don't say "improve the headline" - provide the exact headline text to use.
+   Don't say "add CTAs" if CTAs exist - instead evaluate their effectiveness and suggest improvements.
+
+4. **Prioritize Impact**: Focus on changes that will meaningfully improve conversion rates.
+
+5. **Be Specific**: Use numbers, exact copy, specific placement instructions.
 
 Return ONLY valid JSON with this structure:
 {{
     "page_type": "sales_page | order_form | upsell | thank_you | landing | other",
     "scores": {{
-        "clarity": 0-100,
-        "value": 0-100,
-        "proof": 0-100,
-        "design": 0-100,
-        "flow": 0-100
+        "clarity": 0-100,  // How clear is the value proposition?
+        "value": 0-100,    // How compelling is the offer?
+        "proof": 0-100,    // How credible are the claims?
+        "design": 0-100,   // How effective is the visual design?
+        "flow": 0-100      // How smooth is the user journey?
     }},
-    "feedback": "Talk like you're explaining this to a friend over coffee - what's the real issue here and how do we fix it? 3-5 sentences.",
-    "headline_recommendation": "Write the exact headline they should use instead",
+    "feedback": "Professional 3-5 sentence summary of the page's conversion effectiveness. Be specific about what's working and what needs improvement.",
+    "headline_recommendation": "Exact headline text that would improve clarity and conversion. Make it benefit-driven and specific.",
     "cta_recommendations": [
-        {{"copy": "exact button text", "location": "where it goes", "reason": "why this will work better"}}
+        {{
+            "copy": "Exact button text to use",
+            "location": "Specific placement (e.g., 'above the fold, next to headline')",
+            "reason": "Why this CTA will convert better"
+        }}
     ],
     "design_improvements": [
-        {{"area": "what part of the page", "recommendation": "specific change to make", "impact": "how this helps conversions"}}
+        {{
+            "area": "Specific page section (e.g., 'Hero section', 'Above the fold')",
+            "recommendation": "Exact change to make",
+            "impact": "Expected conversion impact (e.g., 'Improves clarity', 'Reduces friction')"
+        }}
     ],
     "trust_elements_missing": [
-        {{"element": "what proof/trust element is needed", "why": "why it matters"}}
+        {{
+            "element": "Specific trust element needed (e.g., 'Client testimonials with photos', 'Money-back guarantee badge')",
+            "why": "How this builds trust and improves conversion"
+        }}
     ],
     "ab_test_priority": {{
-        "element": "the one thing to test first",
-        "control": "what they have now",
-        "variant": "what to test against it",
-        "expected_lift": "rough % improvement",
-        "reasoning": "why this is the priority"
+        "element": "The single highest-priority element to A/B test",
+        "control": "Current version",
+        "variant": "Recommended test variant",
+        "expected_lift": "Estimated percentage improvement (e.g., '10-15%')",
+        "reasoning": "Why this test is the priority"
     }},
     "priority_alerts": [
-        {{"severity": "high|medium|low", "issue": "what's the problem", "impact": "how it hurts conversions", "fix": "what to do about it"}}
+        {{
+            "severity": "high|medium|low",
+            "issue": "Specific problem affecting conversions",
+            "impact": "How this impacts conversion rate",
+            "fix": "Exact steps to resolve"
+        }}
     ],
     "funnel_flow_gaps": [
-        {{"step": "where in the flow", "issue": "what's broken", "fix": "how to fix it"}}
+        {{
+            "step": "Where in the customer journey",
+            "issue": "What's missing or broken",
+            "fix": "How to fix it"
+        }}
     ],
     "copy_diagnostics": {{
-        "hook": "does the opening grab them? or is it weak?",
-        "offer": "is it crystal clear what they're getting?",
-        "urgency": "any reason to act now? or can they put it off forever?",
-        "objections": "are we handling the obvious objections?",
-        "audience_fit": "does this actually speak to the target customer?"
+        "hook": "Does the opening create immediate interest? What's working/missing?",
+        "offer": "Is the value proposition crystal clear? What could be clearer?",
+        "urgency": "What urgency mechanisms exist? Are they credible?",
+        "objections": "Which objections are addressed? Which are missing?",
+        "audience_fit": "Does the copy speak directly to the target customer?"
     }},
     "visual_diagnostics": {{
-        "hero": "does the top of the page nail it or fall flat?",
-        "layout": "is it clean and easy to follow, or cluttered?",
-        "contrast": "can people actually read this stuff?",
-        "mobile": "does this work on a phone? (because most people are on phones)",
-        "credibility": "does it look professional enough to trust?"
+        "hero": "Effectiveness of above-the-fold content and first impression",
+        "layout": "Visual organization and information hierarchy",
+        "contrast": "Readability and visual clarity",
+        "mobile": "Mobile responsiveness and usability",
+        "credibility": "Professional appearance and trust signals"
     }},
     "video_recommendations": [
-        {{"context": "where the video is (or should be)", "recommendation": "what to do with it"}}
+        {{
+            "context": "Where video appears or should appear",
+            "recommendation": "Specific improvement or addition"
+        }}
     ],
     "email_capture_recommendations": [
-        "Specific ways to improve email capture or nurture sequence"
+        "Specific recommendations for email opt-in strategy and nurture sequence"
     ]
 }}
 
-Remember: Be direct, be specific, talk like a human. No corporate BS, no consultant-speak. Just real talk about what needs to change.
-"""
+CRITICAL: If you identify CTA buttons (either visually or in the content), acknowledge them specifically. 
+Don't claim CTAs are missing if they're present - instead evaluate their effectiveness."""
     
     def _build_summary_prompt(self, page_results: List[Dict], overall_score: int) -> str:
         """Build the prompt for generating executive summary."""
@@ -318,21 +403,23 @@ Remember: Be direct, be specific, talk like a human. No corporate BS, no consult
 
         pages_summary = "\n".join(summary_chunks)
         
-        return f"""Alright, you just reviewed this entire funnel. Overall score: {overall_score}/100.
+        return f"""Provide an executive summary of this complete funnel analysis. Overall performance score: {overall_score}/100.
 
-Here's what you found on each page:
+INDIVIDUAL PAGE PERFORMANCE:
 
 {pages_summary}
 
-Now give them the executive summary - the stuff that actually matters. Write 4-6 sentences covering:
+EXECUTIVE SUMMARY REQUIREMENTS:
 
-1. The real deal: How's this funnel actually performing? What's working, what's not?
-2. The big opportunity: What's the ONE change that would move the needle the most? (Be specific - which page, which element)
-3. Quick wins: Give them 2-3 things they can fix today that'll make a difference
-4. Bigger picture: Any strategic stuff they should think about for the long term?
+Provide a professional 4-6 sentence summary covering:
 
-Talk like you're explaining this to a friend who owns the business. Be helpful, be direct, skip the fluff.
-"""
+1. **Overall Assessment**: Current funnel performance and conversion effectiveness
+2. **Key Strengths**: What's working well that should be maintained or amplified
+3. **Primary Opportunity**: The single highest-impact improvement opportunity (be specific - which page, which element, expected impact)
+4. **Quick Wins**: 2-3 actionable changes that can be implemented immediately
+5. **Strategic Recommendation**: One broader strategic consideration for long-term optimization
+
+Focus on specific, actionable insights. Avoid generic advice. Use professional marketing language."""
     
     def _guess_page_type(self, page_number: int, total_pages: int) -> str:
         """Guess page type based on position in funnel."""

@@ -148,41 +148,40 @@ class ScreenshotService:
     
     async def analyze_above_fold(self, url: str) -> Dict:
         """
-        Capture and analyze the above-the-fold content.
+        Capture FULL PAGE screenshot and analyze ALL content including CTAs.
         
         Args:
             url: The URL to analyze
             
         Returns:
-            Dict with screenshot and extracted visual elements
+            Dict with full-page screenshot and extracted visual elements
         """
         if not self._browser:
             await self.start()
         
-        logger.info(f"Analyzing above-the-fold for {url}")
+        logger.info(f"Analyzing full page for {url}")
         
         try:
             page = await self._browser.new_page(
-                viewport={'width': 1920, 'height': 1080}
+                viewport={'width': 1440, 'height': 900}
             )
             
             try:
                 await page.goto(url, wait_until='networkidle', timeout=30000)
                 await page.wait_for_timeout(2000)
                 
-                # Capture screenshot
-                screenshot_bytes = await page.screenshot(type='png')
+                # Capture FULL PAGE screenshot (entire scrollable content)
+                screenshot_bytes = await page.screenshot(
+                    type='png',
+                    full_page=True  # Capture entire page, not just viewport
+                )
                 screenshot_base64 = base64.b64encode(screenshot_bytes).decode('utf-8')
                 
-                # Extract visual elements
+                # Extract visual elements from ENTIRE page (not just above-the-fold)
                 visual_data = await page.evaluate("""
                     () => {
-                        // Get all images in viewport
+                        // Get ALL images on the page
                         const images = Array.from(document.querySelectorAll('img'))
-                            .filter(img => {
-                                const rect = img.getBoundingClientRect();
-                                return rect.top < window.innerHeight && rect.bottom > 0;
-                            })
                             .map(img => ({
                                 src: img.src,
                                 alt: img.alt,
@@ -190,12 +189,8 @@ class ScreenshotService:
                                 height: img.height
                             }));
                         
-                        // Get CTA buttons
-                        const buttons = Array.from(document.querySelectorAll('button, a[class*="button"], a[class*="btn"]'))
-                            .filter(btn => {
-                                const rect = btn.getBoundingClientRect();
-                                return rect.top < window.innerHeight && rect.bottom > 0;
-                            })
+                        // Get ALL CTA buttons on the entire page
+                        const buttons = Array.from(document.querySelectorAll('button, a[class*="button"], a[class*="btn"], input[type="submit"], a[role="button"]'))
                             .map(btn => ({
                                 text: btn.textContent.trim(),
                                 tag: btn.tagName,
@@ -207,18 +202,26 @@ class ScreenshotService:
                         const bodyStyles = window.getComputedStyle(document.body);
                         
                         return {
-                            images: images.slice(0, 10),  // Limit to top 10
-                            buttons: buttons.slice(0, 10),
+                            images: images,
+                            buttons: buttons,
                             colors: {
                                 background: bodyStyles.backgroundColor,
                                 text: bodyStyles.color,
                                 primaryFont: bodyStyles.fontFamily
                             },
                             viewportHeight: window.innerHeight,
-                            scrollHeight: document.body.scrollHeight
+                            scrollHeight: document.body.scrollHeight,
+                            totalButtons: buttons.length,
+                            totalImages: images.length
                         };
                     }
                 """)
+                
+                logger.info(
+                    f"✓ Full page analysis: {len(visual_data.get('buttons', []))} CTAs, "
+                    f"{len(visual_data.get('images', []))} images, "
+                    f"{visual_data.get('scrollHeight', 0)}px total height"
+                )
                 
                 return {
                     'screenshot': screenshot_base64,
@@ -229,7 +232,7 @@ class ScreenshotService:
                 await page.close()
                 
         except Exception as e:
-            logger.error(f"Failed to analyze above-fold for {url}: {str(e)}")
+            logger.error(f"Failed to analyze full page for {url}: {str(e)}")
             raise
 
 

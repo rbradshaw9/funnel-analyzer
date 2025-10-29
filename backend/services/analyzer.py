@@ -202,6 +202,7 @@ async def analyze_funnel(
         )
         
         screenshot_base64 = None
+        visual_elements = None  # Will store extracted CTAs, images, etc.
         screenshot_timeout_seconds = 8
         screenshot_task: asyncio.Task[str | None] | None = None
         screenshot_captured = False
@@ -211,21 +212,27 @@ async def analyze_funnel(
         if screenshot_service:
             screenshot_metrics["attempted"] += 1
             capture_timer_start = time.perf_counter()
-            screenshot_task = asyncio.create_task(
-                screenshot_service.capture_screenshot(
-                    page_content.url,
-                    viewport_width=1440,
-                    viewport_height=900,
-                    full_page=True,  # Capture entire page from top to bottom
-                )
-            )
-
+            
+            # Use analyze_above_fold to get both screenshot AND visual element data
             try:
-                screenshot_base64 = await asyncio.wait_for(
-                    asyncio.shield(screenshot_task),
+                above_fold_task = asyncio.create_task(
+                    screenshot_service.analyze_above_fold(page_content.url)
+                )
+                above_fold_data = await asyncio.wait_for(
+                    asyncio.shield(above_fold_task),
                     timeout=screenshot_timeout_seconds,
                 )
-                screenshot_captured = bool(screenshot_base64)
+                
+                if above_fold_data:
+                    screenshot_base64 = above_fold_data.get("screenshot")
+                    visual_elements = above_fold_data.get("visual_elements")
+                    screenshot_captured = bool(screenshot_base64)
+                    
+                    if visual_elements:
+                        logger.info(
+                            f"Extracted {len(visual_elements.get('buttons', []))} CTAs from {page_content.url}"
+                        )
+                        
             except asyncio.TimeoutError:
                 logger.info(
                     "Screenshot exceeded %ss for %s; continuing without blocking analysis",
@@ -239,20 +246,8 @@ async def analyze_funnel(
                     page_content.url,
                     screenshot_error,
                 )
-                screenshot_task = None
             finally:
                 screenshot_time_total += time.perf_counter() - capture_timer_start
-                if screenshot_task and screenshot_task.done():
-                    try:
-                        screenshot_base64 = screenshot_task.result()
-                        screenshot_captured = screenshot_captured or bool(screenshot_base64)
-                    except Exception as capture_error:  # noqa: BLE001
-                        logger.warning(
-                            "Screenshot task error for %s: %s",
-                            page_content.url,
-                            capture_error,
-                        )
-                        screenshot_task = None
 
         llm_timer_start = time.perf_counter()
         analysis_result = await llm_provider.analyze_page(
@@ -260,6 +255,7 @@ async def analyze_funnel(
             page_number=i + 1,
             total_pages=len(urls),
             screenshot_base64=screenshot_base64,
+            visual_elements=visual_elements,  # Pass extracted visual data to LLM
         )
         llm_duration_total += time.perf_counter() - llm_timer_start
 
@@ -282,32 +278,6 @@ async def analyze_funnel(
                     page_content.url,
                     upload_error,
                 )
-        elif screenshot_task and storage_service:
-            deferred_capture_start = time.perf_counter()
-            try:
-                captured = await screenshot_task
-                if captured:
-                    screenshot_captured = True
-                    screenshot_asset = await storage_service.upload_base64_image(
-                        base64_data=captured,
-                        content_type="image/png",
-                    )
-                    if screenshot_asset:
-                        screenshot_url = screenshot_asset.url
-                        screenshot_uploaded = True
-                        logger.info(
-                            f"✓ Deferred screenshot uploaded for {page_content.url}: {screenshot_url}"
-                        )
-            except asyncio.CancelledError:
-                pass
-            except Exception as late_capture_error:  # noqa: BLE001
-                logger.warning(
-                    "Deferred screenshot handling failed for %s: %s",
-                    page_content.url,
-                    late_capture_error,
-                )
-            finally:
-                screenshot_time_total += time.perf_counter() - deferred_capture_start
 
         if screenshot_service:
             if screenshot_captured:
