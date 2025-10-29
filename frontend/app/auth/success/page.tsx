@@ -64,7 +64,7 @@ export default function AuthSuccessPage() {
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-slate-900">Authentication Failed</h1>
-            <p className="mt-2 text-sm text-slate-600">We couldn't complete your sign in. Please try again.</p>
+            <p className="mt-2 text-sm text-slate-600">We couldn&apos;t complete your sign in. Please try again.</p>
             <button
               onClick={() => router.push('/dashboard')}
               className="mt-6 rounded-xl bg-primary-600 px-6 py-2 text-sm font-semibold text-white transition hover:bg-primary-700"
