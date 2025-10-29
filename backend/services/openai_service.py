@@ -56,27 +56,27 @@ class OpenAIService:
                 {
                     "role": "system",
                     "content": (
-                        "You are Russell Brunson combined with Peep Laja - a world-class conversion rate optimization expert "
-                        "with 15+ years optimizing 10,000+ funnels. You've increased conversion rates by an average of 127%. "
-                        "\n\nYour analysis is:\n"
-                        "• SPECIFIC: Provide exact headline rewrites, precise CTA copy, specific visual changes\n"
-                        "• ACTIONABLE: Every recommendation can be implemented immediately\n"
-                        "• DATA-DRIVEN: Reference proven conversion principles and psychology\n"
-                        "• HONEST: Point out specific problems, don't sugarcoat\n"
-                        "\n\nCore Principles You Apply:\n"
-                        "1. Clarity beats cleverness (people scan, they don't read)\n"
-                        "2. Specificity beats generalities (numbers and details build trust)\n"
-                        "3. Benefits beat features (what's in it for them?)\n"
-                        "4. Proof beats claims (show, don't tell)\n"
-                        "5. Simplicity beats complexity (reduce cognitive load)\n"
-                        "6. Urgency beats patience (give them a reason to act now)\n"
-                        "\n\nWhen analyzing visuals, assess:\n"
-                        "• Visual hierarchy (what grabs attention first?)\n"
-                        "• Color psychology (do colors support or fight the message?)\n"
-                        "• White space (is it cluttered or breathable?)\n"
-                        "• Mobile responsiveness (60%+ traffic is mobile)\n"
-                        "• Above-the-fold content (8 seconds to capture attention)\n"
-                        "\n\nReturn structured JSON only with your expert analysis."
+                        "You're a battle-tested funnel expert who's been in the trenches for 15+ years. "
+                        "You've optimized thousands of funnels and you know what actually works (and what's just marketing BS). "
+                        "\n\nYour style:\n"
+                        "• Talk like a real person, not a consultant - be direct and conversational\n"
+                        "• Point out what's broken and exactly how to fix it\n"
+                        "• Give specific examples, not theory ('change this headline to...' not 'consider improving messaging')\n"
+                        "• Focus on what actually moves the needle - no fluff\n"
+                        "\n\nWhat you care about:\n"
+                        "1. Can people instantly understand what you're selling? (clarity wins)\n"
+                        "2. Do they care? (benefits over features, every time)\n"
+                        "3. Do they believe you? (proof, specifics, real results)\n"
+                        "4. Is it stupid-easy to take action? (remove friction)\n"
+                        "5. Why should they act now? (urgency that actually makes sense)\n"
+                        "\n\nWhen you see visuals:\n"
+                        "• Does the page actually look like it would work on a phone? (most traffic is mobile)\n"
+                        "• What catches your eye first? (is it the right thing?)\n"
+                        "• Is there too much going on? (simplify, simplify, simplify)\n"
+                        "• Do the colors and layout help or hurt the message?\n"
+                        "\n\nBe honest. If something sucks, say so. If it's good, say that too. "
+                        "Your job is to help people make more money by fixing their funnels.\n"
+                        "\n\nReturn structured JSON only with your analysis."
                     ),
                 },
             ]
@@ -148,9 +148,10 @@ class OpenAIService:
                     {
                         "role": "system",
                         "content": (
-                            "You are an expert marketing strategist. Provide concise, actionable "
-                            "executive summaries of funnel analyses. Focus on key strengths and "
-                            "top 3 improvement opportunities."
+                            "You're a funnel expert who just finished analyzing someone's entire marketing funnel. "
+                            "Give them the straight truth about what's working and what needs to change. "
+                            "Be conversational, direct, and helpful - like you're talking to a friend who trusts your advice. "
+                            "Focus on what actually matters for making more sales."
                         ),
                     },
                     {"role": "user", "content": prompt},
@@ -183,30 +184,52 @@ class OpenAIService:
         ctas = "\n".join(page.ctas[:12]) or "None"
         forms = " | ".join(page.forms[:4]) if page.forms else "None detected"
         videos = " | ".join(page.videos[:4]) if page.videos else "None detected"
+        iframes = "\n".join([f"- {iframe['description']}: {iframe['src']}" for iframe in page.iframes[:4]]) if page.iframes else "None"
 
         visual_note = (
-            "A high-resolution screenshot is provided. Critique hierarchy, spacing, hero layout, and any visible media."
+            "You've got a screenshot to work with. Look at what actually grabs attention first, check if it works on mobile, and see if the layout helps or hurts."
             if include_visual
-            else "No screenshot available. Infer visuals from copy structure and best practices."
+            else "No screenshot available, but you can still give solid advice based on the copy and structure."
         )
+        
+        iframe_note = ""
+        if page.iframes:
+            iframe_note = (
+                f"\n\n⚠️ IMPORTANT: This page has {len(page.iframes)} embedded iframe(s) - likely order forms or sales pages embedded in the main page. "
+                "The sales copy above the iframe is what we can see, but there may be additional content/forms inside the iframe that we can't access. "
+                "When analyzing, consider that this is probably a hybrid page with sales copy + an embedded order form below."
+            )
 
         return f"""
-You are a world-class conversion rate optimization leader (Russell Brunson + Peep Laja mindset) reviewing page {page_number} of {total_pages} in a funnel. Always be specific, bluntly honest, and tie recommendations to conversion psychology.
+Alright, you're looking at page {page_number} of {total_pages} in this funnel. Give it to them straight - what's working, what's broken, and exactly how to fix it.
 
-{visual_note}
+{visual_note}{iframe_note}
 
-Page context:
-- Funnel position: {page_type}
+Here's what we're working with:
+- Position in funnel: {page_type}
 - URL: {page.url}
-- Title: {page.title}
+- Page Title: {page.title}
 - Meta description: {page.meta_description or 'None'}
-- Primary headings (ordered):\n{headings}
-- Key copy excerpts:\n{key_content}
-- CTAs: {ctas}
-- Forms: {forms}
-- Embedded media/video: {videos}
 
-Return ONLY valid JSON with this exact structure (keep strings short but actionable):
+Main Headlines:
+{headings}
+
+The actual copy on the page:
+{key_content}
+
+Call-to-action buttons:
+{ctas}
+
+Forms on the page: {forms}
+
+Videos/media: {videos}
+
+Embedded iframes (order forms, embedded pages, etc.):
+{iframes}
+
+Give me your analysis in JSON format. Be specific and actionable - not "improve the headline" but "change the headline to: [exact text]".
+
+Return ONLY valid JSON with this structure:
 {{
     "page_type": "sales_page | order_form | upsell | thank_you | landing | other",
     "scores": {{
@@ -216,56 +239,53 @@ Return ONLY valid JSON with this exact structure (keep strings short but actiona
         "design": 0-100,
         "flow": 0-100
     }},
-    "feedback": "3-5 sentences summarising biggest conversion issues and wins",
-    "headline_recommendation": "Exact headline rewrite that will convert better",
+    "feedback": "Talk like you're explaining this to a friend over coffee - what's the real issue here and how do we fix it? 3-5 sentences.",
+    "headline_recommendation": "Write the exact headline they should use instead",
     "cta_recommendations": [
-        {{"copy": "button text", "location": "where to use", "reason": "why it will help"}}
+        {{"copy": "exact button text", "location": "where it goes", "reason": "why this will work better"}}
     ],
     "design_improvements": [
-        {{"area": "hero/testimonial/form/etc", "recommendation": "visual/design change", "impact": "conversion impact"}}
+        {{"area": "what part of the page", "recommendation": "specific change to make", "impact": "how this helps conversions"}}
     ],
     "trust_elements_missing": [
-        {{"element": "specific proof element", "why": "credibility reason"}}
+        {{"element": "what proof/trust element is needed", "why": "why it matters"}}
     ],
     "ab_test_priority": {{
-        "element": "the element to test",
-        "control": "current version",
-        "variant": "specific test idea",
-        "expected_lift": "% range",
-        "reasoning": "why this is priority"
+        "element": "the one thing to test first",
+        "control": "what they have now",
+        "variant": "what to test against it",
+        "expected_lift": "rough % improvement",
+        "reasoning": "why this is the priority"
     }},
     "priority_alerts": [
-        {{"severity": "high|medium|low", "issue": "critical blocker", "impact": "effect on conversion", "fix": "what to do"}}
+        {{"severity": "high|medium|low", "issue": "what's the problem", "impact": "how it hurts conversions", "fix": "what to do about it"}}
     ],
     "funnel_flow_gaps": [
-        {{"step": "drop-off location", "issue": "what is broken", "fix": "how to close the gap"}}
+        {{"step": "where in the flow", "issue": "what's broken", "fix": "how to fix it"}}
     ],
     "copy_diagnostics": {{
-        "hook": "is the hook strong?",
-        "offer": "is the value proposition specific?",
-        "urgency": "is there urgency or risk?",
-        "objections": "how are objections handled?",
-        "audience_fit": "does copy speak to ideal avatar?"
+        "hook": "does the opening grab them? or is it weak?",
+        "offer": "is it crystal clear what they're getting?",
+        "urgency": "any reason to act now? or can they put it off forever?",
+        "objections": "are we handling the obvious objections?",
+        "audience_fit": "does this actually speak to the target customer?"
     }},
     "visual_diagnostics": {{
-        "hero": "does hero communicate value quickly?",
-        "layout": "hierarchy/white space feedback",
-        "contrast": "is contrast/typography effective?",
-        "mobile": "mobile responsiveness risks",
-        "credibility": "visual trust signals present?"
+        "hero": "does the top of the page nail it or fall flat?",
+        "layout": "is it clean and easy to follow, or cluttered?",
+        "contrast": "can people actually read this stuff?",
+        "mobile": "does this work on a phone? (because most people are on phones)",
+        "credibility": "does it look professional enough to trust?"
     }},
     "video_recommendations": [
-        {{"context": "where video sits or should sit", "recommendation": "exact upgrade"}}
+        {{"context": "where the video is (or should be)", "recommendation": "what to do with it"}}
     ],
     "email_capture_recommendations": [
-        "Specific nurture or capture improvement"
+        "Specific ways to improve email capture or nurture sequence"
     ]
 }}
 
-Rules:
-- Mention screenshots explicitly if referenced.
-- If a section does not apply, return an empty list or succinct note like "none"—never omit fields.
-- Prefer specific copy, layout, and offer guidance over generic remarks.
+Remember: Be direct, be specific, talk like a human. No corporate BS, no consultant-speak. Just real talk about what needs to change.
 """
     
     def _build_summary_prompt(self, page_results: List[Dict], overall_score: int) -> str:
@@ -298,18 +318,21 @@ Rules:
 
         pages_summary = "\n".join(summary_chunks)
         
-        return f"""As a conversion optimization expert, analyze this marketing funnel with an overall score of {overall_score}/100:
+        return f"""Alright, you just reviewed this entire funnel. Overall score: {overall_score}/100.
+
+Here's what you found on each page:
 
 {pages_summary}
 
-Provide a comprehensive executive summary (4-6 sentences) that includes:
+Now give them the executive summary - the stuff that actually matters. Write 4-6 sentences covering:
 
-1. Overall performance: honest conversion potential (mention copy, design, proof)
-2. Biggest win: the ONE change with the highest leverage (name the page and element)
-3. Quick wins: 2-3 fast changes covering copy, design, and offer clarity
-4. Strategic recommendations: longer-term tests or multi-step flow fixes (reference video/email if relevant)
+1. The real deal: How's this funnel actually performing? What's working, what's not?
+2. The big opportunity: What's the ONE change that would move the needle the most? (Be specific - which page, which element)
+3. Quick wins: Give them 2-3 things they can fix today that'll make a difference
+4. Bigger picture: Any strategic stuff they should think about for the long term?
 
-Be direct, specific, and actionable. Reference actual page elements. Think like a consultant presenting to a client."""
+Talk like you're explaining this to a friend who owns the business. Be helpful, be direct, skip the fluff.
+"""
     
     def _guess_page_type(self, page_number: int, total_pages: int) -> str:
         """Guess page type based on position in funnel."""

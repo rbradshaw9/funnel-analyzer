@@ -26,6 +26,7 @@ class PageContent:
         meta_description: Optional[str] = None,
         forms: Optional[List[str]] = None,
         videos: Optional[List[str]] = None,
+        iframes: Optional[List[Dict[str, str]]] = None,
     ):
         self.url = url
         self.title = title
@@ -35,6 +36,7 @@ class PageContent:
         self.meta_description = meta_description
         self.forms = forms or []
         self.videos = videos or []
+        self.iframes = iframes or []
     
     def get_full_text(self) -> str:
         """Combine all text content for analysis."""
@@ -60,6 +62,13 @@ class PageContent:
                 "\nEmbedded Media:",
                 *[f"- {video}" for video in self.videos[:5]],
             ])
+        
+        if self.iframes:
+            parts.extend([
+                "\nEmbedded Pages/IFrames (may contain additional sales copy not visible in main HTML):",
+                *[f"- {iframe['description']}: {iframe['src']}" for iframe in self.iframes[:5]],
+            ])
+        
         return "\n".join(parts)
 
 
@@ -196,6 +205,8 @@ async def scrape_url(url: str, timeout: int = 30) -> PageContent:
 
         # Extract embedded video/iframe content for richer analysis
         videos = []
+        iframes = []
+        
         for video in soup.find_all("video"):
             src = video.get("src")
             if not src:
@@ -208,12 +219,40 @@ async def scrape_url(url: str, timeout: int = 30) -> PageContent:
         video_domains = ("youtube", "vimeo", "wistia", "loom", "vid", "stream")
         for iframe in soup.find_all("iframe"):
             src = (iframe.get("src") or "").strip()
-            if src and any(domain in src.lower() for domain in video_domains):
-                title = (iframe.get("title") or "").strip()
+            if not src:
+                continue
+                
+            title = (iframe.get("title") or "").strip()
+            width = (iframe.get("width") or "").strip()
+            height = (iframe.get("height") or "").strip()
+            
+            # Detect what kind of iframe this is
+            if any(domain in src.lower() for domain in video_domains):
+                # It's a video embed
                 videos.append(f"{title} - {src}" if title else src)
+            else:
+                # It's some other embedded content (sales page, order form, etc.)
+                # This is important for Infusionsoft order forms and embedded pages
+                iframe_info = {
+                    "src": src,
+                    "description": title or "Embedded page/content",
+                    "dimensions": f"{width}x{height}" if width and height else "unknown"
+                }
+                iframes.append(iframe_info)
+                
+                # Check if it's a common order form platform
+                if "infusionsoft" in src.lower() or "keap" in src.lower():
+                    iframe_info["description"] = f"Infusionsoft/Keap Order Form: {title}" if title else "Infusionsoft/Keap Order Form"
+                elif "thrivecart" in src.lower():
+                    iframe_info["description"] = f"ThriveCart Order Form: {title}" if title else "ThriveCart Order Form"
+                elif "stripe" in src.lower():
+                    iframe_info["description"] = f"Stripe Payment Form: {title}" if title else "Stripe Payment Form"
+                elif "gohighlevel" in src.lower() or "highlevel" in src.lower():
+                    iframe_info["description"] = f"GoHighLevel Content: {title}" if title else "GoHighLevel Embedded Content"
 
         logger.info(
-            f"Scraped {url}: {len(headings)} headings, {len(paragraphs)} paragraphs, {len(ctas)} CTAs, {len(forms)} forms, {len(videos)} videos"
+            f"Scraped {url}: {len(headings)} headings, {len(paragraphs)} paragraphs, {len(ctas)} CTAs, "
+            f"{len(forms)} forms, {len(videos)} videos, {len(iframes)} iframes"
         )
         
         return PageContent(
@@ -225,6 +264,7 @@ async def scrape_url(url: str, timeout: int = 30) -> PageContent:
             meta_description=meta_description,
             forms=forms,
             videos=videos,
+            iframes=iframes,
         )
         
     except requests.exceptions.RequestException as e:
