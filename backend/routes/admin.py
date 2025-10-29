@@ -16,6 +16,8 @@ from ..db.session import get_db_session
 from ..models.database import User, Analysis, EmailTemplate
 from ..services.auth import validate_jwt_token
 from ..services.passwords import hash_password
+from ..services.screenshot_cleanup import ScreenshotCleanupService
+from ..services.storage import get_storage_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -342,6 +344,17 @@ async def delete_user(
         raise HTTPException(status_code=400, detail="Cannot delete admin users")
     
     user_email = user.email
+    
+    # Delete screenshots from S3 before deleting user
+    storage_service = get_storage_service()
+    if storage_service:
+        cleanup_service = ScreenshotCleanupService(storage_service)
+        try:
+            deleted_count = await cleanup_service.cleanup_user_screenshots(session, user_id)
+            logger.info(f"Deleted {deleted_count} screenshots for user {user_email}")
+        except Exception as e:
+            logger.error(f"Failed to cleanup screenshots for user {user_id}: {e}")
+            # Continue with user deletion even if screenshot cleanup fails
     
     # Delete user (cascade will handle analyses and pages)
     await session.delete(user)
