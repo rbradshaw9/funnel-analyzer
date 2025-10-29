@@ -90,8 +90,6 @@ export default function EmailTemplatesPage() {
     }
     loadTemplates()
   }, [token, router, loadTemplates])
-    }
-  }
 
   const loadTemplate = async (templateName: string) => {
     try {
