@@ -1,8 +1,9 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function AuthErrorPage() {
+function AuthErrorContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const errorMessage = searchParams.get('message') || 'An unexpected error occurred during authentication'
@@ -48,5 +49,17 @@ export default function AuthErrorPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function AuthErrorPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="h-16 w-16 animate-spin rounded-full border-4 border-slate-200 border-t-primary-600" />
+      </div>
+    }>
+      <AuthErrorContent />
+    </Suspense>
   )
 }
