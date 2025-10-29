@@ -141,8 +141,15 @@ export async function requestMagicLink(email: string): Promise<MagicLinkResponse
 
 export async function registerAccount(payload: RegisterPayload): Promise<AuthCredentialsResponse> {
   try {
-    const response = await api.post<AuthCredentialsResponse>('/api/auth/register', payload)
-    return response.data
+    const response = await api.post<any>('/api/auth/register', payload)
+    // Backend returns access_token, but frontend expects token
+    return {
+      token: response.data.access_token,
+      refresh_token: response.data.refresh_token,
+      expires_at: response.data.expires_in ? new Date(Date.now() + response.data.expires_in * 1000).toISOString() : null,
+      user_id: response.data.user_id,
+      email: response.data.email,
+    }
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to create account')
   }
@@ -151,8 +158,15 @@ export async function registerAccount(payload: RegisterPayload): Promise<AuthCre
 export async function loginAccount(email: string, password: string): Promise<AuthCredentialsResponse> {
   try {
     const payload: LoginPayload = { email, password }
-    const response = await api.post<AuthCredentialsResponse>('/api/auth/login', payload)
-    return response.data
+    const response = await api.post<any>('/api/auth/login', payload)
+    // Backend returns access_token, but frontend expects token
+    return {
+      token: response.data.access_token,
+      refresh_token: response.data.refresh_token,
+      expires_at: response.data.expires_in ? new Date(Date.now() + response.data.expires_in * 1000).toISOString() : null,
+      user_id: response.data.user_id,
+      email: response.data.email,
+    }
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Invalid email or password')
   }
