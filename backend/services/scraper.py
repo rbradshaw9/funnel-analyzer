@@ -27,6 +27,7 @@ class PageContent:
         forms: Optional[List[str]] = None,
         videos: Optional[List[str]] = None,
         iframes: Optional[List[Dict[str, str]]] = None,
+        raw_html: Optional[str] = None,
     ):
         self.url = url
         self.title = title
@@ -37,6 +38,7 @@ class PageContent:
         self.forms = forms or []
         self.videos = videos or []
         self.iframes = iframes or []
+        self.raw_html = raw_html
     
     def get_full_text(self) -> str:
         """Combine all text content for analysis."""
@@ -103,6 +105,8 @@ async def scrape_url(url: str, timeout: int = 30) -> PageContent:
         )
         response.raise_for_status()
         
+        # Store raw HTML content for source analysis
+        raw_html = response.text
         soup = BeautifulSoup(response.content, "lxml")
         
         # Extract title
@@ -265,6 +269,7 @@ async def scrape_url(url: str, timeout: int = 30) -> PageContent:
             forms=forms,
             videos=videos,
             iframes=iframes,
+            raw_html=raw_html,
         )
         
     except requests.exceptions.RequestException as e:

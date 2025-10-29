@@ -56,7 +56,7 @@ export default function PageAnalysisCard({ page, index }: Props) {
       </div>
 
       {/* Page Screenshot */}
-      {page.screenshot_url && (
+      {page.screenshot_url ? (
         <div className="relative mb-4 h-72 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
           <Image
             src={page.screenshot_url}
@@ -65,12 +65,36 @@ export default function PageAnalysisCard({ page, index }: Props) {
             className="object-cover object-top"
             sizes="(max-width: 768px) 100vw, 50vw"
             priority={index === 0}
-            crossOrigin="anonymous"
             onError={(e) => {
               console.error('Failed to load screenshot:', page.screenshot_url)
-              e.currentTarget.style.display = 'none'
+              console.log('Screenshot URL:', page.screenshot_url)
+              // Show fallback message instead of hiding
+              const container = e.currentTarget.parentElement
+              if (container) {
+                container.innerHTML = `
+                  <div class="flex items-center justify-center h-72 bg-slate-100 rounded-lg border-2 border-dashed border-slate-300">
+                    <div class="text-center">
+                      <svg class="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <p class="mt-2 text-sm text-slate-500">Screenshot not available</p>
+                      <p class="text-xs text-slate-400">${page.url}</p>
+                    </div>
+                  </div>
+                `
+              }
             }}
           />
+        </div>
+      ) : (
+        <div className="mb-4 h-72 w-full flex items-center justify-center bg-slate-100 rounded-lg border-2 border-dashed border-slate-300">
+          <div className="text-center">
+            <svg className="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <p className="mt-2 text-sm text-slate-500">Screenshot capture in progress...</p>
+            <p className="text-xs text-slate-400">Screenshots will appear when S3 storage is configured</p>
+          </div>
         </div>
       )}
 

@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     # API Keys
     OPENAI_API_KEY: str = ""
     LLM_PROVIDER: str = "openai"
+    GOOGLE_PAGESPEED_API_KEY: Optional[str] = None
     
     # Database
     DATABASE_URL: str = "sqlite:///./funnel_analyzer.db"

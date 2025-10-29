@@ -20,6 +20,8 @@ from ..services.llm_provider import get_llm_provider
 from ..services.storage import get_storage_service
 from ..services.scraper import scrape_funnel
 from ..services.progress_tracker import get_progress_tracker
+from ..services.performance_analyzer import get_performance_analyzer
+from ..services.source_analyzer import get_source_analyzer
 from ..utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -130,8 +132,10 @@ async def analyze_funnel(
         total_pages=total_pages,
     )
     
-    # Step 2: Capture screenshots (best effort) and analyze each page with OpenAI
+    # Step 2: Initialize analysis services
     llm_provider = get_llm_provider()
+    performance_analyzer = get_performance_analyzer(api_key=settings.GOOGLE_PAGESPEED_API_KEY)
+    source_analyzer = get_source_analyzer()
     page_analyses = []
     screenshot_service = None
     storage_service = get_storage_service()
@@ -272,12 +276,18 @@ async def analyze_funnel(
                     logger.info(
                         f"✓ Screenshot uploaded for {page_content.url}: {screenshot_url}"
                     )
+                    # Also log the first few characters to verify it's a valid URL
+                    logger.info(f"Screenshot URL preview: {screenshot_url[:100]}...")
             except Exception as upload_error:  # noqa: BLE001 - log and continue
                 logger.warning(
                     "Failed to upload screenshot for %s: %s",
                     page_content.url,
                     upload_error,
                 )
+        elif not storage_service:
+            logger.warning(f"No storage service available for screenshot upload: {page_content.url}")
+        elif not screenshot_base64:
+            logger.warning(f"No screenshot data captured for: {page_content.url}")
 
         if screenshot_service:
             if screenshot_captured:
