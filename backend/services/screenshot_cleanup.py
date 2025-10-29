@@ -12,8 +12,8 @@ import logging
 from datetime import datetime, timedelta
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from models.database import User, FunnelAnalysis, PageAnalysis
-from services.storage import StorageService
+from ..models.database import User, FunnelAnalysis, PageAnalysis
+from .storage import StorageService
 
 logger = logging.getLogger(__name__)
 
