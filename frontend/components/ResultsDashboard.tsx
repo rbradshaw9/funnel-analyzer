@@ -27,14 +27,19 @@ export default function ResultsDashboard({ analysis }: Props) {
     setIsExporting(true)
     try {
       const element = reportRef.current
+      
+      // Higher quality settings for better PDF output
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
+        allowTaint: true,
+        logging: false,
         windowWidth: element.scrollWidth,
         windowHeight: element.scrollHeight,
+        backgroundColor: '#ffffff',
       })
 
-      const imgData = canvas.toDataURL('image/png')
+      const imgData = canvas.toDataURL('image/png', 1.0)
       const pdf = new jsPDF('p', 'mm', 'a4')
       const pdfWidth = pdf.internal.pageSize.getWidth()
       const pdfHeight = pdf.internal.pageSize.getHeight()
@@ -43,19 +48,23 @@ export default function ResultsDashboard({ analysis }: Props) {
       let heightLeft = imgHeight
       let position = 0
 
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight)
+      // Add first page
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight, undefined, 'FAST')
       heightLeft -= pdfHeight
 
+      // Add subsequent pages if needed
       while (heightLeft > 0) {
         position = heightLeft - imgHeight
         pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight)
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight, undefined, 'FAST')
         heightLeft -= pdfHeight
       }
 
-      pdf.save(`funnel-analysis-${analysis.overall_score}.pdf`)
+      const filename = `funnel-analysis-${analysis.overall_score}-${new Date().toISOString().split('T')[0]}.pdf`
+      pdf.save(filename)
     } catch (error) {
       console.error('Failed to export PDF', error)
+      alert('PDF export failed. Please try again or take a screenshot instead.')
     } finally {
       setIsExporting(false)
     }

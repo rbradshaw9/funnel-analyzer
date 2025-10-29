@@ -57,14 +57,19 @@ export default function PageAnalysisCard({ page, index }: Props) {
 
       {/* Page Screenshot */}
       {page.screenshot_url && (
-        <div className="relative mb-4 h-72 w-full overflow-hidden rounded-lg border border-slate-200">
+        <div className="relative mb-4 h-72 w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
           <Image
             src={page.screenshot_url}
             alt={`Screenshot of ${page.url}`}
             fill
-            className="object-cover"
+            className="object-cover object-top"
             sizes="(max-width: 768px) 100vw, 50vw"
             priority={index === 0}
+            crossOrigin="anonymous"
+            onError={(e) => {
+              console.error('Failed to load screenshot:', page.screenshot_url)
+              e.currentTarget.style.display = 'none'
+            }}
           />
         </div>
       )}
