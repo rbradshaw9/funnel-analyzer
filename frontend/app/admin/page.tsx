@@ -4,9 +4,9 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { FiChevronDown, FiChevronUp } from "react-icons/fi"
-import { TopNav } from "@/components/TopNav"
 import { useAuthStore } from "@/store/authStore"
 import { AuthModal } from "@/components/AuthModal"
+import AdminLayout from "@/components/AdminLayout"
 import UserEditModal from "@/components/UserEditModal"
 import UserAnalysesModal from "@/components/UserAnalysesModal"
 
@@ -159,15 +159,12 @@ export default function AdminPage() {
 
   if (error === "Admin access required") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        <TopNav />
-        <div className="container mx-auto px-4 py-20">
-          <div className="max-w-2xl mx-auto text-center">
-            <h1 className="text-3xl font-bold text-slate-900 mb-4">Access Denied</h1>
-            <p className="text-slate-600">You need admin privileges to access this page.</p>
-          </div>
+      <AdminLayout>
+        <div className="max-w-2xl mx-auto text-center">
+          <h1 className="text-3xl font-bold text-slate-900 mb-4">Access Denied</h1>
+          <p className="text-slate-600">You need admin privileges to access this page.</p>
         </div>
-      </div>
+      </AdminLayout>
     )
   }
 
@@ -175,7 +172,6 @@ export default function AdminPage() {
   if (!token) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        <TopNav />
         <div className="container mx-auto px-4 py-20">
           <div className="max-w-2xl mx-auto text-center">
             <div className="bg-white rounded-2xl shadow-lg p-12">
@@ -215,10 +211,8 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <TopNav />
-      
-      <div className="container mx-auto px-4 py-12">
+    <AdminLayout>
+      <div className="container mx-auto">
         <h1 className="text-4xl font-bold text-slate-900 mb-8">Admin Dashboard</h1>
 
         {error && error !== "Admin access required" && (
@@ -462,7 +456,7 @@ export default function AdminPage() {
           userEmail={viewingAnalysesUserEmail}
         />
       )}
-    </div>
+    </AdminLayout>
   )
 }
 

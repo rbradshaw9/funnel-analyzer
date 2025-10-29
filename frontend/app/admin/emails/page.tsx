@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { FiMail, FiEdit, FiTrash2, FiEye } from "react-icons/fi"
-import { TopNav } from "@/components/TopNav"
+import AdminLayout from "@/components/AdminLayout"
 import { useAuthStore } from "@/store/authStore"
 
 interface EmailTemplate {
@@ -153,22 +153,17 @@ export default function EmailTemplatesPage() {
 
   if (error === "Admin access required") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        <TopNav />
-        <div className="container mx-auto px-4 py-12">
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-            Access denied. Admin privileges required.
-          </div>
+      <AdminLayout>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          Access denied. Admin privileges required.
         </div>
-      </div>
+      </AdminLayout>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <TopNav />
-      
-      <div className="container mx-auto px-4 py-8">
+    <AdminLayout>
+      <div className="container mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900">Email Templates</h1>
           <p className="text-slate-600 mt-2">Customize transactional email templates</p>
@@ -353,6 +348,6 @@ export default function EmailTemplatesPage() {
           </div>
         </div>
       </div>
-    </div>
+    </AdminLayout>
   )
 }
