@@ -6,6 +6,7 @@ import URLInputForm from '@/components/URLInputForm'
 import ResultsDashboard from '@/components/ResultsDashboard'
 import LoadingAnimation from '@/components/LoadingAnimation'
 import { TopNav } from '@/components/TopNav'
+import { SetPasswordModal } from '@/components/SetPasswordModal'
 import { useAnalysisStore } from '@/store/analysisStore'
 import { useAuthValidation } from '@/hooks/useAuthValidation'
 import { deleteReport, getReportDetail, getReports } from '@/lib/api'
@@ -34,6 +35,7 @@ function DashboardContent() {
     accessGranted,
     isLocked,
     userId,
+    auth,
   } = useAuthValidation()
 
   const currentAnalysis = useAnalysisStore((state) => state.currentAnalysis)
@@ -48,6 +50,19 @@ function DashboardContent() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [viewingReportId, setViewingReportId] = useState<number | null>(null)
   const [deletingReportId, setDeletingReportId] = useState<number | null>(null)
+  
+  // Password setup modal state
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [passwordModalDismissed, setPasswordModalDismissed] = useState(false)
+
+  // Show password setup modal for users without a password (OAuth/magic-link users)
+  useEffect(() => {
+    if (auth && auth.valid && auth.has_password === false && !passwordModalDismissed) {
+      // Delay showing the modal slightly to avoid disrupting initial page load
+      const timer = setTimeout(() => setShowPasswordModal(true), 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [auth, passwordModalDismissed])
 
   const fetchReports = useCallback(
     async ({ offset = 0, append = false }: { offset?: number; append?: boolean } = {}) => {
@@ -187,6 +202,19 @@ function DashboardContent() {
           ) : null
         }
         showLoginButton={false}
+      />
+
+      {/* Password Setup Modal */}
+      <SetPasswordModal
+        open={showPasswordModal}
+        onClose={() => {
+          setShowPasswordModal(false)
+          setPasswordModalDismissed(true)
+        }}
+        onPasswordSet={() => {
+          setShowPasswordModal(false)
+          setPasswordModalDismissed(true)
+        }}
       />
 
       {/* Main Content */}

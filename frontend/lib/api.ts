@@ -178,6 +178,23 @@ export async function refreshAccessToken(refreshToken: string): Promise<AuthCred
   }
 }
 
+export async function setUserPassword(token: string, password: string): Promise<{ status: string; message: string }> {
+  try {
+    const response = await api.post<{ status: string; message: string }>(
+      '/api/auth/set-password',
+      { password },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    )
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to set password')
+  }
+}
+
 export async function getPublicStats(): Promise<PublicStatsResponse> {
   try {
     const response = await api.get<PublicStatsResponse>('/api/metrics/stats')

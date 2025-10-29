@@ -194,6 +194,7 @@ class AuthValidateResponse(BaseModel):
     portal_update_url: Optional[str] = None
     token_type: Optional[str] = None
     expires_at: Optional[datetime] = None
+    has_password: Optional[bool] = None  # Whether user has set a password
 
 
 class ReportListItem(BaseModel):
@@ -293,6 +294,19 @@ class RefreshTokenResponse(BaseModel):
     refresh_token: str = Field(..., description="New refresh token (tokens are rotated on use)")
     token_type: Literal["bearer"] = "bearer"
     expires_in: int = Field(..., ge=0, description="Access token lifetime in seconds")
+
+
+class SetPasswordRequest(BaseModel):
+    """Payload for setting a password on an account that doesn't have one."""
+
+    password: str = Field(..., min_length=8, max_length=128, description="New password to set")
+
+
+class SetPasswordResponse(BaseModel):
+    """Response after successfully setting a password."""
+
+    status: Literal["password_set"] = "password_set"
+    message: str = "Password has been set successfully"
 
 
 class PublicStatsResponse(BaseModel):

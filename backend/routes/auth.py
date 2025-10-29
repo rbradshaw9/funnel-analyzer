@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +25,8 @@ from ..models.schemas import (
     MemberRegistrationResponse,
     RefreshTokenRequest,
     RefreshTokenResponse,
+    SetPasswordRequest,
+    SetPasswordResponse,
 )
 from ..services.auth import create_jwt_token, create_magic_link_token, create_refresh_token, validate_jwt_token, validate_refresh_token
 from ..services.email import get_email_service
@@ -285,6 +287,7 @@ async def validate_token(
         portal_update_url=user.portal_update_url,
         token_type=result.get("token_type"),
         expires_at=result.get("expires_at"),
+        has_password=bool(user.password_hash),
     )
 
 
@@ -368,3 +371,46 @@ async def refresh_access_token(
         refresh_token=new_refresh_token,
         expires_in=int(expires_delta.total_seconds()),
     )
+
+
+@router.post("/set-password", response_model=SetPasswordResponse)
+async def set_password(
+    request_body: SetPasswordRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Set a password for user accounts that don't have one (OAuth or magic-link users)."""
+
+    # Extract token from Authorization header
+    authorization = request.headers.get("Authorization", "")
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
+    
+    token = authorization[7:]  # Remove "Bearer " prefix
+    
+    # Validate the token
+    validation = await validate_jwt_token(token)
+    if not validation.get("valid"):
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    
+    user_id = validation.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    
+    # Get user from database
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check if user already has a password
+    if user.password_hash:
+        logger.info(f"User {user.email} attempted to set password but already has one")
+        raise HTTPException(status_code=400, detail="Password already set. Use password reset instead.")
+    
+    # Hash and set the password
+    user.password_hash = hash_password(request_body.password)
+    await session.commit()
+    
+    logger.info(f"Password successfully set for user {user.email}")
+    
+    return SetPasswordResponse()

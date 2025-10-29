@@ -155,6 +155,7 @@ export interface AuthResponse {
   portal_update_url?: string
   token_type?: string
   expires_at?: string
+  has_password?: boolean
 }
 
 export interface MagicLinkResponse {
