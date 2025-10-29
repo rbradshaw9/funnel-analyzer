@@ -144,13 +144,13 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-slate-900/50 px-4 py-8 overflow-y-auto"
       role="dialog"
       aria-modal="true"
       onClick={handleClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl my-auto"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between">
