@@ -90,6 +90,7 @@ async def analyze_funnel_endpoint(
             user_id=user_id,
             recipient_email=request.email,
             analysis_id=analysis_id,
+            industry=request.industry,
         )
 
         # Get user plan for filtering

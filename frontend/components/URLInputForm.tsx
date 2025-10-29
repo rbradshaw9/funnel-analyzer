@@ -17,6 +17,7 @@ export default function URLInputForm({ isLocked = false }: URLInputFormProps) {
   const [urls, setUrls] = useState<string[]>([''])
   const [error, setError] = useState<string>('')
   const [recipientEmail, setRecipientEmail] = useState<string>('')
+  const [industry, setIndustry] = useState<string>('other')
   const { setAnalyzing, setCurrentAnalysis } = useAnalysisStore()
   const auth = useAuthStore((state) => state.auth)
   const token = useAuthStore((state) => state.token)
@@ -86,6 +87,7 @@ export default function URLInputForm({ isLocked = false }: URLInputFormProps) {
         email: trimmedEmail || undefined,
         userId: auth?.user_id ?? undefined,
         token: token ?? undefined,
+        industry: industry,
       })
       setCurrentAnalysis(result)
     } catch (err: any) {
@@ -164,6 +166,30 @@ export default function URLInputForm({ isLocked = false }: URLInputFormProps) {
             {error}
           </motion.div>
         )}
+
+        <div className="mt-6">
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            Industry Type (for tailored recommendations)
+          </label>
+          <select
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all bg-white"
+          >
+            <option value="ecommerce">E-commerce / Product Sales</option>
+            <option value="saas">SaaS / Software</option>
+            <option value="coaching">Coaching / Personal Development</option>
+            <option value="consulting">Professional Consulting</option>
+            <option value="lead_generation">Lead Generation</option>
+            <option value="affiliate_marketing">Affiliate Marketing</option>
+            <option value="course_creation">Course Creation / Education</option>
+            <option value="agency">Agency Services</option>
+            <option value="other">Other / General Business</option>
+          </select>
+          <p className="mt-2 text-xs text-slate-500">
+            We'll customize recommendations based on your industry standards.
+          </p>
+        </div>
 
         <div className="mt-6">
           <label className="block text-sm font-medium text-slate-700 mb-2">

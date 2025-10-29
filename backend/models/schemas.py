@@ -8,11 +8,24 @@ from typing import Dict, List, Optional, Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, field_validator
 
 
+IndustryType = Literal[
+    "ecommerce", 
+    "saas", 
+    "coaching", 
+    "consulting", 
+    "lead_generation", 
+    "affiliate_marketing",
+    "course_creation",
+    "agency",
+    "other"
+]
+
 class AnalysisRequest(BaseModel):
     """Request body for funnel analysis."""
     
     urls: List[HttpUrl] = Field(..., min_length=1, max_length=10, description="List of funnel URLs to analyze")
     email: Optional[EmailStr] = Field(default=None, description="Optional email to receive the report")
+    industry: Optional[IndustryType] = Field(default="other", description="Industry type for tailored recommendations")
     
     @field_validator('urls')
     @classmethod
@@ -115,6 +128,28 @@ class PipelineTelemetry(BaseModel):
     notes: Optional[List[str]] = None
 
 
+class PerformanceData(BaseModel):
+    """Core Web Vitals and performance metrics."""
+    
+    lcp: Optional[float] = None  # Largest Contentful Paint
+    fid: Optional[float] = None  # First Input Delay (or TBT)
+    cls: Optional[float] = None  # Cumulative Layout Shift
+    fcp: Optional[float] = None  # First Contentful Paint
+    speed_index: Optional[float] = None
+    performance_score: Optional[int] = Field(default=None, ge=0, le=100)
+    opportunities: Optional[List[str]] = None
+    
+
+class SourceAnalysis(BaseModel):
+    """Technical SEO and tracking analysis."""
+    
+    tracking_pixels: Optional[List[str]] = None
+    structured_data: Optional[List[str]] = None
+    technical_score: Optional[int] = Field(default=None, ge=0, le=100)
+    seo_issues: Optional[List[str]] = None
+    conversion_tracking: Optional[List[str]] = None
+
+
 class PageAnalysis(BaseModel):
     """Analysis results for a single page."""
     
@@ -136,6 +171,8 @@ class PageAnalysis(BaseModel):
     visual_diagnostics: Optional[VisualDiagnostics] = None
     video_recommendations: Optional[List[VideoRecommendation]] = None
     email_capture_recommendations: Optional[List[str]] = None
+    performance_data: Optional[PerformanceData] = None
+    source_analysis: Optional[SourceAnalysis] = None
 
 
 class AnalysisResponse(BaseModel):

@@ -27,6 +27,7 @@ class OpenAIService:
         total_pages: int,
         screenshot_base64: Optional[str] = None,
         visual_elements: Optional[Dict] = None,
+        industry: Optional[str] = None,
     ) -> Dict:
         """
         Analyze a single page using GPT-4o with Vision.
@@ -52,6 +53,7 @@ class OpenAIService:
                 total_pages=total_pages,
                 include_visual=bool(screenshot_base64),
                 visual_elements=visual_elements,
+                industry=industry,
             )
             
             # Build messages with optional vision
@@ -141,7 +143,7 @@ class OpenAIService:
             return self._generate_placeholder_scores(page_content)
     
     async def analyze_funnel_summary(
-        self, page_results: List[Dict], overall_score: int
+        self, page_results: List[Dict], overall_score: int, industry: Optional[str] = None
     ) -> str:
         """
         Generate an executive summary for the entire funnel.
@@ -157,7 +159,7 @@ class OpenAIService:
             return self._generate_placeholder_summary(overall_score)
         
         try:
-            prompt = self._build_summary_prompt(page_results, overall_score)
+            prompt = self._build_summary_prompt(page_results, overall_score, industry)
             
             response = await self.client.chat.completions.create(
                 model="gpt-4o",
@@ -192,6 +194,7 @@ class OpenAIService:
         total_pages: int,
         include_visual: bool,
         visual_elements: Optional[Dict] = None,
+        industry: Optional[str] = None,
     ) -> str:
         """Build the prompt for analyzing a single page with CRO expert guidance."""
 
@@ -248,10 +251,25 @@ class OpenAIService:
                 "When analyzing, consider that this is probably a hybrid page with sales copy + an embedded order form below."
             )
 
+        # Add industry-specific context
+        industry_guidance = ""
+        if industry and industry != "other":
+            industry_map = {
+                "ecommerce": "E-commerce/Product Sales: Focus on product benefits, shipping/returns, social proof, cart abandonment prevention, and clear pricing.",
+                "saas": "SaaS/Software: Emphasize free trials, feature benefits, integration capabilities, customer success stories, and onboarding ease.",
+                "coaching": "Coaching/Consulting: Highlight transformation results, personal credibility, testimonials, process clarity, and relationship building.",
+                "consulting": "Professional Consulting: Focus on expertise, case studies, ROI benefits, authority building, and clear service packages.",
+                "lead_generation": "Lead Generation: Optimize for email capture, lead magnets, nurture sequences, and qualification processes.", 
+                "affiliate_marketing": "Affiliate Marketing: Focus on authentic recommendations, comparison content, bonus offers, and trust building.",
+                "course_creation": "Course/Education: Emphasize learning outcomes, curriculum details, instructor credibility, and student success stories.",
+                "agency": "Agency Services: Highlight case studies, service packages, team expertise, and proven methodologies."
+            }
+            industry_guidance = f"\n\nINDUSTRY CONTEXT - {industry_map.get(industry, '')}"
+
         return f"""
 Analyze page {page_number} of {total_pages} in this marketing funnel. Provide specific, actionable recommendations for improving conversion rates.
 
-{visual_note}{iframe_note}
+{visual_note}{iframe_note}{industry_guidance}
 
 PAGE CONTEXT:
 - Funnel Position: {page_type}
@@ -373,7 +391,7 @@ Return ONLY valid JSON with this structure:
 CRITICAL: If you identify CTA buttons (either visually or in the content), acknowledge them specifically. 
 Don't claim CTAs are missing if they're present - instead evaluate their effectiveness."""
     
-    def _build_summary_prompt(self, page_results: List[Dict], overall_score: int) -> str:
+    def _build_summary_prompt(self, page_results: List[Dict], overall_score: int, industry: Optional[str] = None) -> str:
         """Build the prompt for generating executive summary."""
         summary_chunks: List[str] = []
 
@@ -403,11 +421,26 @@ Don't claim CTAs are missing if they're present - instead evaluate their effecti
 
         pages_summary = "\n".join(summary_chunks)
         
+        # Add industry-specific context for summary
+        industry_context = ""
+        if industry and industry != "other":
+            industry_context_map = {
+                "ecommerce": "\n\nINDUSTRY FOCUS (E-commerce): Prioritize product value clarity, shipping/returns transparency, cart abandonment prevention, and mobile checkout optimization.",
+                "saas": "\n\nINDUSTRY FOCUS (SaaS): Emphasize free trial conversion, feature benefit communication, customer onboarding ease, and retention strategies.",
+                "coaching": "\n\nINDUSTRY FOCUS (Coaching): Focus on transformation results, personal credibility, client testimonials, and clear methodology explanation.",
+                "consulting": "\n\nINDUSTRY FOCUS (Consulting): Highlight expertise demonstration, case study effectiveness, ROI justification, and service package clarity.",
+                "lead_generation": "\n\nINDUSTRY FOCUS (Lead Gen): Optimize lead magnet appeal, email capture forms, nurture sequence setup, and qualification processes.",
+                "affiliate_marketing": "\n\nINDUSTRY FOCUS (Affiliate): Ensure authentic recommendations, comparison value, bonus offers, and trust-building elements.",
+                "course_creation": "\n\nINDUSTRY FOCUS (Education): Emphasize learning outcomes, curriculum transparency, instructor credibility, and student success proof.",
+                "agency": "\n\nINDUSTRY FOCUS (Agency): Showcase case studies, service differentiation, team expertise, and proven methodologies."
+            }
+            industry_context = industry_context_map.get(industry, "")
+
         return f"""Provide an executive summary of this complete funnel analysis. Overall performance score: {overall_score}/100.
 
 INDIVIDUAL PAGE PERFORMANCE:
 
-{pages_summary}
+{pages_summary}{industry_context}
 
 EXECUTIVE SUMMARY REQUIREMENTS:
 
@@ -419,7 +452,7 @@ Provide a professional 4-6 sentence summary covering:
 4. **Quick Wins**: 2-3 actionable changes that can be implemented immediately
 5. **Strategic Recommendation**: One broader strategic consideration for long-term optimization
 
-Focus on specific, actionable insights. Avoid generic advice. Use professional marketing language."""
+Focus on specific, actionable insights. Avoid generic advice. Use professional marketing language appropriate for this industry."""
     
     def _guess_page_type(self, page_number: int, total_pages: int) -> str:
         """Guess page type based on position in funnel."""

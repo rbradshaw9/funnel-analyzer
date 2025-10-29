@@ -26,6 +26,7 @@ interface AnalyzeFunnelOptions {
   email?: string
   userId?: number | null
   token?: string | null
+  industry?: string
   onProgress?: (progress: ProgressUpdate) => void
 }
 
@@ -45,6 +46,10 @@ export async function analyzeFunnel(urls: string[], options: AnalyzeFunnelOption
 
     if (options.email) {
       payload.email = options.email
+    }
+
+    if (options.industry) {
+      payload.industry = options.industry
     }
 
     const params: Record<string, number> = {}

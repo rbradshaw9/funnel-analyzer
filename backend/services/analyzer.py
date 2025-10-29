@@ -86,6 +86,7 @@ async def analyze_funnel(
     user_id: Optional[int] = None,
     recipient_email: Optional[str] = None,
     analysis_id: Optional[str] = None,
+    industry: Optional[str] = None,
 ) -> AnalysisResponse:
     """Generate analysis results, persist them, and return a response payload."""
     
@@ -104,9 +105,9 @@ async def analyze_funnel(
     # Report: Starting
     await progress.update(
         analysis_id=analysis_id,
-        stage="scraping",
+        stage="validation",
         progress_percent=5,
-        message="Validating URLs and preparing analysis…",
+        message="Validating URLs and checking accessibility…",
         total_pages=total_pages,
     )
 
@@ -116,7 +117,7 @@ async def analyze_funnel(
         analysis_id=analysis_id,
         stage="scraping",
         progress_percent=10,
-        message=f"Scraping {total_pages} page{'s' if total_pages > 1 else ''}…",
+        message=f"Extracting content from {total_pages} page{'s' if total_pages > 1 else ''}…",
         total_pages=total_pages,
     )
     
@@ -126,9 +127,9 @@ async def analyze_funnel(
     
     await progress.update(
         analysis_id=analysis_id,
-        stage="screenshot",
+        stage="screenshots",
         progress_percent=20,
-        message="Capturing page screenshots…",
+        message="Capturing screenshots and analyzing visual elements…",
         total_pages=total_pages,
     )
     
@@ -194,13 +195,13 @@ async def analyze_funnel(
         
         # Update progress for each page
         # Screenshots: 20-40%, Analysis: 40-85%
-        page_progress_base = 20 + (current_page - 1) * (65 / total_pages)
+        screenshot_progress = 20 + (current_page - 1) * (20 / total_pages)
         
         await progress.update(
             analysis_id=analysis_id,
-            stage="screenshot",
-            progress_percent=int(page_progress_base),
-            message=f"Processing page {current_page} of {total_pages}…",
+            stage="screenshots",
+            progress_percent=int(screenshot_progress),
+            message=f"Capturing screenshot and extracting elements from page {current_page}…",
             current_page=current_page,
             total_pages=total_pages,
         )
@@ -253,6 +254,56 @@ async def analyze_funnel(
             finally:
                 screenshot_time_total += time.perf_counter() - capture_timer_start
 
+        # Step: Performance analysis (if API key available)
+        performance_data = None
+        if performance_analyzer and settings.GOOGLE_PAGESPEED_API_KEY:
+            try:
+                perf_progress = 35 + (current_page - 1) * (10 / total_pages)
+                await progress.update(
+                    analysis_id=analysis_id,
+                    stage="performance_analysis",
+                    progress_percent=int(perf_progress),
+                    message=f"Analyzing page speed and Core Web Vitals for page {current_page}…",
+                    current_page=current_page,
+                    total_pages=total_pages,
+                )
+                performance_data = await performance_analyzer.analyze_performance(page_content.url)
+                logger.info(f"Performance analysis complete for {page_content.url}")
+            except Exception as perf_error:
+                logger.warning(f"Performance analysis failed for {page_content.url}: {perf_error}")
+        
+        # Step: Source code analysis
+        source_data = None
+        if source_analyzer and page_content.raw_html:
+            try:
+                source_progress = 38 + (current_page - 1) * (7 / total_pages)
+                await progress.update(
+                    analysis_id=analysis_id,
+                    stage="source_analysis",
+                    progress_percent=int(source_progress),
+                    message=f"Analyzing technical SEO and tracking setup for page {current_page}…",
+                    current_page=current_page,
+                    total_pages=total_pages,
+                )
+                source_data = await source_analyzer.analyze_source(
+                    page_content.raw_html, 
+                    page_content.url
+                )
+                logger.info(f"Source code analysis complete for {page_content.url}")
+            except Exception as source_error:
+                logger.warning(f"Source analysis failed for {page_content.url}: {source_error}")
+
+        # Update progress for AI analysis
+        ai_progress = 45 + (current_page - 1) * (35 / total_pages)
+        await progress.update(
+            analysis_id=analysis_id,
+            stage="ai_analysis",
+            progress_percent=int(ai_progress),
+            message=f"AI analyzing page {current_page} for optimization insights…",
+            current_page=current_page,
+            total_pages=total_pages,
+        )
+
         llm_timer_start = time.perf_counter()
         analysis_result = await llm_provider.analyze_page(
             page_content,
@@ -260,6 +311,7 @@ async def analyze_funnel(
             total_pages=len(urls),
             screenshot_base64=screenshot_base64,
             visual_elements=visual_elements,  # Pass extracted visual data to LLM
+            industry=industry,  # Pass industry for tailored recommendations
         )
         llm_duration_total += time.perf_counter() - llm_timer_start
 
@@ -317,14 +369,17 @@ async def analyze_funnel(
             "email_capture_recommendations": _string_list(analysis_result.get("email_capture_recommendations")),
             "screenshot_url": screenshot_url,
             "screenshot_storage_key": getattr(screenshot_asset, "key", None),
+            # New technical analysis data
+            "performance_data": performance_data,
+            "source_analysis": source_data,
         })
     
     # Step 3: Calculate overall scores
     await progress.update(
         analysis_id=analysis_id,
-        stage="analysis",
+        stage="scoring",
         progress_percent=85,
-        message="Calculating scores and generating insights…",
+        message="Calculating conversion scores and performance metrics…",
         total_pages=total_pages,
     )
     
@@ -339,13 +394,13 @@ async def analyze_funnel(
     # Step 4: Generate executive summary
     await progress.update(
         analysis_id=analysis_id,
-        stage="summary",
+        stage="executive_summary",
         progress_percent=90,
-        message="Generating executive summary and recommendations…",
+        message="Creating executive summary with strategic recommendations…",
         total_pages=total_pages,
     )
     
-    summary = await llm_provider.analyze_funnel_summary(page_analyses, overall_score)
+    summary = await llm_provider.analyze_funnel_summary(page_analyses, overall_score, industry)
     
     duration = int(time.time() - start_time)
     total_perf_duration = time.perf_counter() - perf_start
@@ -411,12 +466,21 @@ async def analyze_funnel(
     await session.commit()
     await session.refresh(analysis, attribute_names=["pages"])
     
+    # Step 5: Finalize and save results
+    await progress.update(
+        analysis_id=analysis_id,
+        stage="finalizing",
+        progress_percent=95,
+        message="Saving analysis results and preparing report…",
+        total_pages=total_pages,
+    )
+
     # Mark as complete
     await progress.update(
         analysis_id=analysis_id,
         stage="complete",
         progress_percent=100,
-        message="Analysis complete!",
+        message="Professional funnel analysis complete - ready to view!",
         total_pages=total_pages,
     )
 
