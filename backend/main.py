@@ -5,6 +5,7 @@ Main application entry point with CORS, routes, and lifecycle handlers.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 import logging
 
@@ -48,6 +49,13 @@ allowed_origins = [
 
 if settings.FRONTEND_URL:
     allowed_origins.append(settings.FRONTEND_URL.rstrip("/"))
+
+# Add session middleware for OAuth (required by authlib)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.JWT_SECRET,  # Use the same secret for simplicity
+    max_age=3600,  # 1 hour session lifetime for OAuth flow
+)
 
 app.add_middleware(
     CORSMiddleware,
