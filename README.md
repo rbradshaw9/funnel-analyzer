@@ -461,6 +461,50 @@ npm test
 6. **Email handoff clarity:** keep report-delivery emails inside the app (SendGrid) and trigger Mautic campaigns via tags/segments for longer nurture sequences.
 7. **Membership access control:** implement magic-link login, ThriveCart subscription webhooks, and subscription-status messaging (grace periods, customer portal link) so access updates automatically on renewals, failures, or cancellations.
 
+## 🔧 Troubleshooting
+
+### Authentication Issues
+
+If you're experiencing login problems, see our comprehensive guides:
+
+- **[QUICK_START_FIX.md](./QUICK_START_FIX.md)** - 5-step fix for authentication (START HERE)
+- **[COMPREHENSIVE_AUTH_FIX.md](./COMPREHENSIVE_AUTH_FIX.md)** - Detailed architecture and debugging
+- **[AUTH_TESTING_GUIDE.md](./AUTH_TESTING_GUIDE.md)** - Testing procedures and workflows
+
+**Quick Diagnostic:**
+```bash
+# Test your Railway backend directly
+./test_auth.sh https://YOUR_RAILWAY_URL
+```
+
+### Common Issues
+
+**"Invalid email or password"**
+- Ensure `DEFAULT_ADMIN_EMAIL` and `DEFAULT_ADMIN_PASSWORD` are set in Railway
+- Redeploy backend after adding environment variables
+- Check Railway logs for admin user creation
+
+**"We could not verify your session token"**
+- You're accessing an old `/admin` deployment - remove it
+- Access admin through the main Next.js app instead
+
+**CORS errors**
+- Verify `NEXT_PUBLIC_API_URL` is set in Vercel
+- Check it points to your Railway backend URL
+- Redeploy frontend after changing env vars
+
+**Backend login works but frontend doesn't**
+- Frontend is a static export - API calls go directly from browser to Railway
+- Check browser Network tab to see where API requests are going
+- Verify `NEXT_PUBLIC_API_URL` environment variable
+
+### Getting Help
+
+1. Run the test script: `./test_auth.sh https://YOUR_RAILWAY_URL`
+2. Check Railway logs: `railway logs`
+3. Check browser console and Network tab
+4. Review the troubleshooting guides above
+
 ## 🤝 Contributing
 
 This is a private MVP. For questions or issues, contact the development team.

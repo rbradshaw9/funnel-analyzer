@@ -127,3 +127,23 @@ class WebhookEvent(Base):
 
     def __repr__(self) -> str:
         return f"<WebhookEvent {self.source}:{self.id}>"
+
+
+class EmailTemplate(Base):
+    """Custom email templates for transactional emails."""
+
+    __tablename__ = "email_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), unique=True, nullable=False, index=True)  # magic_link, welcome, etc.
+    subject = Column(String(500), nullable=False)
+    html_content = Column(Text, nullable=False)
+    text_content = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
+    is_custom = Column(Integer, default=1)  # 1 = custom, 0 = default
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_onupdate=text("CURRENT_TIMESTAMP"))
+
+    def __repr__(self) -> str:
+        return f"<EmailTemplate {self.name}>"
+

@@ -3,9 +3,12 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
+import { FiChevronDown, FiChevronUp } from "react-icons/fi"
 import { TopNav } from "@/components/TopNav"
 import { useAuthStore } from "@/store/authStore"
 import { AuthModal } from "@/components/AuthModal"
+import UserEditModal from "@/components/UserEditModal"
+import UserAnalysesModal from "@/components/UserAnalysesModal"
 
 interface UserStats {
   total_users: number
@@ -29,6 +32,14 @@ interface UserListItem {
   oauth_provider: string | null
 }
 
+interface UserDetail extends UserListItem {
+  subscription_id: string | null
+  thrivecart_customer_id: string | null
+  access_expires_at: string | null
+  status_reason: string | null
+  updated_at: string | null
+}
+
 export default function AdminPage() {
   const router = useRouter()
   const { token } = useAuthStore()
@@ -40,6 +51,11 @@ export default function AdminPage() {
   const [filterStatus, setFilterStatus] = useState<string>("")
   const [searchTerm, setSearchTerm] = useState("")
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [editingUser, setEditingUser] = useState<UserListItem | null>(null)
+  const [expandedUserId, setExpandedUserId] = useState<number | null>(null)
+  const [userDetails, setUserDetails] = useState<Map<number, UserDetail>>(new Map())
+  const [viewingAnalysesUserId, setViewingAnalysesUserId] = useState<number | null>(null)
+  const [viewingAnalysesUserEmail, setViewingAnalysesUserEmail] = useState<string>("")
 
   useEffect(() => {
     if (token) {
@@ -113,6 +129,31 @@ export default function AdminPage() {
       alert(`User ${email} deleted successfully`)
     } catch (err: any) {
       alert(`Error: ${err.message}`)
+    }
+  }
+
+  const toggleUserExpand = async (userId: number) => {
+    if (expandedUserId === userId) {
+      setExpandedUserId(null)
+      return
+    }
+
+    setExpandedUserId(userId)
+
+    // Load user details if not already loaded
+    if (!userDetails.has(userId)) {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/users/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+
+        if (!res.ok) throw new Error("Failed to load user details")
+
+        const detail: UserDetail = await res.json()
+        setUserDetails(new Map(userDetails.set(userId, detail)))
+      } catch (err) {
+        console.error("Error loading user details:", err)
+      }
     }
   }
 
@@ -258,6 +299,7 @@ export default function AdminPage() {
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-8"></th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">User</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Plan</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
@@ -268,21 +310,34 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-200">
-                  {users.map((user) => (
-                    <tr key={user.id} className="hover:bg-slate-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div>
-                            <div className="text-sm font-medium text-slate-900">{user.email}</div>
-                            {user.full_name && (
-                              <div className="text-sm text-slate-500">{user.full_name}</div>
-                            )}
-                            {user.oauth_provider && (
-                              <div className="text-xs text-slate-400">OAuth: {user.oauth_provider}</div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
+                  {users.map((user) => {
+                    const isExpanded = expandedUserId === user.id
+                    const detail = userDetails.get(user.id)
+                    
+                    return (
+                      <>
+                        <tr key={user.id} className="hover:bg-slate-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <button
+                              onClick={() => toggleUserExpand(user.id)}
+                              className="text-slate-400 hover:text-slate-600"
+                            >
+                              {isExpanded ? <FiChevronUp className="h-4 w-4" /> : <FiChevronDown className="h-4 w-4" />}
+                            </button>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div>
+                                <div className="text-sm font-medium text-slate-900">{user.email}</div>
+                                {user.full_name && (
+                                  <div className="text-sm text-slate-500">{user.full_name}</div>
+                                )}
+                                {user.oauth_provider && (
+                                  <div className="text-xs text-slate-400">OAuth: {user.oauth_provider}</div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                           user.plan === 'pro' ? 'bg-purple-100 text-purple-800' :
@@ -311,17 +366,64 @@ export default function AdminPage() {
                         {new Date(user.created_at).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {user.role !== 'admin' && (
+                        <div className="flex gap-2">
                           <button
-                            onClick={() => deleteUser(user.id, user.email)}
-                            className="text-red-600 hover:text-red-900"
+                            onClick={() => {
+                              setViewingAnalysesUserId(user.id)
+                              setViewingAnalysesUserEmail(user.email)
+                            }}
+                            className="text-purple-600 hover:text-purple-900"
                           >
-                            Delete
+                            Analyses
                           </button>
-                        )}
+                          <button
+                            onClick={() => setEditingUser(user)}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            Edit
+                          </button>
+                          {user.role !== 'admin' && (
+                            <button
+                              onClick={() => deleteUser(user.id, user.email)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                    
+                    {/* Expanded Detail Row */}
+                    {isExpanded && detail && (
+                      <tr key={`${user.id}-detail`} className="bg-slate-50">
+                        <td colSpan={8} className="px-6 py-4">
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <h4 className="font-semibold text-slate-700 mb-2">Subscription Details</h4>
+                              <div className="space-y-1 text-slate-600">
+                                <div><span className="font-medium">Subscription ID:</span> {detail.subscription_id || "N/A"}</div>
+                                <div><span className="font-medium">ThriveCart Customer ID:</span> {detail.thrivecart_customer_id || "N/A"}</div>
+                                <div><span className="font-medium">Access Expires:</span> {detail.access_expires_at ? new Date(detail.access_expires_at).toLocaleString() : "Never"}</div>
+                                <div><span className="font-medium">Status Reason:</span> {detail.status_reason || "N/A"}</div>
+                              </div>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-slate-700 mb-2">Account Information</h4>
+                              <div className="space-y-1 text-slate-600">
+                                <div><span className="font-medium">User ID:</span> {detail.id}</div>
+                                <div><span className="font-medium">Created:</span> {new Date(detail.created_at).toLocaleString()}</div>
+                                <div><span className="font-medium">Last Updated:</span> {detail.updated_at ? new Date(detail.updated_at).toLocaleString() : "N/A"}</div>
+                                <div><span className="font-medium">Total Analyses:</span> {detail.analysis_count}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -334,6 +436,32 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <UserEditModal
+          isOpen={!!editingUser}
+          onClose={() => setEditingUser(null)}
+          user={editingUser}
+          onSuccess={() => {
+            setEditingUser(null)
+            loadData()
+          }}
+        />
+      )}
+
+      {/* User Analyses Modal */}
+      {viewingAnalysesUserId && (
+        <UserAnalysesModal
+          isOpen={!!viewingAnalysesUserId}
+          onClose={() => {
+            setViewingAnalysesUserId(null)
+            setViewingAnalysesUserEmail("")
+          }}
+          userId={viewingAnalysesUserId}
+          userEmail={viewingAnalysesUserEmail}
+        />
+      )}
     </div>
   )
 }

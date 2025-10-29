@@ -13,7 +13,7 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 
 from ..db.session import get_db_session
-from ..models.database import User, Analysis
+from ..models.database import User, Analysis, EmailTemplate
 from ..services.auth import validate_jwt_token
 from ..services.passwords import hash_password
 
@@ -374,3 +374,215 @@ async def reset_user_password(
     logger.warning(f"Admin {admin.email} reset password for user {user.email}")
     
     return {"status": "success", "message": f"Password reset for {user.email}"}
+
+
+@router.get("/users/{user_id}/analyses")
+async def get_user_analyses(
+    user_id: int,
+    session: AsyncSession = Depends(get_db_session),
+    admin: User = Depends(require_admin),
+):
+    """Get all analyses for a specific user."""
+    
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    result = await session.execute(
+        select(Analysis)
+        .where(Analysis.user_id == user_id)
+        .order_by(Analysis.created_at.desc())
+    )
+    analyses = result.scalars().all()
+    
+    return [
+        {
+            "id": a.id,
+            "overall_score": a.overall_score,
+            "status": a.status,
+            "urls": a.urls,
+            "created_at": a.created_at.isoformat(),
+            "analysis_duration_seconds": a.analysis_duration_seconds,
+            "error_message": a.error_message,
+        }
+        for a in analyses
+    ]
+
+
+# Email Template Management
+
+
+class EmailTemplateSchema(BaseModel):
+    """Email template data."""
+    id: int
+    name: str
+    subject: str
+    html_content: str
+    text_content: str
+    description: Optional[str] = None
+    is_custom: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+
+class EmailTemplateUpdate(BaseModel):
+    """Email template update payload."""
+    subject: str
+    html_content: str
+    text_content: str
+    description: Optional[str] = None
+
+
+@router.get("/email-templates", response_model=List[EmailTemplateSchema])
+async def list_email_templates(
+    session: AsyncSession = Depends(get_db_session),
+    admin: User = Depends(require_admin),
+):
+    """List all email templates."""
+    
+    result = await session.execute(select(EmailTemplate).order_by(EmailTemplate.name))
+    templates = result.scalars().all()
+    
+    return [
+        EmailTemplateSchema(
+            id=t.id,
+            name=t.name,
+            subject=t.subject,
+            html_content=t.html_content,
+            text_content=t.text_content,
+            description=t.description,
+            is_custom=bool(t.is_custom),
+            created_at=t.created_at,
+            updated_at=t.updated_at,
+        )
+        for t in templates
+    ]
+
+
+@router.get("/email-templates/{template_name}", response_model=EmailTemplateSchema)
+async def get_email_template(
+    template_name: str,
+    session: AsyncSession = Depends(get_db_session),
+    admin: User = Depends(require_admin),
+):
+    """Get a specific email template."""
+    
+    result = await session.execute(
+        select(EmailTemplate).where(EmailTemplate.name == template_name)
+    )
+    template = result.scalar_one_or_none()
+    
+    if not template:
+        # Return default template from email_templates.py
+        from ..services import email_templates
+        
+        defaults = {
+            "magic_link": "Magic Link Login",
+            "welcome": "Welcome Email",
+            "analysis_complete": "Analysis Complete",
+            "password_reset": "Password Reset"
+        }
+        
+        if template_name not in defaults:
+            raise HTTPException(status_code=404, detail="Template not found")
+        
+        return EmailTemplateSchema(
+            id=0,
+            name=template_name,
+            subject=defaults[template_name],
+            html_content="<!-- Default template from code -->",
+            text_content="Default template from code",
+            description=f"Default {defaults[template_name]} template",
+            is_custom=False,
+            created_at=datetime.now(timezone.utc),
+            updated_at=None,
+        )
+    
+    return EmailTemplateSchema(
+        id=template.id,
+        name=template.name,
+        subject=template.subject,
+        html_content=template.html_content,
+        text_content=template.text_content,
+        description=template.description,
+        is_custom=bool(template.is_custom),
+        created_at=template.created_at,
+        updated_at=template.updated_at,
+    )
+
+
+@router.put("/email-templates/{template_name}", response_model=EmailTemplateSchema)
+async def update_email_template(
+    template_name: str,
+    update_data: EmailTemplateUpdate,
+    session: AsyncSession = Depends(get_db_session),
+    admin: User = Depends(require_admin),
+):
+    """Update or create an email template."""
+    
+    result = await session.execute(
+        select(EmailTemplate).where(EmailTemplate.name == template_name)
+    )
+    template = result.scalar_one_or_none()
+    
+    if template:
+        # Update existing
+        template.subject = update_data.subject
+        template.html_content = update_data.html_content
+        template.text_content = update_data.text_content
+        template.description = update_data.description
+        template.is_custom = 1
+        template.updated_at = datetime.now(timezone.utc)
+    else:
+        # Create new
+        template = EmailTemplate(
+            name=template_name,
+            subject=update_data.subject,
+            html_content=update_data.html_content,
+            text_content=update_data.text_content,
+            description=update_data.description,
+            is_custom=1,
+        )
+        session.add(template)
+    
+    await session.commit()
+    await session.refresh(template)
+    
+    logger.info(f"Admin {admin.email} updated email template {template_name}")
+    
+    return EmailTemplateSchema(
+        id=template.id,
+        name=template.name,
+        subject=template.subject,
+        html_content=template.html_content,
+        text_content=template.text_content,
+        description=template.description,
+        is_custom=bool(template.is_custom),
+        created_at=template.created_at,
+        updated_at=template.updated_at,
+    )
+
+
+@router.delete("/email-templates/{template_name}")
+async def delete_email_template(
+    template_name: str,
+    session: AsyncSession = Depends(get_db_session),
+    admin: User = Depends(require_admin),
+):
+    """Delete a custom email template (revert to default)."""
+    
+    result = await session.execute(
+        select(EmailTemplate).where(EmailTemplate.name == template_name)
+    )
+    template = result.scalar_one_or_none()
+    
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    await session.delete(template)
+    await session.commit()
+    
+    logger.info(f"Admin {admin.email} deleted custom template {template_name} (reverted to default)")
+    
+    return {"status": "success", "message": f"Template {template_name} reverted to default"}
+
