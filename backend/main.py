@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 import logging
 
 from .db.session import init_db
-from .routes import analysis, auth, metrics, reports, webhooks, oauth, user, admin
+from .routes import analysis, auth, metrics, reports, webhooks, oauth, user, admin, health
 from .utils.config import settings
 
 # Configure logging
@@ -75,6 +75,7 @@ app.include_router(metrics.router, prefix="/api/metrics", tags=["Metrics"])
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
 app.include_router(webhooks.router, prefix="/api/webhooks", tags=["Webhooks"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
+app.include_router(health.router, tags=["Health"])
 
 
 @app.get("/")
