@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 import logging
 
 from .db.session import init_db
-from .routes import analysis, auth, metrics, reports, webhooks, oauth, user, admin, health, email_test  # cleanup disabled
+from .routes import analysis, auth, metrics, reports, webhooks, oauth, user, admin, health, email_test, debug  # cleanup disabled
 from .utils.config import settings
 
 # Configure logging
@@ -77,6 +77,7 @@ app.include_router(webhooks.router, prefix="/api/webhooks", tags=["Webhooks"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 # app.include_router(cleanup.router, prefix="/api/admin/screenshots", tags=["Cleanup"])  # Disabled - screenshot cleanup temporarily disabled
 app.include_router(email_test.router, tags=["Testing"])
+app.include_router(debug.router, prefix="/api/debug", tags=["Debug"])
 app.include_router(health.router, tags=["Health"])
 
 

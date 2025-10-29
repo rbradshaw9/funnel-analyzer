@@ -119,17 +119,6 @@ async def send_analysis_email(*, recipient_email: str, analysis: AnalysisRespons
                             </td>
                         </tr>
                         
-                        <!-- Score Section -->
-                        <tr>
-                            <td style="padding: 24px 32px;">
-                                <div style="text-align: center; padding: 20px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
-                                    <h2 style="margin: 0 0 8px 0; color: #1f2937; font-size: 18px;">Overall Funnel Score</h2>
-                                    <div style="font-size: 48px; font-weight: bold; color: {score_color}; margin: 8px 0;">{analysis.overall_score}/100</div>
-                                    <div style="color: {score_color}; font-weight: 600; font-size: 16px;">{score_status}</div>
-                                </div>
-                            </td>
-                        </tr>
-                        
                         <!-- Executive Summary -->
                         <tr>
                             <td style="padding: 0 32px 24px 32px;">
@@ -198,6 +187,22 @@ async def send_analysis_email(*, recipient_email: str, analysis: AnalysisRespons
         logger.error(f"❌ Email service not available - check SENDGRID_API_KEY environment variable")
         return False
     
+    # Enhanced debugging - check SendGrid configuration
+    from ..utils.config import settings
+    logger.info(f"📧 SendGrid API Key configured: {'Yes' if settings.SENDGRID_API_KEY else 'No'}")
+    logger.info(f"📧 SendGrid API Key length: {len(settings.SENDGRID_API_KEY) if settings.SENDGRID_API_KEY else 0}")
+    logger.info(f"📧 From email: {settings.EMAIL_DEFAULT_FROM}")
+    logger.info(f"📧 Reply-to email: {settings.EMAIL_DEFAULT_REPLY_TO}")
+    
+    # Validate email address format
+    import re
+    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_regex, recipient_email):
+        logger.error(f"❌ Invalid email address format: {recipient_email}")
+        return False
+    
+    logger.info(f"📧 Email validation passed for: {recipient_email}")
+    
     try:
         sent = await email_service.send_email(
             to_email=recipient_email,
@@ -208,13 +213,29 @@ async def send_analysis_email(*, recipient_email: str, analysis: AnalysisRespons
         if sent:
             logger.info(f"✅ Analysis email sent successfully to {recipient_email}")
             logger.info(f"✅ Email content length: {len(body_html)} characters")
+            logger.info(f"✅ SendGrid API call completed successfully")
         else:
             logger.warning(f"❌ SendGrid returned failure for {recipient_email}")
-            logger.warning(f"❌ Check SendGrid API key and email configuration")
+            logger.warning(f"❌ Check SendGrid API key validation and sender authentication")
+            logger.warning(f"❌ Verify domain authentication in SendGrid dashboard")
             
         return sent
         
     except Exception as e:
         logger.error(f"❌ Exception sending analysis email to {recipient_email}: {str(e)}")
-        logger.error(f"❌ This might indicate SendGrid configuration issues")
+        logger.error(f"❌ Exception type: {type(e).__name__}")
+        logger.error(f"❌ Full error details: {repr(e)}")
+        
+        # Check for specific SendGrid errors
+        if "authentication" in str(e).lower():
+            logger.error(f"❌ Authentication error - check SendGrid API key validity")
+        elif "sender" in str(e).lower():
+            logger.error(f"❌ Sender error - verify sender email authentication in SendGrid")
+        elif "400" in str(e):
+            logger.error(f"❌ Bad request - check email content or recipient format")
+        elif "403" in str(e):
+            logger.error(f"❌ Forbidden - check SendGrid API key permissions")
+        elif "429" in str(e):
+            logger.error(f"❌ Rate limit exceeded - too many emails sent")
+            
         return False
