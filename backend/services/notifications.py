@@ -82,8 +82,12 @@ async def send_analysis_email(*, recipient_email: str, analysis: AnalysisRespons
         score_color = "#dc2626"  # dark red
         score_status = "Critical Issues"
 
+    # Add plural 's' if more than one page
+    page_plural = "s" if len(analysis.pages) > 1 else ""
+    merge_data['page_plural'] = page_plural
+    
     # Create email template with merge codes
-    body_template = """
+    body_template = f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -99,8 +103,19 @@ async def send_analysis_email(*, recipient_email: str, analysis: AnalysisRespons
                         <!-- Header -->
                         <tr>
                             <td style="padding: 32px 32px 24px 32px; text-align: center; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 12px 12px 0 0;">
-                                <h1 style="margin: 0; color: white; font-size: 28px; font-weight: bold;">🚀 Hi {{user_name}}, Your Funnel Analysis is Ready!</h1>
-                                <p style="margin: 8px 0 0 0; color: #e0e7ff; font-size: 16px;">Professional insights for {{total_pages}} page{{s}} analyzed on {{analysis_date}}</p>
+                                <h1 style="margin: 0; color: white; font-size: 28px; font-weight: bold;">🚀 Hi {{{{user_name}}}}, Your Funnel Analysis is Ready!</h1>
+                                <p style="margin: 8px 0 0 0; color: #e0e7ff; font-size: 16px;">Professional insights for {{{{total_pages}}}} page{page_plural} analyzed on {{{{analysis_date}}}}</p>
+                            </td>
+                        </tr>
+                        
+                        <!-- Score Section -->
+                        <tr>
+                            <td style="padding: 24px 32px;">
+                                <div style="text-align: center; padding: 20px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+                                    <h2 style="margin: 0 0 8px 0; color: #1f2937; font-size: 18px;">Overall Funnel Score</h2>
+                                    <div style="font-size: 48px; font-weight: bold; color: {score_color}; margin: 8px 0;">{{{{overall_score}}}}/100</div>
+                                    <div style="color: {score_color}; font-weight: 600; font-size: 16px;">{score_status}</div>
+                                </div>
                             </td>
                         </tr>
                         
@@ -144,9 +159,9 @@ async def send_analysis_email(*, recipient_email: str, analysis: AnalysisRespons
                         <tr>
                             <td style="padding: 0 32px 32px 32px; text-align: center;">
                                 <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 8px; padding: 24px;">
-                                    <h3 style="margin: 0 0 12px 0; color: white; font-size: 18px;">Ready to optimize your funnel?</h3>
+                                    <h3 style="margin: 0 0 12px 0; color: white; font-size: 18px;">Ready to optimize your funnel, {{{{user_name}}}}?</h3>
                                     <p style="margin: 0 0 16px 0; color: #e0e7ff;">Get detailed recommendations, A/B testing priorities, and implementation guides in your dashboard.</p>
-                                    <a href="https://funnelanalyzerpro.com/dashboard" style="display: inline-block; background-color: white; color: #6366f1; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px;">View Full Report →</a>
+                                    <a href="{{{{dashboard_url}}}}" style="display: inline-block; background-color: white; color: #6366f1; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px;">View Full Report →</a>
                                 </div>
                             </td>
                         </tr>
@@ -159,7 +174,7 @@ async def send_analysis_email(*, recipient_email: str, analysis: AnalysisRespons
                                     <a href="https://funnelanalyzerpro.com/support" style="color: #6366f1; text-decoration: none;">our support center</a>
                                 </p>
                                 <p style="margin: 8px 0 0 0; font-size: 12px;">
-                                    © 2025 Funnel Analyzer Pro. Professional conversion optimization made simple.
+                                    © 2025 {{{{company_name}}}}. Professional conversion optimization made simple.
                                 </p>
                             </td>
                         </tr>
@@ -170,8 +185,18 @@ async def send_analysis_email(*, recipient_email: str, analysis: AnalysisRespons
     </body>
     </html>
     """
+    
+    # Apply merge codes to create final HTML
+    body_html = _apply_merge_codes(body_template, merge_data)
 
-    logger.info(f"📧 Sending analysis report email to {recipient_email}")
+    logger.info(f"📧 Attempting to send analysis report email to {recipient_email}")
+    logger.info(f"📧 Email subject: {subject}")
+    logger.info(f"📧 User name extracted: {merge_data.get('user_name')}")
+    
+    # Debug: Check if SendGrid is configured  
+    if not email_service:
+        logger.error(f"❌ Email service not available - check SENDGRID_API_KEY environment variable")
+        return False
     
     try:
         sent = await email_service.send_email(
@@ -182,11 +207,14 @@ async def send_analysis_email(*, recipient_email: str, analysis: AnalysisRespons
         
         if sent:
             logger.info(f"✅ Analysis email sent successfully to {recipient_email}")
+            logger.info(f"✅ Email content length: {len(body_html)} characters")
         else:
             logger.warning(f"❌ SendGrid returned failure for {recipient_email}")
+            logger.warning(f"❌ Check SendGrid API key and email configuration")
             
         return sent
         
     except Exception as e:
         logger.error(f"❌ Exception sending analysis email to {recipient_email}: {str(e)}")
+        logger.error(f"❌ This might indicate SendGrid configuration issues")
         return False
