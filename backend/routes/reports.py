@@ -6,7 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db.session import get_db_session
+from ..models.database import User
 from ..models.schemas import AnalysisResponse, ReportDeleteResponse, ReportListResponse
+from ..services.plan_gating import filter_analysis_by_plan
 from ..services.reports import delete_report, get_report_by_id, get_user_reports
 import logging
 
@@ -24,6 +26,7 @@ async def get_report_detail(
     Get detailed analysis report by ID.
     
     Returns complete analysis with all pages, scores, and feedback.
+    Results are filtered based on user's plan level.
     """
     try:
         logger.info(f"Fetching detailed report for analysis {analysis_id}")
@@ -33,7 +36,17 @@ async def get_report_detail(
         if not result:
             raise HTTPException(status_code=404, detail="Report not found")
         
-        return result
+        # Get user plan for filtering
+        user_plan = None
+        if user_id:
+            user = await session.get(User, user_id)
+            if user:
+                user_plan = user.plan
+        
+        # Filter analysis based on plan
+        filtered_result = filter_analysis_by_plan(result, user_plan)
+        
+        return filtered_result
         
     except HTTPException:
         raise

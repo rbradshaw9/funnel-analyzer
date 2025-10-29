@@ -118,6 +118,8 @@ export interface AnalysisResult {
   analysis_duration_seconds?: number
   recipient_email?: string
   pipeline_metrics?: PipelineTelemetry
+  is_limited?: boolean
+  upgrade_message?: string
 }
 
 export interface ReportListItem {

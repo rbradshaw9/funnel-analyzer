@@ -152,6 +152,8 @@ class AnalysisResponse(BaseModel):
     analysis_duration_seconds: Optional[int] = None
     recipient_email: Optional[EmailStr] = None
     pipeline_metrics: Optional[PipelineTelemetry] = None
+    is_limited: Optional[bool] = None  # Whether content is limited by plan
+    upgrade_message: Optional[str] = None  # Upgrade prompt message
     
 
 class AnalysisEmailRequest(BaseModel):

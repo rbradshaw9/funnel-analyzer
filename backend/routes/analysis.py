@@ -1,4 +1,4 @@
-"""API routes for funnel analysis workflows."""
+"""Analysis route - Core funnel analysis endpoint."""
 
 import asyncio
 import logging
@@ -7,17 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db.session import get_db_session
-from ..models.database import Analysis
+from ..models.database import Analysis, User
 from ..models.schemas import AnalysisEmailRequest, AnalysisRequest, AnalysisResponse
 from ..services.analyzer import analyze_funnel
-from ..services.notifications import send_analysis_email
+from ..services.email import send_analysis_email
+from ..services.plan_gating import filter_analysis_by_plan
 from ..services.reports import get_report_by_id
 from ..utils.config import settings
-from ..utils.rate_limiter import (
-    CompositeRateLimiter,
-    RateLimitExceeded,
-    SlidingWindowRateLimiter,
-)
+from ..utils.rate_limiter import CompositeRateLimiter, RateLimitExceeded, SlidingWindowRateLimiter
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -85,11 +82,21 @@ async def analyze_funnel_endpoint(
             recipient_email=request.email,
         )
 
-        if request.email:
-            asyncio.create_task(send_analysis_email(recipient_email=request.email, analysis=result))
+        # Get user plan for filtering
+        user_plan = None
+        if user_id:
+            user = await session.get(User, user_id)
+            if user:
+                user_plan = user.plan
+        
+        # Filter analysis based on plan
+        filtered_result = filter_analysis_by_plan(result, user_plan)
 
-        logger.info(f"Analysis completed with overall score: {result.overall_score}")
-        return result
+        if request.email:
+            asyncio.create_task(send_analysis_email(recipient_email=request.email, analysis=filtered_result))
+
+        logger.info(f"Analysis completed with overall score: {filtered_result.overall_score}")
+        return filtered_result
 
     except ValueError as e:
         logger.error(f"Validation error: {str(e)}")

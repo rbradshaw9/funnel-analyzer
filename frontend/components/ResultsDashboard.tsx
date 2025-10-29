@@ -68,6 +68,32 @@ export default function ResultsDashboard({ analysis }: Props) {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
+      {/* Upgrade Banner for Limited Content */}
+      {analysis.is_limited && analysis.upgrade_message && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 rounded-xl border-2 border-primary-200 bg-gradient-to-r from-primary-50 to-blue-50 p-5"
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <svg className="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-slate-900 mb-1">
+                Unlock Full Analysis
+              </h3>
+              <p className="text-slate-700 mb-3">{analysis.upgrade_message}</p>
+              <button className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700">
+                View Plans & Pricing
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Header with Actions */}
       <div className="flex justify-between items-center mb-8">
         <div>
