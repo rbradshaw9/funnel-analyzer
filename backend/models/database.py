@@ -1,6 +1,6 @@
 """Database models using SQLAlchemy with async support."""
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON, String, Text, text
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.sql import func
 
@@ -21,7 +21,7 @@ class User(Base):
     status = Column(String(50), nullable=False, default="active", server_default="active")
     role = Column(String(50), nullable=False, default="member", server_default="member")
     status_reason = Column(String(255), nullable=True)
-    status_last_updated = Column(DateTime(timezone=True), nullable=True, onupdate=func.now)
+    status_last_updated = Column(DateTime(timezone=True), nullable=True, server_onupdate=text("CURRENT_TIMESTAMP"))
     subscription_id = Column(String(150), nullable=True, index=True)
     thrivecart_customer_id = Column(String(150), nullable=True, index=True)
     access_expires_at = Column(DateTime(timezone=True), nullable=True)
@@ -42,7 +42,7 @@ class User(Base):
     onboarding_completed = Column(Integer, default=0)  # 0 = incomplete, 1 = complete
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    updated_at = Column(DateTime(timezone=True), server_onupdate=text("CURRENT_TIMESTAMP"))
 
     analyses = relationship("Analysis", back_populates="user", cascade="all, delete-orphan")
     
