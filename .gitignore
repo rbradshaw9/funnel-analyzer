@@ -62,3 +62,4 @@ funnel_analyzer.db
 .env
 NEED-FROM-RYAN.md
 .env.bak
+RAILWAY_ENV_VARS.md
