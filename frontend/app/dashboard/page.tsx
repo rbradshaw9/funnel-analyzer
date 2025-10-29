@@ -7,6 +7,7 @@ import ResultsDashboard from '@/components/ResultsDashboard'
 import LoadingAnimation from '@/components/LoadingAnimation'
 import { TopNav } from '@/components/TopNav'
 import { SetPasswordModal } from '@/components/SetPasswordModal'
+import { ProfileModal } from '@/components/ProfileModal'
 import { useAnalysisStore } from '@/store/analysisStore'
 import { useAuthValidation } from '@/hooks/useAuthValidation'
 import { deleteReport, getReportDetail, getReports } from '@/lib/api'
@@ -54,6 +55,10 @@ function DashboardContent() {
   // Password setup modal state
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [passwordModalDismissed, setPasswordModalDismissed] = useState(false)
+  
+  // Profile completion modal state
+  const [showProfileModal, setShowProfileModal] = useState(false)
+  const [profileModalDismissed, setProfileModalDismissed] = useState(false)
 
   // Show password setup modal for users without a password (OAuth/magic-link users)
   useEffect(() => {
@@ -63,6 +68,23 @@ function DashboardContent() {
       return () => clearTimeout(timer)
     }
   }, [auth, passwordModalDismissed])
+  
+  // Show profile completion modal for users who haven't completed onboarding
+  // Only show after password modal is dismissed or if user already has password
+  useEffect(() => {
+    const shouldShowProfile = 
+      auth && 
+      auth.valid && 
+      !profileModalDismissed &&
+      (auth.has_password !== false || passwordModalDismissed) &&
+      !showPasswordModal
+    
+    if (shouldShowProfile) {
+      // Delay showing the modal to avoid modal stacking
+      const timer = setTimeout(() => setShowProfileModal(true), 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [auth, profileModalDismissed, passwordModalDismissed, showPasswordModal])
 
   const fetchReports = useCallback(
     async ({ offset = 0, append = false }: { offset?: number; append?: boolean } = {}) => {
@@ -214,6 +236,19 @@ function DashboardContent() {
         onPasswordSet={() => {
           setShowPasswordModal(false)
           setPasswordModalDismissed(true)
+        }}
+      />
+
+      {/* Profile Completion Modal */}
+      <ProfileModal
+        open={showProfileModal}
+        onClose={() => {
+          setShowProfileModal(false)
+          setProfileModalDismissed(true)
+        }}
+        onProfileCompleted={() => {
+          setShowProfileModal(false)
+          setProfileModalDismissed(true)
         }}
       />
 

@@ -195,6 +195,51 @@ export async function setUserPassword(token: string, password: string): Promise<
   }
 }
 
+export interface UpdateProfilePayload {
+  full_name?: string
+  company?: string
+  job_title?: string
+  onboarding_completed?: boolean
+}
+
+export interface ProfileResponse {
+  user_id: number
+  email: string
+  full_name?: string | null
+  company?: string | null
+  job_title?: string | null
+  avatar_url?: string | null
+  onboarding_completed: boolean
+  plan: string
+  status: string
+}
+
+export async function getUserProfile(token: string): Promise<ProfileResponse> {
+  try {
+    const response = await api.get<ProfileResponse>('/api/user/profile', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to fetch profile')
+  }
+}
+
+export async function updateUserProfile(token: string, payload: UpdateProfilePayload): Promise<ProfileResponse> {
+  try {
+    const response = await api.patch<ProfileResponse>('/api/user/profile', payload, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to update profile')
+  }
+}
+
 export async function getPublicStats(): Promise<PublicStatsResponse> {
   try {
     const response = await api.get<PublicStatsResponse>('/api/metrics/stats')
