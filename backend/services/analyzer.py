@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+import uuid
 from typing import Any, List, Optional
 
 import httpx
@@ -18,6 +19,7 @@ from ..services.screenshot import get_screenshot_service
 from ..services.llm_provider import get_llm_provider
 from ..services.storage import get_storage_service
 from ..services.scraper import scrape_funnel
+from ..services.progress_tracker import get_progress_tracker
 from ..utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -81,19 +83,52 @@ async def analyze_funnel(
     session: AsyncSession,
     user_id: Optional[int] = None,
     recipient_email: Optional[str] = None,
+    analysis_id: Optional[str] = None,
 ) -> AnalysisResponse:
     """Generate analysis results, persist them, and return a response payload."""
+    
+    # Generate or use provided analysis ID for progress tracking
+    if not analysis_id:
+        analysis_id = str(uuid.uuid4())
+    
+    progress = get_progress_tracker()
+    total_pages = len(urls)
     
     start_time = time.time()
     perf_start = time.perf_counter()
     
     await _validate_urls_or_raise(urls)
+    
+    # Report: Starting
+    await progress.update(
+        analysis_id=analysis_id,
+        stage="scraping",
+        progress_percent=5,
+        message="Validating URLs and preparing analysis…",
+        total_pages=total_pages,
+    )
 
     # Step 1: Scrape all pages
-    logger.info(f"Starting analysis for {len(urls)} URLs")
+    logger.info(f"Starting analysis for {len(urls)} URLs (ID: {analysis_id})")
+    await progress.update(
+        analysis_id=analysis_id,
+        stage="scraping",
+        progress_percent=10,
+        message=f"Scraping {total_pages} page{'s' if total_pages > 1 else ''}…",
+        total_pages=total_pages,
+    )
+    
     scrape_start = time.perf_counter()
     page_contents = await scrape_funnel(urls)
     scrape_duration = time.perf_counter() - scrape_start
+    
+    await progress.update(
+        analysis_id=analysis_id,
+        stage="screenshot",
+        progress_percent=20,
+        message="Capturing page screenshots…",
+        total_pages=total_pages,
+    )
     
     # Step 2: Capture screenshots (best effort) and analyze each page with OpenAI
     llm_provider = get_llm_provider()
@@ -142,6 +177,21 @@ async def analyze_funnel(
         return [str(item) for item in items if isinstance(item, (str, int, float))]
 
     for i, page_content in enumerate(page_contents):
+        current_page = i + 1
+        
+        # Update progress for each page
+        # Screenshots: 20-40%, Analysis: 40-85%
+        page_progress_base = 20 + (current_page - 1) * (65 / total_pages)
+        
+        await progress.update(
+            analysis_id=analysis_id,
+            stage="screenshot",
+            progress_percent=int(page_progress_base),
+            message=f"Processing page {current_page} of {total_pages}…",
+            current_page=current_page,
+            total_pages=total_pages,
+        )
+        
         screenshot_base64 = None
         screenshot_timeout_seconds = 8
         screenshot_task: asyncio.Task[str | None] | None = None
@@ -275,6 +325,14 @@ async def analyze_funnel(
         })
     
     # Step 3: Calculate overall scores
+    await progress.update(
+        analysis_id=analysis_id,
+        stage="analysis",
+        progress_percent=85,
+        message="Calculating scores and generating insights…",
+        total_pages=total_pages,
+    )
+    
     all_scores = {"clarity": [], "value": [], "proof": [], "design": [], "flow": []}
     for page_analysis in page_analyses:
         for key in all_scores:
@@ -284,6 +342,14 @@ async def analyze_funnel(
     overall_score = sum(avg_scores.values()) // len(avg_scores)
     
     # Step 4: Generate executive summary
+    await progress.update(
+        analysis_id=analysis_id,
+        stage="summary",
+        progress_percent=90,
+        message="Generating executive summary and recommendations…",
+        total_pages=total_pages,
+    )
+    
     summary = await llm_provider.analyze_funnel_summary(page_analyses, overall_score)
     
     duration = int(time.time() - start_time)
@@ -349,6 +415,15 @@ async def analyze_funnel(
     await session.flush()
     await session.commit()
     await session.refresh(analysis, attribute_names=["pages"])
+    
+    # Mark as complete
+    await progress.update(
+        analysis_id=analysis_id,
+        stage="complete",
+        progress_percent=100,
+        message="Analysis complete!",
+        total_pages=total_pages,
+    )
 
     response_payload = {
         "analysis_id": analysis.id,

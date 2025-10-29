@@ -292,26 +292,15 @@ function FreeAnalysisContent() {
       return;
     }
 
-    setProgress(8);
-    setProgressMessage('Queueing your analysis…');
-    setElapsedSeconds(0);
-
-    const timers = progressStages.map(({ delay, percent, message }) =>
-      setTimeout(() => {
-        setProgress(percent);
-        setProgressMessage(message);
-      }, delay)
-    );
-
+    // Start elapsed time counter
     const interval = setInterval(() => {
       setElapsedSeconds((seconds) => seconds + 1);
     }, 1000);
 
     return () => {
-      timers.forEach(clearTimeout);
       clearInterval(interval);
     };
-  }, [isAnalyzing, progressStages]);
+  }, [isAnalyzing]);
 
   const handleAnalyze = async () => {
     const sanitizedUrl = url.trim().split(/\s+/)[0] ?? '';
@@ -324,19 +313,26 @@ function FreeAnalysisContent() {
     }
 
     setIsAnalyzing(true);
-    setProgress(8);
-    setProgressMessage('Queueing your analysis…');
+    setProgress(5);
+    setProgressMessage('Starting analysis…');
     setResult(null);
 
     try {
       setUrl(sanitizedUrl);
+      
+      // Set up progress tracking with onProgress callback
       const analysis = await analyzeFunnel([sanitizedUrl], {
         userId: typeof userId === 'number' ? userId : undefined,
         token: authToken ?? undefined,
+        onProgress: (progressUpdate) => {
+          setProgress(progressUpdate.progress_percent);
+          setProgressMessage(progressUpdate.message);
+        },
       });
+      
       setResult(analysis);
       setProgress(100);
-      setProgressMessage('Analysis ready!');
+      setProgressMessage('Analysis complete!');
     } catch (error) {
       console.error('Analysis failed:', error);
       alert('Analysis failed. Please try again.');

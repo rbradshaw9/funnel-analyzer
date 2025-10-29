@@ -2,8 +2,10 @@
 
 import asyncio
 import logging
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db.session import get_db_session
@@ -13,6 +15,7 @@ from ..services.analyzer import analyze_funnel
 from ..services.notifications import send_analysis_email
 from ..services.plan_gating import filter_analysis_by_plan
 from ..services.reports import get_report_by_id
+from ..services.progress_tracker import get_progress_tracker
 from ..utils.config import settings
 from ..utils.rate_limiter import CompositeRateLimiter, RateLimitExceeded, SlidingWindowRateLimiter
 
@@ -51,6 +54,9 @@ async def analyze_funnel_endpoint(
     2. Scrapes content and takes screenshots
     3. Analyzes with GPT-4o
     4. Returns structured scores and feedback
+    
+    The analysis_id in the response can be used to poll for progress updates
+    via GET /api/analysis/progress/{analysis_id}
     """
     try:
         client_ip = raw_request.client.host if raw_request.client else "unknown"
@@ -72,6 +78,9 @@ async def analyze_funnel_endpoint(
 
         logger.info(f"Received analysis request for {len(request.urls)} URLs")
 
+        # Generate unique analysis ID for progress tracking
+        analysis_id = str(uuid.uuid4())
+
         # Convert Pydantic URLs to strings
         url_strings = [str(url) for url in request.urls]
 
@@ -80,6 +89,7 @@ async def analyze_funnel_endpoint(
             session=session,
             user_id=user_id,
             recipient_email=request.email,
+            analysis_id=analysis_id,
         )
 
         # Get user plan for filtering
@@ -134,3 +144,26 @@ async def resend_analysis_email(
     await session.commit()
 
     return {"status": "sent"}
+
+
+@router.get("/progress/{analysis_id}")
+async def get_analysis_progress(analysis_id: str):
+    """
+    Poll for analysis progress updates.
+    
+    Returns the current progress state including:
+    - stage: current processing stage
+    - progress_percent: 0-100
+    - message: human-readable status message
+    - current_page/total_pages: for multi-page funnels
+    """
+    progress_tracker = get_progress_tracker()
+    progress = await progress_tracker.get(analysis_id)
+    
+    if progress is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Analysis not found or progress tracking expired"
+        )
+    
+    return progress

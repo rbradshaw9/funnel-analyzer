@@ -26,6 +26,17 @@ interface AnalyzeFunnelOptions {
   email?: string
   userId?: number | null
   token?: string | null
+  onProgress?: (progress: ProgressUpdate) => void
+}
+
+export interface ProgressUpdate {
+  analysis_id: string
+  stage: string
+  progress_percent: number
+  message: string
+  current_page?: number | null
+  total_pages?: number | null
+  timestamp?: string
 }
 
 export async function analyzeFunnel(urls: string[], options: AnalyzeFunnelOptions = {}): Promise<AnalysisResult> {
@@ -46,14 +57,57 @@ export async function analyzeFunnel(urls: string[], options: AnalyzeFunnelOption
       headers.Authorization = `Bearer ${options.token}`
     }
 
-    const response = await api.post<AnalysisResult>('/api/analyze', payload, {
+    // Start the analysis request (this will return immediately with an analysis_id we can poll)
+    const analysisPromise = api.post<AnalysisResult>('/api/analyze', payload, {
       params,
       headers: Object.keys(headers).length > 0 ? headers : undefined,
     })
+
+    // If onProgress callback provided, poll for progress updates
+    let progressInterval: NodeJS.Timeout | null = null
+    if (options.onProgress) {
+      // Generate temporary analysis ID for progress tracking
+      // The backend will return the real one, but we need to start polling
+      // We'll extract it from the response headers if available
+      analysisPromise.then((response) => {
+        // Extract analysis ID from response if needed
+        // For now, we'll poll using a generic approach
+        const analysisId = (response.data as any).analysis_id
+        if (analysisId) {
+          progressInterval = setInterval(async () => {
+            try {
+              const progress = await getAnalysisProgress(analysisId)
+              if (progress && options.onProgress) {
+                options.onProgress(progress)
+                
+                // Stop polling when complete
+                if (progress.stage === 'complete' || progress.progress_percent >= 100) {
+                  if (progressInterval) clearInterval(progressInterval)
+                }
+              }
+            } catch (err) {
+              // Progress might not be available yet or expired
+              console.debug('Progress polling error:', err)
+            }
+          }, 1000) // Poll every second
+        }
+      }).catch(() => {
+        if (progressInterval) clearInterval(progressInterval)
+      })
+    }
+
+    const response = await analysisPromise
+    if (progressInterval) clearInterval(progressInterval)
+    
     return response.data
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to analyze funnel')
   }
+}
+
+export async function getAnalysisProgress(analysisId: string): Promise<ProgressUpdate> {
+  const response = await api.get<ProgressUpdate>(`/api/analysis/progress/${analysisId}`)
+  return response.data
 }
 
 export async function validateToken(token: string): Promise<AuthResponse> {
