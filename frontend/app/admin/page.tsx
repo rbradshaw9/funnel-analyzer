@@ -57,14 +57,6 @@ export default function AdminPage() {
   const [viewingAnalysesUserId, setViewingAnalysesUserId] = useState<number | null>(null)
   const [viewingAnalysesUserEmail, setViewingAnalysesUserEmail] = useState<string>("")
 
-  useEffect(() => {
-    if (token) {
-      loadData()
-    } else {
-      setLoading(false)
-    }
-  }, [token, filterPlan, filterStatus, searchTerm, loadData])
-
   const loadData = useCallback(async () => {
     try {
       setLoading(true)
@@ -107,6 +99,14 @@ export default function AdminPage() {
       setLoading(false)
     }
   }, [token, filterPlan, filterStatus, searchTerm])
+
+  useEffect(() => {
+    if (token) {
+      loadData()
+    } else {
+      setLoading(false)
+    }
+  }, [token, filterPlan, filterStatus, searchTerm, loadData])
 
   const deleteUser = async (userId: number, email: string) => {
     if (!confirm(`Are you sure you want to delete user ${email}? This cannot be undone.`)) {
