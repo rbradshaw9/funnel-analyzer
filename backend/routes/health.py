@@ -5,11 +5,18 @@ Health check and diagnostic endpoints.
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from pydantic import BaseModel
 
 from ..db.session import get_db_session
 from ..models.database import User
+from ..services.passwords import verify_password
 
 router = APIRouter(prefix="/health", tags=["health"])
+
+
+class PasswordTestRequest(BaseModel):
+    email: str
+    password: str
 
 
 @router.get("/")
@@ -54,4 +61,53 @@ async def database_health(session: AsyncSession = Depends(get_db_session)):
             "status": "unhealthy",
             "database": "error",
             "error": str(e)
+        }
+
+
+@router.post("/test-password")
+async def test_password_verification(
+    request: PasswordTestRequest,
+    session: AsyncSession = Depends(get_db_session)
+):
+    """Test password verification for debugging (REMOVE IN PRODUCTION)."""
+    try:
+        # Normalize email
+        email = request.email.strip().lower()
+        
+        # Find user
+        stmt = select(User).where(User.email == email)
+        result = await session.execute(stmt)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            return {
+                "success": False,
+                "error": "User not found",
+                "email": email
+            }
+        
+        # Test password verification
+        try:
+            password_valid = verify_password(request.password, user.password_hash)
+            return {
+                "success": True,
+                "email": user.email,
+                "role": user.role,
+                "has_password_hash": bool(user.password_hash),
+                "password_hash_length": len(user.password_hash) if user.password_hash else 0,
+                "password_valid": password_valid,
+                "verification_method": "bcrypt"
+            }
+        except Exception as verify_error:
+            return {
+                "success": False,
+                "error": f"Password verification failed: {str(verify_error)}",
+                "email": user.email,
+                "has_password_hash": bool(user.password_hash),
+                "password_hash_length": len(user.password_hash) if user.password_hash else 0
+            }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Database error: {str(e)}"
         }
