@@ -118,21 +118,50 @@ async def scrape_url(url: str, timeout: int = 30) -> PageContent:
             if text and len(text) > 20:  # Filter out very short paragraphs
                 paragraphs.append(text)
         
-        # Extract CTAs (buttons, links with action words)
+        # Extract CTAs (buttons, links with action words, and ANY buttons/button-like elements)
         ctas = []
-        cta_keywords = ["buy", "order", "get", "start", "join", "sign", "subscribe", "download", "try", "claim"]
+        cta_keywords = ["buy", "order", "get", "start", "join", "sign", "subscribe", "download", "try", "claim", 
+                        "learn", "discover", "explore", "shop", "add", "checkout", "continue", "next", "submit",
+                        "register", "enroll", "apply", "request", "contact", "book", "schedule", "watch", "view"]
         
-        # Find buttons
-        for button in soup.find_all(["button", "input"]):
-            text = button.get_text(strip=True) or button.get("value", "")
-            if text:
+        # Find ALL buttons - they're CTAs by definition
+        for button in soup.find_all(["button"]):
+            text = button.get_text(strip=True)
+            if text and len(text) < 100:  # Avoid capturing huge blocks of text
                 ctas.append(text)
         
-        # Find links that look like CTAs
+        # Find ALL inputs that are buttons/submits
+        for input_el in soup.find_all("input"):
+            input_type = (input_el.get("type", "") or "").lower()
+            if input_type in ["button", "submit", "reset"]:
+                text = input_el.get("value", "").strip() or input_el.get_text(strip=True)
+                if text and len(text) < 100:
+                    ctas.append(text)
+        
+        # Find links with role=button or button/btn classes
         for link in soup.find_all("a"):
-            text = link.get_text(strip=True)
-            if text and any(keyword in text.lower() for keyword in cta_keywords):
-                ctas.append(text)
+            role = (link.get("role", "") or "").lower()
+            classes = " ".join(link.get("class", []) or []).lower()
+            
+            # Links that are styled as buttons
+            if role == "button" or "btn" in classes or "button" in classes:
+                text = link.get_text(strip=True)
+                if text and len(text) < 100:
+                    ctas.append(text)
+            # Links with CTA keywords
+            else:
+                text = link.get_text(strip=True)
+                if text and len(text) < 100 and any(keyword in text.lower() for keyword in cta_keywords):
+                    ctas.append(text)
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_ctas = []
+        for cta in ctas:
+            if cta.lower() not in seen:
+                seen.add(cta.lower())
+                unique_ctas.append(cta)
+        ctas = unique_ctas
         
         # Extract forms for lead capture insight
         forms = []

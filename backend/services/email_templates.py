@@ -5,138 +5,262 @@ from typing import Dict, Any
 
 
 def get_email_template_base() -> str:
-    """Get the base email template with professional styling."""
+    """Get the base email template with modern professional styling."""
     return """
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="x-apple-disable-message-reformatting">
     <title>{subject}</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
     <style>
+        /* Reset styles */
+        body, table, td, a {{
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }}
+        table, td {{
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }}
+        img {{
+            -ms-interpolation-mode: bicubic;
+            border: 0;
+            height: auto;
+            line-height: 100%;
+            outline: none;
+            text-decoration: none;
+        }}
+        
+        /* Base styles */
         body {{
             margin: 0;
             padding: 0;
+            width: 100% !important;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 16px;
             line-height: 1.6;
             color: #1e293b;
-            background-color: #f8fafc;
+            background-color: #f1f5f9;
+        }}
+        
+        /* Container */
+        .email-wrapper {{
+            width: 100%;
+            background-color: #f1f5f9;
+            padding: 24px 0;
         }}
         .email-container {{
             max-width: 600px;
-            margin: 40px auto;
+            margin: 0 auto;
             background-color: #ffffff;
-            border-radius: 12px;
+            border-radius: 16px;
             overflow: hidden;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }}
+        
+        /* Header with gradient */
         .header {{
             background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            padding: 40px 30px;
+            padding: 48px 32px;
             text-align: center;
         }}
         .header h1 {{
             margin: 0;
             color: #ffffff;
-            font-size: 28px;
+            font-size: 32px;
             font-weight: 700;
             letter-spacing: -0.5px;
+            line-height: 1.2;
         }}
         .header .tagline {{
-            margin: 8px 0 0 0;
-            color: #e0f2fe;
-            font-size: 14px;
-            font-weight: 400;
+            margin: 12px 0 0 0;
+            color: #dbeafe;
+            font-size: 15px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
         }}
+        
+        /* Content area */
         .content {{
-            padding: 40px 30px;
+            padding: 48px 32px;
         }}
         .content h2 {{
-            margin: 0 0 20px 0;
+            margin: 0 0 24px 0;
             color: #0f172a;
-            font-size: 22px;
-            font-weight: 600;
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 1.3;
         }}
         .content p {{
-            margin: 0 0 16px 0;
+            margin: 0 0 20px 0;
             color: #475569;
             font-size: 16px;
             line-height: 1.7;
         }}
+        .content p:last-child {{
+            margin-bottom: 0;
+        }}
+        
+        /* CTA Button */
         .button-container {{
-            margin: 32px 0;
+            margin: 36px 0;
             text-align: center;
         }}
         .button {{
             display: inline-block;
-            padding: 16px 32px;
+            padding: 18px 40px;
             background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
             color: #ffffff !important;
             text-decoration: none;
-            border-radius: 8px;
+            border-radius: 12px;
             font-weight: 600;
-            font-size: 16px;
-            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+            font-size: 17px;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.4), 0 2px 4px -1px rgba(59, 130, 246, 0.2);
             transition: all 0.2s;
         }}
-        .button:hover {{
-            transform: translateY(-1px);
-            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4);
+        
+        /* Info box */
+        .info-box {{
+            background-color: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 20px 24px;
+            margin: 28px 0;
+            border-radius: 8px;
         }}
+        .info-box p {{
+            margin: 0;
+            color: #1e40af;
+            font-size: 15px;
+            line-height: 1.6;
+        }}
+        .info-box strong {{
+            color: #1e3a8a;
+            font-weight: 600;
+        }}
+        
+        /* Divider */
+        .divider {{
+            margin: 32px 0;
+            border: 0;
+            border-top: 1px solid #e2e8f0;
+        }}
+        
+        /* Secondary text */
+        .secondary-text {{
+            color: #64748b;
+            font-size: 14px;
+            line-height: 1.5;
+        }}
+        
+        /* Footer */
         .footer {{
-            padding: 30px;
+            padding: 32px;
             background-color: #f8fafc;
             border-top: 1px solid #e2e8f0;
             text-align: center;
         }}
         .footer p {{
-            margin: 0 0 8px 0;
+            margin: 0 0 10px 0;
             color: #64748b;
             font-size: 14px;
+            line-height: 1.6;
+        }}
+        .footer p:last-child {{
+            margin-bottom: 0;
         }}
         .footer a {{
             color: #3b82f6;
             text-decoration: none;
+            font-weight: 500;
         }}
-        .footer a:hover {{
-            text-decoration: underline;
+        
+        /* Responsive */
+        @media only screen and (max-width: 600px) {{
+            .email-container {{
+                border-radius: 0 !important;
+            }}
+            .header {{
+                padding: 36px 24px !important;
+            }}
+            .header h1 {{
+                font-size: 26px !important;
+            }}
+            .content {{
+                padding: 36px 24px !important;
+            }}
+            .button {{
+                padding: 16px 32px !important;
+                font-size: 16px !important;
+            }}
+            .footer {{
+                padding: 24px !important;
+            }}
         }}
-        .divider {{
-            margin: 24px 0;
-            border: 0;
-            border-top: 1px solid #e2e8f0;
-        }}
-        .secondary-text {{
-            color: #64748b;
-            font-size: 14px;
-        }}
-        .highlight-box {{
-            background-color: #eff6ff;
-            border-left: 4px solid #3b82f6;
-            padding: 16px 20px;
-            margin: 24px 0;
-            border-radius: 4px;
-        }}
-        .highlight-box p {{
-            margin: 0;
-            color: #1e40af;
-            font-size: 15px;
+        
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {{
+            .email-wrapper {{
+                background-color: #0f172a !important;
+            }}
+            .email-container {{
+                background-color: #1e293b !important;
+            }}
+            .content h2 {{
+                color: #f1f5f9 !important;
+            }}
+            .content p {{
+                color: #cbd5e1 !important;
+            }}
+            .secondary-text {{
+                color: #94a3b8 !important;
+            }}
+            .footer {{
+                background-color: #0f172a !important;
+                border-top-color: #334155 !important;
+            }}
+            .footer p {{
+                color: #94a3b8 !important;
+            }}
+            .divider {{
+                border-top-color: #334155 !important;
+            }}
         }}
     </style>
 </head>
 <body>
-    <div class="email-container">
-        <div class="header">
-            <h1>Funnel Analyzer Pro</h1>
-            <p class="tagline">AI-Powered Funnel Optimization</p>
-        </div>
-        <div class="content">
-            {content}
-        </div>
-        <div class="footer">
-            <p>Need help? Reply to this email or visit <a href="https://funnelanalyzerpro.com/support">our support center</a></p>
-            <p>&copy; {year} Funnel Analyzer Pro. All rights reserved.</p>
-        </div>
+    <div class="email-wrapper">
+        <table role="presentation" class="email-container" width="600" cellspacing="0" cellpadding="0" border="0" align="center">
+            <tr>
+                <td class="header">
+                    <h1>Funnel Analyzer Pro</h1>
+                    <p class="tagline">AI-Powered Funnel Optimization</p>
+                </td>
+            </tr>
+            <tr>
+                <td class="content">
+                    {content}
+                </td>
+            </tr>
+            <tr>
+                <td class="footer">
+                    <p>Need help? Reply to this email or visit <a href="https://funnelanalyzerpro.com/support">our support center</a></p>
+                    <p>&copy; {year} Funnel Analyzer Pro. All rights reserved.</p>
+                </td>
+            </tr>
+        </table>
     </div>
 </body>
 </html>
@@ -149,21 +273,22 @@ def magic_link_email(*, magic_link_url: str, expires_minutes: int, user_email: s
     
     content = f"""
         <h2>Your Secure Login Link</h2>
-        <p>Hi there,</p>
-        <p>Click the button below to securely sign in to your Funnel Analyzer Pro account. This link will expire in <strong>{expires_minutes} minutes</strong> for your security.</p>
+        <p>Welcome back! Click the button below to securely access your Funnel Analyzer Pro account.</p>
         
         <div class="button-container">
-            <a href="{magic_link_url}" class="button">Sign In to Your Dashboard</a>
+            <a href="{magic_link_url}" class="button">Sign In to Your Account →</a>
         </div>
         
-        <div class="highlight-box">
-            <p><strong>Security tip:</strong> If you didn't request this email, you can safely ignore it. This link will only work once and expires automatically.</p>
+        <div class="info-box">
+            <p><strong>⏱️ Expires in {expires_minutes} minutes</strong> • This link can only be used once for your security.</p>
         </div>
         
         <hr class="divider">
         
-        <p class="secondary-text">Or copy and paste this URL into your browser:</p>
-        <p class="secondary-text" style="word-break: break-all;">{magic_link_url}</p>
+        <p class="secondary-text"><strong>Didn't request this?</strong> You can safely ignore this email. If you're concerned about your account security, please contact our support team.</p>
+        
+        <p class="secondary-text" style="margin-top: 20px;"><strong>Link not working?</strong> Copy and paste this URL:</p>
+        <p class="secondary-text" style="word-break: break-all; font-family: monospace; font-size: 13px; color: #3b82f6;">{magic_link_url}</p>
     """
     
     html = get_email_template_base().format(
@@ -174,13 +299,13 @@ def magic_link_email(*, magic_link_url: str, expires_minutes: int, user_email: s
     
     plain_text = f"""Your Secure Login Link - Funnel Analyzer Pro
 
-Hi there,
-
-Click the link below to securely sign in to your Funnel Analyzer Pro account. This link will expire in {expires_minutes} minutes for your security.
+Welcome back! Click the link below to securely access your Funnel Analyzer Pro account.
 
 {magic_link_url}
 
-Security tip: If you didn't request this email, you can safely ignore it. This link will only work once and expires automatically.
+⏱️ Expires in {expires_minutes} minutes • This link can only be used once for your security.
+
+Didn't request this? You can safely ignore this email. If you're concerned about your account security, please contact our support team.
 
 Need help? Reply to this email or visit https://funnelanalyzerpro.com/support
 
@@ -209,33 +334,34 @@ def welcome_email(*, user_name: str, magic_link_url: str, plan: str = "free") ->
         <p>Hi{' ' + user_name if user_name else ''},</p>
         <p>Thank you for joining Funnel Analyzer Pro! We're excited to help you optimize your marketing funnels and drive better conversions.</p>
         
-        <div class="highlight-box">
-            <p><strong>Your Plan:</strong> {plan.title()} - {plan_benefits.get(plan, 'Premium features')}</p>
+        <div class="info-box">
+            <p><strong>Your Plan:</strong> {plan.title()} Plan • {plan_benefits.get(plan, 'Premium features')}</p>
         </div>
-        
-        <p>Click the button below to access your dashboard and start analyzing your funnels:</p>
         
         <div class="button-container">
-            <a href="{magic_link_url}" class="button">Access Your Dashboard</a>
+            <a href="{magic_link_url}" class="button">Access Your Dashboard →</a>
         </div>
-        
-        <h2 style="margin-top: 40px;">Getting Started</h2>
-        <p><strong>1. Analyze Your First Funnel</strong><br>
-        Paste your funnel URLs and let our AI analyze every aspect of your conversion flow.</p>
-        
-        <p><strong>2. Review Your Insights</strong><br>
-        Get detailed scores across clarity, value proposition, social proof, design, and conversion flow.</p>
-        
-        <p><strong>3. Implement Improvements</strong><br>
-        Follow our actionable recommendations to boost your funnel performance.</p>
         
         <hr class="divider">
         
-        <p>If you have any questions, just reply to this email. We're here to help!</p>
+        <h2>Getting Started in 3 Steps</h2>
         
-        <p>Best regards,<br>
+        <p><strong>1️⃣ Analyze Your First Funnel</strong><br>
+        Enter your funnel URLs and let our AI analyze every aspect of your conversion flow.</p>
+        
+        <p><strong>2️⃣ Review Your Insights</strong><br>
+        Get detailed scores across clarity, value proposition, social proof, design, and conversion flow.</p>
+        
+        <p><strong>3️⃣ Implement Improvements</strong><br>
+        Follow our actionable recommendations to boost your funnel performance immediately.</p>
+        
+        <hr class="divider">
+        
+        <p class="secondary-text">Questions? Just reply to this email. We're here to help you succeed!</p>
+        
+        <p style="margin-top: 28px;">Best regards,<br>
         <strong>Ryan</strong><br>
-        Funnel Analyzer Pro</p>
+        <span style="color: #64748b;">Funnel Analyzer Pro</span></p>
     """
     
     html = get_email_template_base().format(
@@ -250,24 +376,24 @@ Hi{' ' + user_name if user_name else ''},
 
 Thank you for joining Funnel Analyzer Pro! We're excited to help you optimize your marketing funnels and drive better conversions.
 
-Your Plan: {plan.title()} - {plan_benefits.get(plan, 'Premium features')}
+Your Plan: {plan.title()} Plan • {plan_benefits.get(plan, 'Premium features')}
 
-Click the link below to access your dashboard and start analyzing your funnels:
+Click the link below to access your dashboard:
 
 {magic_link_url}
 
-Getting Started:
+Getting Started in 3 Steps:
 
-1. Analyze Your First Funnel
-   Paste your funnel URLs and let our AI analyze every aspect of your conversion flow.
+1️⃣ Analyze Your First Funnel
+   Enter your funnel URLs and let our AI analyze every aspect of your conversion flow.
 
-2. Review Your Insights
+2️⃣ Review Your Insights
    Get detailed scores across clarity, value proposition, social proof, design, and conversion flow.
 
-3. Implement Improvements
-   Follow our actionable recommendations to boost your funnel performance.
+3️⃣ Implement Improvements
+   Follow our actionable recommendations to boost your funnel performance immediately.
 
-If you have any questions, just reply to this email. We're here to help!
+Questions? Just reply to this email. We're here to help you succeed!
 
 Best regards,
 Ryan
@@ -288,36 +414,31 @@ def analysis_complete_email(*, user_name: str, analysis_url: str, overall_score:
     from datetime import datetime
     
     score_emoji = "🎉" if overall_score >= 80 else "👍" if overall_score >= 60 else "📊"
+    score_label = "Excellent" if overall_score >= 80 else "Good" if overall_score >= 60 else "Needs Work"
     
     content = f"""
         <h2>Your Funnel Analysis is Ready {score_emoji}</h2>
         <p>Hi{' ' + user_name if user_name else ''},</p>
-        <p>Great news! We've finished analyzing your funnel. Here's a quick overview:</p>
+        <p>Great news! We've finished analyzing your funnel and identified key opportunities for improvement.</p>
         
-        <div class="highlight-box">
-            <p><strong>Overall Score: {overall_score}/100</strong></p>
-            <p style="margin-top: 8px;">Top Priority: {top_issue}</p>
+        <div class="info-box">
+            <p><strong>Overall Score: {overall_score}/100</strong> • {score_label}</p>
+            <p style="margin-top: 8px;"><strong>Top Priority:</strong> {top_issue}</p>
         </div>
-        
-        <p>Click below to view your complete analysis with detailed recommendations:</p>
         
         <div class="button-container">
-            <a href="{analysis_url}" class="button">View Full Analysis</a>
+            <a href="{analysis_url}" class="button">View Full Analysis →</a>
         </div>
         
-        <p>Your analysis includes:</p>
-        <p>✓ Detailed scoring across 5 key dimensions<br>
-        ✓ Page-by-page breakdown and feedback<br>
-        ✓ Actionable recommendations for improvement<br>
-        ✓ Visual screenshots with annotations</p>
+        <h2>What's Inside Your Report</h2>
+        <p>✅ <strong>5 Key Dimensions</strong> • Detailed scoring across clarity, value prop, social proof, design, and flow</p>
+        <p>✅ <strong>Page-by-Page Breakdown</strong> • Individual feedback for every step of your funnel</p>
+        <p>✅ <strong>Actionable Recommendations</strong> • Specific improvements you can implement today</p>
+        <p>✅ <strong>Visual Screenshots</strong> • Annotated images showing exactly what to fix</p>
         
         <hr class="divider">
         
-        <p>Questions about your results? Just reply to this email!</p>
-        
-        <p>Best regards,<br>
-        <strong>Ryan</strong><br>
-        Funnel Analyzer Pro</p>
+        <p class="secondary-text">Have questions about your results? Reply to this email and we'll help you understand the recommendations!</p>
     """
     
     html = get_email_template_base().format(
@@ -330,25 +451,21 @@ def analysis_complete_email(*, user_name: str, analysis_url: str, overall_score:
 
 Hi{' ' + user_name if user_name else ''},
 
-Great news! We've finished analyzing your funnel. Here's a quick overview:
+Great news! We've finished analyzing your funnel and identified key opportunities for improvement.
 
-Overall Score: {overall_score}/100
+Overall Score: {overall_score}/100 • {score_label}
 Top Priority: {top_issue}
 
 View your complete analysis:
 {analysis_url}
 
-Your analysis includes:
-✓ Detailed scoring across 5 key dimensions
-✓ Page-by-page breakdown and feedback
-✓ Actionable recommendations for improvement
-✓ Visual screenshots with annotations
+What's Inside Your Report:
+✅ 5 Key Dimensions • Detailed scoring across clarity, value prop, social proof, design, and flow
+✅ Page-by-Page Breakdown • Individual feedback for every step of your funnel
+✅ Actionable Recommendations • Specific improvements you can implement today
+✅ Visual Screenshots • Annotated images showing exactly what to fix
 
-Questions about your results? Just reply to this email!
-
-Best regards,
-Ryan
-Funnel Analyzer Pro
+Have questions about your results? Reply to this email and we'll help you understand the recommendations!
 
 © {datetime.now().year} Funnel Analyzer Pro. All rights reserved.
 """
@@ -365,22 +482,23 @@ def password_reset_email(*, reset_url: str, user_email: str) -> Dict[str, Any]:
     from datetime import datetime
     
     content = f"""
-        <h2>Reset Your Password</h2>
-        <p>Hi there,</p>
+        <h2>Reset Your Password 🔐</h2>
         <p>We received a request to reset the password for your Funnel Analyzer Pro account.</p>
         
         <div class="button-container">
-            <a href="{reset_url}" class="button">Reset Password</a>
+            <a href="{reset_url}" class="button">Reset Your Password →</a>
         </div>
         
-        <div class="highlight-box">
-            <p><strong>Security reminder:</strong> This link expires in 30 minutes. If you didn't request this reset, please ignore this email and your password will remain unchanged.</p>
+        <div class="info-box">
+            <p><strong>⏱️ Expires in 30 minutes</strong> • This secure link will only work once.</p>
         </div>
         
         <hr class="divider">
         
-        <p class="secondary-text">Or copy and paste this URL into your browser:</p>
-        <p class="secondary-text" style="word-break: break-all;">{reset_url}</p>
+        <p class="secondary-text"><strong>Didn't request this?</strong> You can safely ignore this email. Your password will remain unchanged and your account is secure.</p>
+        
+        <p class="secondary-text" style="margin-top: 20px;"><strong>Link not working?</strong> Copy and paste this URL:</p>
+        <p class="secondary-text" style="word-break: break-all; font-family: monospace; font-size: 13px; color: #3b82f6;">{reset_url}</p>
     """
     
     html = get_email_template_base().format(
@@ -389,16 +507,16 @@ def password_reset_email(*, reset_url: str, user_email: str) -> Dict[str, Any]:
         year=datetime.now().year
     )
     
-    plain_text = f"""Reset Your Password - Funnel Analyzer Pro
-
-Hi there,
+    plain_text = f"""Reset Your Password 🔐
 
 We received a request to reset the password for your Funnel Analyzer Pro account.
 
 Click here to reset your password:
 {reset_url}
 
-Security reminder: This link expires in 30 minutes. If you didn't request this reset, please ignore this email and your password will remain unchanged.
+⏱️ Expires in 30 minutes • This secure link will only work once.
+
+Didn't request this? You can safely ignore this email. Your password will remain unchanged and your account is secure.
 
 © {datetime.now().year} Funnel Analyzer Pro. All rights reserved.
 """
@@ -408,3 +526,4 @@ Security reminder: This link expires in 30 minutes. If you didn't request this r
         "html": html,
         "text": plain_text
     }
+

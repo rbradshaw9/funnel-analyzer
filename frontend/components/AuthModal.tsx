@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/authStore'
 import type { AuthCredentialsResponse } from '@/types'
 import { OAuthButton } from './OAuthButton'
 
-export type AuthMode = 'signup' | 'login'
+export type AuthMode = 'signup' | 'login' | 'forgot-password'
 
 interface AuthModalProps {
   open: boolean
@@ -105,7 +105,31 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
     try {
       let response: AuthCredentialsResponse
 
-      if (mode === 'signup') {
+      if (mode === 'forgot-password') {
+        // Send password reset email
+        const apiUrl = getApiUrl()
+        const res = await fetch(`${apiUrl}/api/auth/forgot-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: normalizedEmail }),
+        })
+
+        if (!res.ok) {
+          const error = await res.json()
+          throw new Error(error.detail || 'Failed to send reset email')
+        }
+
+        setSuccessMessage('Check your email! We sent you a password reset link.')
+        
+        // Wait 3 seconds then switch back to login
+        successTimeout.current = setTimeout(() => {
+          setMode('login')
+          setSuccessMessage(null)
+          setSubmitting(false)
+        }, 3000)
+        
+        return
+      } else if (mode === 'signup') {
         response = await registerAccount({
           email: normalizedEmail,
           password,
@@ -155,7 +179,11 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
       >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">
-            {mode === 'signup' ? 'Create your Funnel Analyzer account' : 'Log in to Funnel Analyzer'}
+            {mode === 'signup' 
+              ? 'Create your Funnel Analyzer account' 
+              : mode === 'forgot-password'
+                ? 'Reset your password'
+                : 'Log in to Funnel Analyzer'}
           </h2>
           <button
             type="button"
@@ -167,51 +195,63 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
           </button>
         </div>
 
-        <div className="mt-4 flex items-center gap-2 text-xs font-medium text-slate-500">
-          <button
-            type="button"
-            onClick={() => {
-              setMode('signup')
-              setSuccessMessage(null)
-              setErrorMessage(null)
-            }}
-            className={`rounded-full px-3 py-1 transition-colors ${mode === 'signup' ? 'bg-primary-100 text-primary-700' : 'hover:bg-slate-100'}`}
-          >
-            Create account
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMode('login')
-              setSuccessMessage(null)
-              setErrorMessage(null)
-            }}
-            className={`rounded-full px-3 py-1 transition-colors ${mode === 'login' ? 'bg-accent-100 text-accent-700' : 'hover:bg-slate-100'}`}
-          >
-            Log in
-          </button>
-        </div>
+        {mode !== 'forgot-password' && (
+          <div className="mt-4 flex items-center gap-2 text-xs font-medium text-slate-500">
+            <button
+              type="button"
+              onClick={() => {
+                setMode('signup')
+                setSuccessMessage(null)
+                setErrorMessage(null)
+              }}
+              className={`rounded-full px-3 py-1 transition-colors ${mode === 'signup' ? 'bg-primary-100 text-primary-700' : 'hover:bg-slate-100'}`}
+            >
+              Create account
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('login')
+                setSuccessMessage(null)
+                setErrorMessage(null)
+              }}
+              className={`rounded-full px-3 py-1 transition-colors ${mode === 'login' ? 'bg-accent-100 text-accent-700' : 'hover:bg-slate-100'}`}
+            >
+              Log in
+            </button>
+          </div>
+        )}
 
-        {/* OAuth Buttons */}
-        <div className="mt-6 space-y-3">
-          <OAuthButton 
-            provider="google" 
-            onClick={() => handleOAuthLogin('google')}
-            disabled={submitting || Boolean(successMessage)}
-          />
-          <OAuthButton 
-            provider="github" 
-            onClick={() => handleOAuthLogin('github')}
-            disabled={submitting || Boolean(successMessage)}
-          />
-        </div>
+        {mode === 'forgot-password' && (
+          <p className="mt-3 text-sm text-slate-600">
+            Enter your email address and we'll send you a link to reset your password.
+          </p>
+        )}
 
-        {/* Divider */}
-        <div className="my-6 flex items-center gap-3">
-          <div className="h-px flex-1 bg-slate-200" />
-          <span className="text-xs font-medium text-slate-400">or use email</span>
-          <div className="h-px flex-1 bg-slate-200" />
-        </div>
+        {mode !== 'forgot-password' && (
+          <>
+            {/* OAuth Buttons */}
+            <div className="mt-6 space-y-3">
+              <OAuthButton 
+                provider="google" 
+                onClick={() => handleOAuthLogin('google')}
+                disabled={submitting || Boolean(successMessage)}
+              />
+              <OAuthButton 
+                provider="github" 
+                onClick={() => handleOAuthLogin('github')}
+                disabled={submitting || Boolean(successMessage)}
+              />
+            </div>
+
+            {/* Divider */}
+            <div className="my-6 flex items-center gap-3">
+              <div className="h-px flex-1 bg-slate-200" />
+              <span className="text-xs font-medium text-slate-400">or use email</span>
+              <div className="h-px flex-1 bg-slate-200" />
+            </div>
+          </>
+        )}
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           {mode === 'signup' && (
@@ -247,25 +287,43 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
             />
           </div>
 
-          <div>
-            <label htmlFor="auth-password" className="block text-sm font-semibold text-slate-700">
-              Password
-            </label>
-            <input
-              id="auth-password"
-              type="password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="••••••••"
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              minLength={8}
-            />
-            {mode === 'signup' && (
-              <p className="mt-1 text-xs text-slate-500">Use at least 8 characters to keep your account secure.</p>
-            )}
-          </div>
+          {mode !== 'forgot-password' && (
+            <div>
+              <div className="flex items-center justify-between">
+                <label htmlFor="auth-password" className="block text-sm font-semibold text-slate-700">
+                  Password
+                </label>
+                {mode === 'login' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('forgot-password')
+                      setPassword('')
+                      setSuccessMessage(null)
+                      setErrorMessage(null)
+                    }}
+                    className="text-xs font-medium text-primary-600 hover:text-primary-700 transition"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+              <input
+                id="auth-password"
+                type="password"
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="••••••••"
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                minLength={8}
+              />
+              {mode === 'signup' && (
+                <p className="mt-1 text-xs text-slate-500">Use at least 8 characters to keep your account secure.</p>
+              )}
+            </div>
+          )}
 
           <button
             type="submit"
@@ -275,12 +333,30 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
             {submitting
               ? mode === 'signup'
                 ? 'Creating account…'
-                : 'Logging in…'
+                : mode === 'forgot-password'
+                  ? 'Sending reset link…'
+                  : 'Logging in…'
               : mode === 'signup'
                 ? 'Create free account'
-                : 'Log in'}
+                : mode === 'forgot-password'
+                  ? 'Send reset link'
+                  : 'Log in'}
           </button>
         </form>
+
+        {mode === 'forgot-password' && (
+          <button
+            type="button"
+            onClick={() => {
+              setMode('login')
+              setSuccessMessage(null)
+              setErrorMessage(null)
+            }}
+            className="mt-3 w-full text-center text-sm text-slate-600 hover:text-slate-900 transition"
+          >
+            ← Back to login
+          </button>
+        )}
 
         {successMessage && (
           <p className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{successMessage}</p>

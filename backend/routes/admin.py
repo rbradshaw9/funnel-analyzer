@@ -481,24 +481,24 @@ async def get_email_template(
             "magic_link": {
                 "label": "Magic Link Login",
                 "generator": lambda: email_templates.magic_link_email(
-                    magic_link_url="https://example.com/login?token=DEMO_TOKEN",
+                    magic_link_url="https://funnelanalyzerpro.com/auth/magic?token={{MAGIC_LINK_TOKEN}}",
                     expires_minutes=15,
-                    user_email="user@example.com"
+                    user_email="demo@example.com"
                 )
             },
             "welcome": {
                 "label": "Welcome Email",
                 "generator": lambda: email_templates.welcome_email(
-                    user_name="John Doe",
-                    magic_link_url="https://example.com/dashboard",
+                    user_name="Demo User",
+                    magic_link_url="https://funnelanalyzerpro.com/dashboard",
                     plan="free"
                 )
             },
             "analysis_complete": {
                 "label": "Analysis Complete",
                 "generator": lambda: email_templates.analysis_complete_email(
-                    user_name="John Doe",
-                    analysis_url="https://example.com/analysis/123",
+                    user_name="Demo User",
+                    analysis_url="https://funnelanalyzerpro.com/reports/{{ANALYSIS_ID}}",
                     overall_score=75,
                     top_issue="Improve value proposition clarity"
                 )
@@ -506,8 +506,8 @@ async def get_email_template(
             "password_reset": {
                 "label": "Password Reset",
                 "generator": lambda: email_templates.password_reset_email(
-                    reset_url="https://example.com/reset?token=DEMO_TOKEN",
-                    user_email="user@example.com"
+                    reset_url="https://funnelanalyzerpro.com/auth/reset-password?token={{RESET_TOKEN}}",
+                    user_email="demo@example.com"
                 )
             }
         }
