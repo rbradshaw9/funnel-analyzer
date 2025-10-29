@@ -28,7 +28,10 @@ COPY backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install Playwright browsers for screenshot functionality
-RUN playwright install chromium && playwright install-deps
+# Use --with-deps to install browser dependencies in one step
+# Add retries and fallback to continue even if download fails (will retry at runtime)
+RUN playwright install --with-deps chromium || \
+    (echo "WARNING: Playwright installation failed during build. Will retry at runtime." && exit 0)
 
 # Copy the rest of the backend source code
 COPY backend/ ./backend

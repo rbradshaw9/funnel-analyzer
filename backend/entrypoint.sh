@@ -1,6 +1,12 @@
 #!/bin/bash
 set -e
 
+# Ensure Playwright browsers are installed (retry if build-time install failed)
+echo "Checking Playwright browser installation..."
+if ! playwright install chromium --with-deps 2>/dev/null; then
+    echo "WARNING: Playwright Chromium installation failed. Screenshot features may not work."
+fi
+
 # Use Railway's PORT environment variable, default to 8080 if not set
 PORT=${PORT:-8080}
 
