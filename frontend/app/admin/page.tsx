@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { TopNav } from "@/components/TopNav"
 import { useAuthStore } from "@/store/authStore"
+import { AuthModal } from "@/components/AuthModal"
 
 interface UserStats {
   total_users: number
@@ -38,14 +39,14 @@ export default function AdminPage() {
   const [filterPlan, setFilterPlan] = useState<string>("")
   const [filterStatus, setFilterStatus] = useState<string>("")
   const [searchTerm, setSearchTerm] = useState("")
+  const [showAuthModal, setShowAuthModal] = useState(false)
 
   useEffect(() => {
-    if (!token) {
-      router.push("/")
-      return
+    if (token) {
+      loadData()
+    } else {
+      setLoading(false)
     }
-
-    loadData()
   }, [token, filterPlan, filterStatus, searchTerm])
 
   const loadData = async () => {
@@ -125,6 +126,49 @@ export default function AdminPage() {
             <p className="text-slate-600">You need admin privileges to access this page.</p>
           </div>
         </div>
+      </div>
+    )
+  }
+
+  // Not logged in - show login prompt
+  if (!token) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+        <TopNav />
+        <div className="container mx-auto px-4 py-20">
+          <div className="max-w-2xl mx-auto text-center">
+            <div className="bg-white rounded-2xl shadow-lg p-12">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              
+              <h1 className="text-3xl font-bold text-slate-900 mb-4">Admin Login Required</h1>
+              <p className="text-slate-600 mb-8">Please sign in with your admin account to access the admin dashboard.</p>
+              
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                </svg>
+                Sign In
+              </button>
+              
+              <p className="text-sm text-slate-500 mt-6">
+                Admin access is restricted to authorized personnel only.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <AuthModal 
+          open={showAuthModal} 
+          onClose={() => setShowAuthModal(false)} 
+          defaultMode="login"
+        />
       </div>
     )
   }
