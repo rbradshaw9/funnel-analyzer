@@ -10,9 +10,13 @@ Automatically deletes screenshots from S3 when:
 
 import logging
 from datetime import datetime, timedelta
-from typing import List, Optional
-from sqlalchemy.orm import Session
-from ..models.database import User, FunnelAnalysis, PageAnalysis
+from typing import Dict, List, Optional
+import logging
+
+from sqlalchemy import select, and_, delete, func
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..models.database import User, Analysis, AnalysisPage
 from .storage import StorageService
 
 logger = logging.getLogger(__name__)
@@ -43,10 +47,10 @@ class ScreenshotCleanupService:
             logger.warning("No storage service configured - cannot delete screenshots")
             return 0
             
-        # Get all page analyses for this funnel analysis
-        page_analyses = db.query(PageAnalysis).filter(
-            PageAnalysis.funnel_analysis_id == analysis_id,
-            PageAnalysis.screenshot_storage_key.isnot(None)
+        # Get all page analyses for this analysis
+        page_analyses = db.query(AnalysisPage).filter(
+            AnalysisPage.analysis_id == analysis_id,
+            AnalysisPage.screenshot_storage_key.isnot(None)
         ).all()
         
         deleted_count = 0
@@ -84,8 +88,8 @@ class ScreenshotCleanupService:
             Total number of screenshots deleted
         """
         # Get all analyses for this user
-        analyses = db.query(FunnelAnalysis).filter(
-            FunnelAnalysis.user_id == user_id
+        analyses = db.query(Analysis).filter(
+            Analysis.user_id == user_id
         ).all()
         
         total_deleted = 0
@@ -114,9 +118,9 @@ class ScreenshotCleanupService:
         cutoff_date = datetime.utcnow() - timedelta(days=trial_days)
         
         # Find free users with old analyses who never upgraded
-        expired_analyses = db.query(FunnelAnalysis).join(User).filter(
+        expired_analyses = db.query(Analysis).join(User).filter(
             User.plan == "free",
-            FunnelAnalysis.created_at < cutoff_date
+            Analysis.created_at < cutoff_date
         ).all()
         
         total_deleted = 0
@@ -156,9 +160,9 @@ class ScreenshotCleanupService:
         total_deleted = 0
         for user in inactive_users:
             # Get old analyses for this inactive user
-            old_analyses = db.query(FunnelAnalysis).filter(
-                FunnelAnalysis.user_id == user.id,
-                FunnelAnalysis.created_at < screenshot_cutoff
+            old_analyses = db.query(Analysis).filter(
+                Analysis.user_id == user.id,
+                Analysis.created_at < screenshot_cutoff
             ).all()
             
             for analysis in old_analyses:
@@ -173,24 +177,24 @@ class ScreenshotCleanupService:
     async def get_storage_stats(self, db: Session) -> dict:
         """Get statistics about screenshot storage usage"""
         
-        total_screenshots = db.query(PageAnalysis).filter(
-            PageAnalysis.screenshot_storage_key.isnot(None)
+        total_screenshots = db.query(AnalysisPage).filter(
+            AnalysisPage.screenshot_storage_key.isnot(None)
         ).count()
         
         # Screenshots by plan
         from sqlalchemy import func
         by_plan = db.query(
             User.plan,
-            func.count(PageAnalysis.id).label('count')
-        ).join(FunnelAnalysis).join(User).filter(
-            PageAnalysis.screenshot_storage_key.isnot(None)
+            func.count(AnalysisPage.id).label('count')
+        ).join(Analysis).join(User).filter(
+            AnalysisPage.screenshot_storage_key.isnot(None)
         ).group_by(User.plan).all()
         
         # Old screenshots (>90 days)
         old_cutoff = datetime.utcnow() - timedelta(days=90)
-        old_screenshots = db.query(PageAnalysis).join(FunnelAnalysis).filter(
-            PageAnalysis.screenshot_storage_key.isnot(None),
-            FunnelAnalysis.created_at < old_cutoff
+        old_screenshots = db.query(AnalysisPage).join(Analysis).filter(
+            AnalysisPage.screenshot_storage_key.isnot(None),
+            Analysis.created_at < old_cutoff
         ).count()
         
         return {
