@@ -204,7 +204,7 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
         {/* Divider */}
         <div className="my-6 flex items-center gap-3">
           <div className="h-px flex-1 bg-slate-200" />
-          <span className="text-xs font-medium text-slate-400">or continue with email</span>
+          <span className="text-xs font-medium text-slate-400">or use email</span>
           <div className="h-px flex-1 bg-slate-200" />
         </div>
 
@@ -212,7 +212,7 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
           {mode === 'signup' && (
             <div>
               <label htmlFor="auth-name" className="block text-sm font-semibold text-slate-700">
-                Full name
+                Full name <span className="font-normal text-slate-400">(optional)</span>
               </label>
               <input
                 id="auth-name"

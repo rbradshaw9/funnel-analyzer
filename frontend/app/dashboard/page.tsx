@@ -6,8 +6,6 @@ import URLInputForm from '@/components/URLInputForm'
 import ResultsDashboard from '@/components/ResultsDashboard'
 import LoadingAnimation from '@/components/LoadingAnimation'
 import { TopNav } from '@/components/TopNav'
-import { SetPasswordModal } from '@/components/SetPasswordModal'
-import { ProfileModal } from '@/components/ProfileModal'
 import { useAnalysisStore } from '@/store/analysisStore'
 import { useAuthValidation } from '@/hooks/useAuthValidation'
 import { deleteReport, getReportDetail, getReports } from '@/lib/api'
@@ -52,39 +50,8 @@ function DashboardContent() {
   const [viewingReportId, setViewingReportId] = useState<number | null>(null)
   const [deletingReportId, setDeletingReportId] = useState<number | null>(null)
   
-  // Password setup modal state
-  const [showPasswordModal, setShowPasswordModal] = useState(false)
-  const [passwordModalDismissed, setPasswordModalDismissed] = useState(false)
-  
-  // Profile completion modal state
-  const [showProfileModal, setShowProfileModal] = useState(false)
-  const [profileModalDismissed, setProfileModalDismissed] = useState(false)
-
-  // Show password setup modal for users without a password (OAuth/magic-link users)
-  useEffect(() => {
-    if (auth && auth.valid && auth.has_password === false && !passwordModalDismissed) {
-      // Delay showing the modal slightly to avoid disrupting initial page load
-      const timer = setTimeout(() => setShowPasswordModal(true), 1500)
-      return () => clearTimeout(timer)
-    }
-  }, [auth, passwordModalDismissed])
-  
-  // Show profile completion modal for users who haven't completed onboarding
-  // Only show after password modal is dismissed or if user already has password
-  useEffect(() => {
-    const shouldShowProfile = 
-      auth && 
-      auth.valid && 
-      !profileModalDismissed &&
-      (auth.has_password !== false || passwordModalDismissed) &&
-      !showPasswordModal
-    
-    if (shouldShowProfile) {
-      // Delay showing the modal to avoid modal stacking
-      const timer = setTimeout(() => setShowProfileModal(true), 2000)
-      return () => clearTimeout(timer)
-    }
-  }, [auth, profileModalDismissed, passwordModalDismissed, showPasswordModal])
+  // Remove all modal interruptions - let users get to their analysis immediately
+  // Password and profile setup can be done later in settings if needed
 
   const fetchReports = useCallback(
     async ({ offset = 0, append = false }: { offset?: number; append?: boolean } = {}) => {
@@ -226,30 +193,15 @@ function DashboardContent() {
         showLoginButton={false}
       />
 
-      {/* Password Setup Modal */}
-      <SetPasswordModal
-        open={showPasswordModal}
-        onClose={() => {
-          setShowPasswordModal(false)
-          setPasswordModalDismissed(true)
-        }}
-        onPasswordSet={() => {
-          setShowPasswordModal(false)
-          setPasswordModalDismissed(true)
-        }}
-      />
-
-      {/* Profile Completion Modal */}
-      <ProfileModal
-        open={showProfileModal}
-        onClose={() => {
-          setShowProfileModal(false)
-          setProfileModalDismissed(true)
-        }}
-        onProfileCompleted={() => {
-          setShowProfileModal(false)
-          setProfileModalDismissed(true)
-        }}
+      <TopNav
+        rightSlot={
+          token ? (
+            <span className="text-sm text-slate-600">
+              {authLoading ? 'Validating membership…' : authStatus || 'Authenticated'}
+            </span>
+          ) : null
+        }
+        showLoginButton={false}
       />
 
       {/* Main Content */}
