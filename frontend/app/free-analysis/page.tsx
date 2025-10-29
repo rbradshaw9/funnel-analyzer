@@ -487,14 +487,25 @@ function FreeAnalysisContent() {
           </motion.div>
         )}
 
-        {/* Loading State */}
+        {/* Loading State - Modal Overlay */}
         {isAnalyzing && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center py-20"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+            onClick={(e) => {
+              // Allow clicking backdrop but not the modal content
+              if (e.target === e.currentTarget) {
+                // Optional: do nothing or show a message that analysis is in progress
+              }
+            }}
           >
-            <div className="max-w-xl mx-auto bg-white rounded-2xl shadow-xl border border-primary-100 p-8">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="max-w-xl w-full bg-white rounded-2xl shadow-2xl border border-primary-100 p-8"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-2xl font-bold text-gray-900">Analyzing Your Page…</h3>
                 <span className="text-sm font-medium text-primary-600">
@@ -515,7 +526,7 @@ function FreeAnalysisContent() {
                 <span>Estimated time: ~{formatSeconds(estimatedTotalSeconds)}</span>
                 <span className="font-medium text-accent-600">Hang tight — almost there!</span>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
         )}
 

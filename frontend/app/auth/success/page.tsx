@@ -23,9 +23,19 @@ function AuthSuccessContent() {
       setTokens(token, null)
       setStatus('success')
       
-      // Redirect to dashboard after a brief moment
+      // Check for return URL (e.g., from free-analysis page)
+      const returnUrl = typeof window !== 'undefined' 
+        ? window.sessionStorage.getItem('oauth_return_url')
+        : null
+      
+      // Clear the stored return URL
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.removeItem('oauth_return_url')
+      }
+      
+      // Redirect to return URL or dashboard after a brief moment
       setTimeout(() => {
-        router.push('/dashboard')
+        router.push(returnUrl || '/dashboard')
       }, 1500)
     } catch (error) {
       console.error('Failed to process OAuth callback:', error)

@@ -193,17 +193,6 @@ function DashboardContent() {
         showLoginButton={false}
       />
 
-      <TopNav
-        rightSlot={
-          token ? (
-            <span className="text-sm text-slate-600">
-              {authLoading ? 'Validating membership…' : authStatus || 'Authenticated'}
-            </span>
-          ) : null
-        }
-        showLoginButton={false}
-      />
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {authError && (

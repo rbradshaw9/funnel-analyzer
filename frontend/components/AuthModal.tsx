@@ -80,6 +80,11 @@ export function AuthModal({ open, onClose, defaultMode = 'signup', onAuthenticat
     const apiUrl = getApiUrl()
     const oauthUrl = `${apiUrl}/api/auth/oauth/${provider}`
     
+    // Store current URL for return after OAuth (so we can come back to free-analysis page)
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem('oauth_return_url', window.location.pathname + window.location.search)
+    }
+    
     // Redirect to OAuth provider
     window.location.href = oauthUrl
   }
