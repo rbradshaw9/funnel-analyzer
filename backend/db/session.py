@@ -18,6 +18,7 @@ from .migrations import (
     ensure_user_role_column,
     ensure_user_plan_column,
     ensure_user_additional_columns,
+    ensure_pipeline_metrics_column,
     migration_lock,
 )
 from .migrations_oauth import ensure_user_oauth_columns
@@ -68,6 +69,7 @@ async def init_db() -> None:
             await ensure_user_password_hash_column(conn)
             await ensure_user_plan_column(conn)
             await ensure_user_additional_columns(conn)
+            await ensure_pipeline_metrics_column(conn)
             await ensure_user_oauth_columns(conn)
 
     async with AsyncSessionFactory() as session:

@@ -160,6 +160,22 @@ async def ensure_user_plan_column(conn: AsyncConnection) -> None:
         logger.info("Ensured users.plan column with default 'free'")
 
 
+async def ensure_pipeline_metrics_column(conn: AsyncConnection) -> None:
+    """Ensure the `pipeline_metrics` column exists on the analyses table."""
+    dialect = conn.dialect.name
+
+    if dialect == "sqlite":
+        added = await _add_sqlite_column_if_missing(conn, "analyses", "pipeline_metrics", "JSON")
+    else:
+        exists = await _postgres_column_exists(conn, "analyses", "pipeline_metrics")
+        if not exists:
+            await _add_postgres_column_if_missing(conn, "analyses", "pipeline_metrics", "JSON")
+        added = not exists
+
+    if added:
+        logger.info("Adding missing analyses.pipeline_metrics column")
+
+
 async def ensure_user_additional_columns(conn: AsyncConnection) -> None:
     """Backfill recently added nullable columns on the users table."""
 
