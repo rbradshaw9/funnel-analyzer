@@ -10,7 +10,7 @@ from ..db.session import get_db_session
 from ..models.database import Analysis, User
 from ..models.schemas import AnalysisEmailRequest, AnalysisRequest, AnalysisResponse
 from ..services.analyzer import analyze_funnel
-from ..services.email import send_analysis_email
+from ..services.notifications import send_analysis_email
 from ..services.plan_gating import filter_analysis_by_plan
 from ..services.reports import get_report_by_id
 from ..utils.config import settings
