@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..models.database import User
 from ..services.auth import create_magic_link_token
 from ..services.email import get_email_service
+from ..services.email_templates import welcome_email
 from ..utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -61,39 +62,19 @@ async def send_magic_link_onboarding(
     dashboard_url = f"{settings.FRONTEND_URL.rstrip('/')}/dashboard?token={token}"
 
     plan_slug = _normalize_plan(plan or user.plan)
-    success_path = f"/success?plan={plan_slug}" if plan_slug in {"basic", "pro"} else "/success"
-    success_url = f"{settings.FRONTEND_URL.rstrip('/')}{success_path}"
 
-    subject = "Welcome to Funnel Analyzer Pro"
-    plan_label = plan_slug.title() if plan_slug not in {"member", "free"} else "Member"
-
-    html_content = f"""
-    <p>Hi there,</p>
-    <p>Welcome to the <strong>{plan_label}</strong> plan. Your workspace is active and ready to use.</p>
-    <p>Use the button below to access your dashboard instantly. This secure link expires in {max(5, settings.MAGIC_LINK_EXPIRATION_MINUTES)} minutes.</p>
-    <p>
-      <a href="{dashboard_url}" style="display:inline-block;padding:12px 18px;background:#4f46e5;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:600">
-        Open your dashboard
-      </a>
-    </p>
-    <p>If you need onboarding tips, jump back to <a href="{success_url}">{success_url}</a>.</p>
-    <p>Questions? Reply to this email or contact <a href="mailto:support@funnelanalyzerpro.com">support@funnelanalyzerpro.com</a>.</p>
-    <p>— The Funnel Analyzer Pro team</p>
-    """
-
-    plain_text_content = (
-        "Welcome to Funnel Analyzer Pro! Your workspace is ready. "
-        "Use the link below to open your dashboard (expires in "
-        f"{max(5, settings.MAGIC_LINK_EXPIRATION_MINUTES)} minutes).\n\n"
-        f"{dashboard_url}\n\n"
-        f"Need help? Visit {success_url} or email support@funnelanalyzerpro.com"
+    # Use professional welcome email template
+    email_data = welcome_email(
+        user_name=user.full_name or "",
+        magic_link_url=dashboard_url,
+        plan=plan_slug
     )
 
     sent = await email_service.send_email(
         to_email=user.email,
-        subject=subject,
-        html_content=html_content,
-        plain_text_content=plain_text_content,
+        subject=email_data["subject"],
+        html_content=email_data["html"],
+        plain_text_content=email_data["text"],
     )
 
     if sent:

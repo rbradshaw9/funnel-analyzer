@@ -60,8 +60,8 @@ class Settings(BaseSettings):
 
     # Email provider (SendGrid)
     SENDGRID_API_KEY: Optional[str] = None
-    EMAIL_DEFAULT_FROM: Optional[str] = "Funnel Analyzer Pro Reports <reports@funnelanalyzerpro.com>"
-    EMAIL_DEFAULT_REPLY_TO: Optional[str] = "support@funnelanalyzerpro.com"
+    EMAIL_DEFAULT_FROM: Optional[str] = "Ryan at Funnel Analyzer Pro <ryan@funnelanalyzerpro.com>"
+    EMAIL_DEFAULT_REPLY_TO: Optional[str] = "ryan@funnelanalyzerpro.com"
 
     # OAuth providers
     GOOGLE_CLIENT_ID: Optional[str] = None

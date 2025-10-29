@@ -30,6 +30,7 @@ from ..models.schemas import (
 )
 from ..services.auth import create_jwt_token, create_magic_link_token, create_refresh_token, validate_jwt_token, validate_refresh_token
 from ..services.email import get_email_service
+from ..services.email_templates import magic_link_email
 from ..services.onboarding import send_magic_link_onboarding
 from ..services.passwords import hash_password, verify_password
 from ..utils.config import settings
@@ -207,30 +208,18 @@ async def request_magic_link(
     login_url = f"{settings.FRONTEND_URL.rstrip('/')}/dashboard?token={token}"
     expires_minutes = max(1, settings.MAGIC_LINK_EXPIRATION_MINUTES)
 
-    subject = "Your Funnel Analyzer login link"
-    html_content = (
-        "<p>Hi there,</p>"
-        "<p>Use the button below to sign in to Funnel Analyzer. This link expires in "
-        f"{expires_minutes} minutes.</p>"
-        f"<p><a href=\"{login_url}\" style=\"display:inline-block;padding:12px 18px;"
-        "background-color:#4f46e5;color:#ffffff;border-radius:8px;text-decoration:none;"
-        "font-weight:600\">Access your dashboard</a></p>"
-        f"<p>If the button doesn't work, copy and paste this URL into your browser:<br />"
-        f"<span style=\"word-break:break-all;color:#4f46e5\">{login_url}</span></p>"
-        "<p>If you did not request this link, you can safely ignore this email.</p>"
-        "<p>— Funnel Analyzer Pro</p>"
-    )
-    plain_text = (
-        "Use the link below to sign in to Funnel Analyzer. "
-        f"This link expires in {expires_minutes} minutes.\n\n{login_url}\n\n"
-        "If you did not request this link, you can ignore this email."
+    # Use professional email template
+    email_data = magic_link_email(
+        magic_link_url=login_url,
+        expires_minutes=expires_minutes,
+        user_email=email
     )
 
     sent = await email_service.send_email(
         to_email=email,
-        subject=subject,
-        html_content=html_content,
-        plain_text_content=plain_text,
+        subject=email_data["subject"],
+        html_content=email_data["html"],
+        plain_text_content=email_data["text"],
     )
 
     if sent:
