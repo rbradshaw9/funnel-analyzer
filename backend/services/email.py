@@ -56,9 +56,9 @@ class EmailService:
         )
 
         if plain_text_content:
-            message.plain_text_content = plain_text_content
+            message.plain_text_content = plain_text_content  # type: ignore
         elif html_content:
-            message.plain_text_content = "Your email client requires HTML support to view this message."
+            message.plain_text_content = "Your email client requires HTML support to view this message."  # type: ignore
 
         if self._default_reply_to:
             message.reply_to = self._default_reply_to

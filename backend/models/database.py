@@ -21,7 +21,7 @@ class User(Base):
     status = Column(String(50), nullable=False, default="active", server_default="active")
     role = Column(String(50), nullable=False, default="member", server_default="member")
     status_reason = Column(String(255), nullable=True)
-    status_last_updated = Column(DateTime(timezone=True), nullable=True, server_onupdate=text("CURRENT_TIMESTAMP"))
+    status_last_updated = Column(DateTime(timezone=True), nullable=True, server_onupdate=text("CURRENT_TIMESTAMP"))  # type: ignore
     subscription_id = Column(String(150), nullable=True, index=True)
     thrivecart_customer_id = Column(String(150), nullable=True, index=True)
     access_expires_at = Column(DateTime(timezone=True), nullable=True)
@@ -42,7 +42,7 @@ class User(Base):
     onboarding_completed = Column(Integer, default=0)  # 0 = incomplete, 1 = complete
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_onupdate=text("CURRENT_TIMESTAMP"))
+    updated_at = Column(DateTime(timezone=True), server_onupdate=text("CURRENT_TIMESTAMP"))  # type: ignore
 
     analyses = relationship("Analysis", back_populates="user", cascade="all, delete-orphan")
     
@@ -150,7 +150,7 @@ class EmailTemplate(Base):
     description = Column(Text, nullable=True)
     is_custom = Column(Integer, default=1)  # 1 = custom, 0 = default
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_onupdate=text("CURRENT_TIMESTAMP"))
+    updated_at = Column(DateTime(timezone=True), server_onupdate=text("CURRENT_TIMESTAMP"))  # type: ignore
 
     def __repr__(self) -> str:
         return f"<EmailTemplate {self.name}>"
