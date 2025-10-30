@@ -52,7 +52,7 @@ class Settings(BaseSettings):
 
     # Object storage (screenshots)
     AWS_S3_BUCKET: Optional[str] = None
-    AWS_S3_REGION: Optional[str] = None
+    AWS_S3_REGION: Optional[str] = "us-east-1"  # Default region for funnel-analyzer-pro bucket
     AWS_S3_ACCESS_KEY_ID: Optional[str] = None
     AWS_S3_SECRET_ACCESS_KEY: Optional[str] = None
     AWS_S3_ENDPOINT_URL: Optional[str] = None

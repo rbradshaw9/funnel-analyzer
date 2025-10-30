@@ -412,6 +412,15 @@ async def analyze_funnel(
     
     summary = await llm_provider.analyze_funnel_summary(page_analyses, overall_score, industry)
     
+    # Update progress after summary completes
+    await progress.update(
+        analysis_id=analysis_id,
+        stage="saving",
+        progress_percent=93,
+        message="Saving analysis results to database…",
+        total_pages=total_pages,
+    )
+    
     duration = int(time.time() - start_time)
     total_perf_duration = time.perf_counter() - perf_start
 
