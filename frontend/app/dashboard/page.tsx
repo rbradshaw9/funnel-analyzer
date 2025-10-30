@@ -4,12 +4,11 @@ import { Suspense, useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FiAlertTriangle, FiExternalLink, FiFileText, FiRefreshCw, FiTrash2 } from 'react-icons/fi'
 import URLInputForm from '@/components/URLInputForm'
-import ResultsDashboard from '@/components/ResultsDashboard'
 import LoadingAnimation from '@/components/LoadingAnimation'
 import { TopNav } from '@/components/TopNav'
 import { useAnalysisStore } from '@/store/analysisStore'
 import { useAuthValidation } from '@/hooks/useAuthValidation'
-import { deleteReport, getReportDetail, getReports } from '@/lib/api'
+import { deleteReport, getReports } from '@/lib/api'
 import type { ReportListItem } from '@/types'
 
 const DATE_OPTIONS: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' }
@@ -39,9 +38,7 @@ function DashboardContent() {
     auth,
   } = useAuthValidation()
 
-  const currentAnalysis = useAnalysisStore((state) => state.currentAnalysis)
   const isAnalyzing = useAnalysisStore((state) => state.isAnalyzing)
-  const setCurrentAnalysis = useAnalysisStore((state) => state.setCurrentAnalysis)
 
   const [reports, setReports] = useState<ReportListItem[]>([])
   const [reportsTotal, setReportsTotal] = useState(0)
@@ -49,7 +46,6 @@ function DashboardContent() {
   const [reportsLoadingMore, setReportsLoadingMore] = useState(false)
   const [reportsError, setReportsError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
-  const [viewingReportId, setViewingReportId] = useState<number | null>(null)
   const [deletingReportId, setDeletingReportId] = useState<number | null>(null)
   
   // Handle redirect to report after login
@@ -119,31 +115,10 @@ function DashboardContent() {
     void fetchReports({ offset: 0, append: false })
   }, [userId, fetchReports])
 
-  useEffect(() => {
-    if (!userId || !currentAnalysis) {
-      return
-    }
-
-    void fetchReports({ offset: 0, append: false })
-  }, [userId, currentAnalysis, fetchReports])
-
-  const handleViewReport = useCallback(async (analysisId: number) => {
-    if (!userId) {
-      return
-    }
-
-    setViewingReportId(analysisId)
-    setActionError(null)
-    try {
-      const detail = await getReportDetail(analysisId, { userId })
-      setCurrentAnalysis(detail)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-    } catch (error: any) {
-      setActionError(error?.message || 'Failed to load report details.')
-    } finally {
-      setViewingReportId(null)
-    }
-  }, [userId, setCurrentAnalysis])
+  const handleViewReport = useCallback((analysisId: number) => {
+    // Navigate to dedicated report page instead of loading inline
+    router.push(`/reports/${analysisId}`)
+  }, [router])
 
   const handleDeleteReport = useCallback(async (analysisId: number) => {
     if (!userId) {
@@ -161,15 +136,12 @@ function DashboardContent() {
       await deleteReport(analysisId, { userId })
       setReports((prev) => prev.filter((report) => report.analysis_id !== analysisId))
       setReportsTotal((prev) => (prev > 0 ? prev - 1 : 0))
-      if (currentAnalysis?.analysis_id === analysisId) {
-        setCurrentAnalysis(null)
-      }
     } catch (error: any) {
       setActionError(error?.message || 'Failed to delete report.')
     } finally {
       setDeletingReportId(null)
     }
-  }, [userId, currentAnalysis, setCurrentAnalysis])
+  }, [userId])
 
   const reportCount = reports.length
 
@@ -255,8 +227,6 @@ function DashboardContent() {
 
         {isAnalyzing ? (
           <LoadingAnimation />
-        ) : currentAnalysis ? (
-          <ResultsDashboard analysis={currentAnalysis} />
         ) : (
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-12">
@@ -363,15 +333,10 @@ function DashboardContent() {
                             <button
                               type="button"
                               onClick={() => handleViewReport(report.analysis_id)}
-                              disabled={viewingReportId === report.analysis_id}
-                              className="inline-flex items-center gap-2 rounded-lg border border-primary-200 px-4 py-2 text-sm font-medium text-primary-600 hover:text-primary-700 disabled:opacity-60"
+                              className="inline-flex items-center gap-2 rounded-lg border border-primary-200 px-4 py-2 text-sm font-medium text-primary-600 hover:text-primary-700 hover:bg-primary-50 transition-colors"
                             >
-                              {viewingReportId === report.analysis_id ? 'Opening…' : (
-                                <>
-                                  <FiFileText className="text-base" />
-                                  View
-                                </>
-                              )}
+                              <FiFileText className="text-base" />
+                              View Report
                             </button>
                             <button
                               type="button"

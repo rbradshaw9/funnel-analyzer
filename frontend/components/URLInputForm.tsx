@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { FiPlus, FiX } from 'react-icons/fi'
 import { useAnalysisStore } from '@/store/analysisStore'
@@ -15,6 +16,7 @@ interface URLInputFormProps {
 }
 
 export default function URLInputForm({ isLocked = false }: URLInputFormProps) {
+  const router = useRouter()
   const [urls, setUrls] = useState<string[]>([''])
   const [error, setError] = useState<string>('')
   const [recipientEmail, setRecipientEmail] = useState<string>('')
@@ -25,7 +27,7 @@ export default function URLInputForm({ isLocked = false }: URLInputFormProps) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const elapsedIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const { setAnalyzing, setCurrentAnalysis } = useAnalysisStore()
+  const { setAnalyzing } = useAnalysisStore()
   const auth = useAuthStore((state) => state.auth)
   const token = useAuthStore((state) => state.token)
 
@@ -191,7 +193,8 @@ export default function URLInputForm({ isLocked = false }: URLInputFormProps) {
       // Brief delay to show completion message
       await new Promise(resolve => setTimeout(resolve, 500))
       
-      setCurrentAnalysis(result)
+      // Navigate to the report page
+      router.push(`/reports/${result.analysis_id}`)
     } catch (err: any) {
       setError(err.message || 'Failed to analyze funnel. Please try again.')
     } finally {
