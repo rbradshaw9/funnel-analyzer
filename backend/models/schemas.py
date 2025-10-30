@@ -394,3 +394,113 @@ class PublicStatsResponse(BaseModel):
 
     analyses_run: int = Field(default=0, ge=0)
     pages_analyzed: int = Field(default=0, ge=0)
+
+
+# ============================================================================
+# Conversion Tracking Schemas
+# ============================================================================
+
+class SessionCreateRequest(BaseModel):
+    """Request to create or update a funnel session."""
+    
+    session_id: str = Field(..., min_length=1, max_length=255, description="Client-generated session UUID")
+    fingerprint: Optional[str] = Field(default=None, description="Device fingerprint hash")
+    
+    # Optional visitor information
+    email: Optional[EmailStr] = Field(default=None, description="Email captured at opt-in")
+    user_id: Optional[str] = Field(default=None, max_length=255, description="External user ID if authenticated")
+    order_id: Optional[str] = Field(default=None, max_length=255, description="Order ID if tracked through funnel")
+    
+    # Session metadata
+    landing_page: Optional[str] = Field(default=None, max_length=2048, description="First page URL")
+    referrer: Optional[str] = Field(default=None, max_length=2048, description="HTTP referrer")
+    utm_source: Optional[str] = Field(default=None, max_length=255)
+    utm_medium: Optional[str] = Field(default=None, max_length=255)
+    utm_campaign: Optional[str] = Field(default=None, max_length=255)
+    utm_content: Optional[str] = Field(default=None, max_length=255)
+    utm_term: Optional[str] = Field(default=None, max_length=255)
+    
+    # Device/browser info
+    ip_address: Optional[str] = Field(default=None, max_length=45)
+    user_agent: Optional[str] = Field(default=None, max_length=1024)
+    screen_resolution: Optional[str] = Field(default=None, max_length=50)
+    timezone: Optional[str] = Field(default=None, max_length=100)
+    language: Optional[str] = Field(default=None, max_length=50)
+
+
+class SessionEventRequest(BaseModel):
+    """Request to track an event within a session."""
+    
+    session_id: str = Field(..., min_length=1, max_length=255, description="Session UUID")
+    event_type: str = Field(..., max_length=100, description="Event type (pageview, click, submit, etc.)")
+    page_url: Optional[str] = Field(default=None, max_length=2048, description="Current page URL")
+    target: Optional[str] = Field(default=None, max_length=500, description="Event target (button ID, form name, etc.)")
+    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Additional event data")
+
+
+class ConversionWebhookRequest(BaseModel):
+    """Webhook payload for conversion tracking."""
+    
+    # Required fields
+    conversion_id: str = Field(..., min_length=1, max_length=255, description="Unique order/conversion ID")
+    
+    # Attribution data (at least one recommended)
+    email: Optional[EmailStr] = Field(default=None, description="Customer email")
+    session_id: Optional[str] = Field(default=None, max_length=255, description="Client session UUID if tracked")
+    order_id: Optional[str] = Field(default=None, max_length=255, description="Order ID if different from conversion_id")
+    user_id: Optional[str] = Field(default=None, max_length=255, description="User ID if authenticated")
+    
+    # Conversion details
+    revenue: Optional[float] = Field(default=None, ge=0, description="Revenue amount in dollars")
+    currency: str = Field(default="USD", max_length=10, description="Currency code")
+    customer_name: Optional[str] = Field(default=None, max_length=255, description="Customer full name")
+    product_name: Optional[str] = Field(default=None, max_length=500, description="Product/service name")
+    
+    # Source tracking
+    webhook_source: Optional[str] = Field(default="manual", max_length=100, description="stripe, infusionsoft, etc.")
+    
+    # Optional device info for probabilistic matching
+    ip_address: Optional[str] = Field(default=None, max_length=45)
+    user_agent: Optional[str] = Field(default=None, max_length=1024)
+    
+    # Timestamp
+    converted_at: Optional[datetime] = Field(default=None, description="Conversion timestamp (UTC)")
+
+
+class ConversionResponse(BaseModel):
+    """Response after processing a conversion webhook."""
+    
+    conversion_id: str
+    attributed: bool = Field(..., description="Whether we successfully matched to a session")
+    attribution_method: Optional[str] = Field(default=None, description="How we matched the conversion")
+    attribution_confidence: Optional[int] = Field(default=None, ge=0, le=100, description="Confidence score 0-100")
+    session_id: Optional[str] = Field(default=None, description="Matched session ID if found")
+    message: str = Field(default="Conversion recorded")
+
+
+class FunnelSessionResponse(BaseModel):
+    """Response after creating/updating a funnel tracking session."""
+    
+    session_id: str
+    fingerprint: str
+    analysis_id: int
+    created: bool = Field(..., description="True if new session, False if updated")
+    message: str = Field(default="Session tracked")
+
+
+class ConversionStatsResponse(BaseModel):
+    """Statistics about conversions for an analysis."""
+    
+    total_conversions: int = Field(default=0, ge=0)
+    attributed_conversions: int = Field(default=0, ge=0)
+    attribution_rate: float = Field(default=0.0, ge=0.0, le=100.0, description="Percentage attributed")
+    total_revenue: float = Field(default=0.0, ge=0.0, description="Total revenue in dollars")
+    
+    # Attribution breakdown
+    attribution_methods: Dict[str, int] = Field(default_factory=dict, description="Count by method")
+    avg_confidence: Optional[float] = Field(default=None, ge=0.0, le=100.0, description="Average confidence score")
+    
+    # Session stats
+    total_sessions: int = Field(default=0, ge=0)
+    conversion_rate: float = Field(default=0.0, ge=0.0, le=100.0, description="Conversions / Sessions %")
+

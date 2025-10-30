@@ -24,6 +24,7 @@ from .migrations import (
     migration_lock,
 )
 from .migrations_oauth import ensure_user_oauth_columns
+from .migrations_tracking import ensure_funnel_sessions_table, ensure_conversions_table
 from ..utils.config import settings
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,8 @@ async def init_db() -> None:
             await ensure_user_oauth_columns(conn)
             await ensure_analysis_naming_columns(conn)
             await ensure_recommendation_completions_column(conn)
+            await ensure_funnel_sessions_table(conn)
+            await ensure_conversions_table(conn)
 
     async with AsyncSessionFactory() as session:
         default_email = (settings.DEFAULT_USER_EMAIL or "").strip().lower()

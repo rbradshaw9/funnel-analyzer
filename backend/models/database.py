@@ -155,3 +155,93 @@ class EmailTemplate(Base):
     def __repr__(self) -> str:
         return f"<EmailTemplate {self.name}>"
 
+
+class FunnelSession(Base):
+    """Track user sessions through funnel for conversion attribution."""
+
+    __tablename__ = "funnel_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    analysis_id = Column(Integer, ForeignKey("analyses.id"), nullable=False, index=True)
+    
+    # Session identification
+    session_id = Column(String(255), unique=True, nullable=False, index=True)  # Client-generated UUID
+    fingerprint = Column(String(255), nullable=False, index=True)  # Device fingerprint hash
+    
+    # Visitor information (captured when available)
+    email = Column(String(255), nullable=True, index=True)  # Captured at opt-in or checkout
+    user_id = Column(String(255), nullable=True, index=True)  # External user ID if provided
+    order_id = Column(String(255), nullable=True, index=True)  # Order ID if passed through funnel
+    
+    # Session metadata
+    landing_page = Column(String(2048), nullable=True)
+    referrer = Column(String(2048), nullable=True)
+    utm_source = Column(String(255), nullable=True)
+    utm_medium = Column(String(255), nullable=True)
+    utm_campaign = Column(String(255), nullable=True)
+    utm_content = Column(String(255), nullable=True)
+    utm_term = Column(String(255), nullable=True)
+    
+    # Device/browser info for fingerprinting
+    ip_address = Column(String(45), nullable=True)  # IPv6 compatible
+    user_agent = Column(String(1024), nullable=True)
+    screen_resolution = Column(String(50), nullable=True)
+    timezone = Column(String(100), nullable=True)
+    language = Column(String(50), nullable=True)
+    
+    # Journey tracking
+    page_views = Column(Integer, default=0)  # Count of pages viewed
+    events = Column(JSON, nullable=True)  # [{type: 'click', target: 'cta-button', timestamp: ...}]
+    last_page_url = Column(String(2048), nullable=True)
+    
+    # Timestamps
+    first_seen_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    last_seen_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    analysis = relationship("Analysis", backref="sessions")
+    conversions = relationship("Conversion", back_populates="session", cascade="all, delete-orphan")
+
+    def __repr__(self) -> str:
+        return f"<FunnelSession {self.session_id}>"
+
+
+class Conversion(Base):
+    """Track conversions and attribute them to sessions."""
+
+    __tablename__ = "conversions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    analysis_id = Column(Integer, ForeignKey("analyses.id"), nullable=False, index=True)
+    session_id = Column(Integer, ForeignKey("funnel_sessions.id"), nullable=True, index=True)
+    
+    # Conversion identification
+    conversion_id = Column(String(255), unique=True, nullable=False, index=True)  # External order/conversion ID
+    
+    # Conversion data from webhook
+    email = Column(String(255), nullable=True, index=True)
+    customer_name = Column(String(255), nullable=True)
+    revenue = Column(Integer, nullable=True)  # Stored in cents to avoid floating point issues
+    currency = Column(String(10), nullable=False, default="USD")
+    product_name = Column(String(500), nullable=True)
+    
+    # Attribution metadata
+    attribution_method = Column(String(100), nullable=True)  # email, order_id, fingerprint, probabilistic, none
+    attribution_confidence = Column(Integer, nullable=True)  # 0-100 confidence score
+    attribution_metadata = Column(JSON, nullable=True)  # Additional attribution context
+    
+    # Webhook metadata
+    webhook_source = Column(String(100), nullable=True)  # stripe, infusionsoft, manual, etc.
+    webhook_payload = Column(JSON, nullable=True)  # Original webhook payload
+    
+    # Timestamps
+    converted_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+    attributed_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Relationships
+    analysis = relationship("Analysis", backref="conversions")
+    session = relationship("FunnelSession", back_populates="conversions")
+
+    def __repr__(self) -> str:
+        return f"<Conversion {self.conversion_id} - ${self.revenue/100 if self.revenue else 0}>"
+

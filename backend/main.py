@@ -5,12 +5,15 @@ Main application entry point with CORS, routes, and lifecycle handlers.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 import logging
+import os
 
 from .db.session import init_db
-from .routes import analysis, auth, metrics, reports, webhooks, oauth, user, admin, health, email_test, debug  # cleanup disabled
+from .routes import analysis, auth, metrics, reports, webhooks, oauth, user, admin, health, email_test, debug, tracking  # cleanup disabled
 from .utils.config import settings
 
 # Configure logging
@@ -74,11 +77,27 @@ app.include_router(user.router, prefix="/api/user", tags=["User"])
 app.include_router(metrics.router, prefix="/api/metrics", tags=["Metrics"])
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
 app.include_router(webhooks.router, prefix="/api/webhooks", tags=["Webhooks"])
+app.include_router(tracking.router, prefix="/api", tags=["Tracking"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 # app.include_router(cleanup.router, prefix="/api/admin/screenshots", tags=["Cleanup"])  # Disabled - screenshot cleanup temporarily disabled
 app.include_router(email_test.router, tags=["Testing"])
 app.include_router(debug.router, prefix="/api/debug", tags=["Debug"])
 app.include_router(health.router, tags=["Health"])
+
+
+# Serve tracking script
+@app.get("/tracker.js")
+async def get_tracker_script():
+    """Serve the client-side tracking JavaScript."""
+    script_path = os.path.join(os.path.dirname(__file__), "static", "tracker.js")
+    return FileResponse(
+        script_path,
+        media_type="application/javascript",
+        headers={
+            "Cache-Control": "public, max-age=3600",  # Cache for 1 hour
+            "Access-Control-Allow-Origin": "*",  # Allow cross-origin loading
+        }
+    )
 
 
 @app.get("/")
