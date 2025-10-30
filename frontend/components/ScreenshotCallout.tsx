@@ -66,10 +66,29 @@ function getTheme(theme?: ScreenshotHotspotTheme) {
 export default function ScreenshotCallout({ imageUrl, alt, caption, hotspot, onOpenFull }: ScreenshotCalloutProps) {
   const theme = getTheme(hotspot?.theme)
   const positionClasses = getPositionClasses(hotspot?.position)
+  const isInteractive = Boolean(onOpenFull)
+
+  const handleOpen = () => {
+    if (onOpenFull) {
+      onOpenFull()
+    }
+  }
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
-      <div className="relative h-52 w-full overflow-hidden bg-slate-100">
+      <div
+        className={`relative h-52 w-full overflow-hidden bg-slate-100 ${isInteractive ? 'cursor-zoom-in outline-none focus-visible:ring-2 focus-visible:ring-primary-500' : ''}`}
+        role={isInteractive ? 'button' : undefined}
+        tabIndex={isInteractive ? 0 : undefined}
+        onClick={handleOpen}
+        onKeyDown={(event) => {
+          if (!isInteractive) return
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            handleOpen()
+          }
+        }}
+      >
         <Image
           src={imageUrl}
           alt={alt}
@@ -97,7 +116,10 @@ export default function ScreenshotCallout({ imageUrl, alt, caption, hotspot, onO
 
         {onOpenFull && (
           <button
-            onClick={onOpenFull}
+            onClick={(event) => {
+              event.stopPropagation()
+              handleOpen()
+            }}
             className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur transition hover:bg-white"
             type="button"
           >
