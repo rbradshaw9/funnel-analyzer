@@ -28,6 +28,7 @@ interface Props {
 export default function ActionableRecommendations({ analysis }: Props) {
   const [completions, setCompletions] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
+  const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null)
   const userId = useAuthStore((state) => state.auth?.user_id)
 
   // Load completion status on mount
@@ -94,20 +95,34 @@ export default function ActionableRecommendations({ analysis }: Props) {
 
       // Headline Optimization (High Priority)
       if (page.headline_recommendation) {
+        const steps = ['Test these recommended headlines:']
+        
+        // Add the primary recommendation
+        steps.push(`✨ Primary: ${page.headline_recommendation}`)
+        
+        // Add alternatives if available
+        if (page.headline_alternatives && page.headline_alternatives.length > 0) {
+          page.headline_alternatives.forEach((alt, index) => {
+            steps.push(`${index + 1}. ${alt}`)
+          })
+        } else {
+          // Fallback to generic instructions if no alternatives
+          steps.push('Create 2-3 additional variations')
+        }
+        
+        steps.push('Set up A/B test with current headline as control')
+        steps.push('Run test for minimum 1000 visitors')
+        steps.push('Implement winning variation')
+        
         items.push({
           id: `page${pageIndex}-headline`,
           priority: 'high',
           category: 'Headline Optimization',
           title: `Improve ${pageLabel} Headline`,
-          description: page.headline_recommendation,
-          impact: 'Headlines are the first thing visitors see - can increase engagement by 20-30%',
+          description: 'Headlines are the first thing visitors see - can increase engagement by 20-30%',
+          impact: 'First impression drives scroll depth and engagement',
           effort: 'Quick Win',
-          steps: [
-            'Draft 3-5 alternative headlines using the recommendation',
-            'A/B test the new headline against current',
-            'Measure click-through and scroll depth improvements',
-            'Implement winning variation'
-          ],
+          steps,
           pageUrl: page.url,
           screenshotUrl: page.screenshot_url
         })
@@ -403,7 +418,11 @@ export default function ActionableRecommendations({ analysis }: Props) {
               {/* Screenshot Thumbnail */}
               {item.screenshotUrl && (
                 <div className="flex-shrink-0">
-                  <div className="relative w-32 h-24 rounded-lg overflow-hidden border border-slate-200 shadow-sm group">
+                  <div 
+                    className="relative w-32 h-24 rounded-lg overflow-hidden border border-slate-200 shadow-sm group cursor-pointer hover:border-blue-400 transition-all"
+                    onClick={() => setSelectedScreenshot(item.screenshotUrl || null)}
+                    title="Click to enlarge screenshot"
+                  >
                     <Image
                       src={item.screenshotUrl}
                       alt={`Screenshot of ${item.pageUrl || 'page'}`}
@@ -417,7 +436,15 @@ export default function ActionableRecommendations({ analysis }: Props) {
                   </div>
                   {item.pageUrl && (
                     <p className="text-xs text-slate-500 mt-1 truncate max-w-[128px]" title={item.pageUrl}>
-                      {new URL(item.pageUrl).pathname || '/'}
+                      {(() => {
+                        try {
+                          const url = new URL(item.pageUrl)
+                          const path = url.pathname === '/' ? url.hostname : url.pathname
+                          return path
+                        } catch {
+                          return item.pageUrl
+                        }
+                      })()}
                     </p>
                   )}
                 </div>
@@ -475,6 +502,36 @@ export default function ActionableRecommendations({ analysis }: Props) {
           <p className="text-green-700">
             Your funnel is performing well. Continue monitoring and testing small improvements.
           </p>
+        </div>
+      )}
+
+      {/* Screenshot Lightbox Modal */}
+      {selectedScreenshot && (
+        <div 
+          className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4"
+          onClick={() => setSelectedScreenshot(null)}
+        >
+          <div className="relative max-w-7xl max-h-[90vh] w-full h-full">
+            <button
+              onClick={() => setSelectedScreenshot(null)}
+              className="absolute top-4 right-4 bg-white text-slate-900 rounded-full p-2 hover:bg-slate-100 transition-colors z-10"
+              title="Close"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="relative w-full h-full flex items-center justify-center">
+              <Image
+                src={selectedScreenshot}
+                alt="Full screenshot"
+                fill
+                className="object-contain"
+                sizes="100vw"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>

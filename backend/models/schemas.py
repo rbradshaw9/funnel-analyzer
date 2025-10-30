@@ -163,8 +163,10 @@ class PageAnalysis(BaseModel):
     screenshot_url: Optional[str] = None
     screenshot_storage_key: Optional[str] = None
     headline_recommendation: Optional[str] = None
+    headline_alternatives: Optional[List[str]] = None  # 3-5 alternative headline options
     cta_recommendations: Optional[List[CTARecommendation]] = None
     design_improvements: Optional[List[DesignImprovement]] = None
+    copy_improvements: Optional[List[dict]] = None  # Before/after copy examples
     trust_elements_missing: Optional[List[TrustElementRecommendation]] = None
     ab_test_priority: Optional[ABTestPlan] = None
     priority_alerts: Optional[List[PriorityAlert]] = None

@@ -304,10 +304,16 @@ ANALYSIS REQUIREMENTS:
 
 3. **Provide Exact Recommendations**: Don't say "improve the headline" - provide the exact headline text to use.
    Don't say "add CTAs" if CTAs exist - instead evaluate their effectiveness and suggest improvements.
+   For EVERY recommendation type, provide 3-5 specific examples, not generic instructions.
 
 4. **Prioritize Impact**: Focus on changes that will meaningfully improve conversion rates.
 
-5. **Be Specific**: Use numbers, exact copy, specific placement instructions.
+5. **Be Specific with Examples**: 
+   - Headlines: Provide 3-5 alternative headline options
+   - CTAs: Provide exact button copy with context
+   - Design: Specify exact colors, sizes, placements
+   - Copy: Show before/after text examples
+   - Trust elements: Name specific testimonials, guarantees, badges to add
 
 Return ONLY valid JSON with this structure:
 {{
@@ -320,33 +326,62 @@ Return ONLY valid JSON with this structure:
         "flow": 0-100      // How smooth is the user journey?
     }},
     "feedback": "Professional 3-5 sentence summary of the page's conversion effectiveness. Be specific about what's working and what needs improvement.",
-    "headline_recommendation": "Exact headline text that would improve clarity and conversion. Make it benefit-driven and specific.",
+    "headline_recommendation": "Primary recommended headline",
+    "headline_alternatives": [
+        "Alternative headline option 1 with specific benefit",
+        "Alternative headline option 2 with different angle",
+        "Alternative headline option 3 for urgency/scarcity",
+        "Alternative headline option 4 for social proof angle",
+        "Alternative headline option 5 for transformation focus"
+    ],
     "cta_recommendations": [
         {{
-            "copy": "Exact button text to use",
-            "location": "Specific placement (e.g., 'above the fold, next to headline')",
-            "reason": "Why this CTA will convert better"
+            "copy": "Exact button text (e.g., 'Get Instant Access Now', 'Start My Free Trial')",
+            "location": "Specific placement (e.g., 'Hero section, centered below headline')",
+            "style": "Visual styling (e.g., 'Large green button, 60px height, white text')",
+            "reason": "Why this CTA will convert better (be specific about psychology)"
+        }},
+        {{
+            "copy": "Alternative CTA option 2",
+            "location": "Different strategic placement",
+            "style": "Contrasting visual approach",
+            "reason": "Alternative angle for testing"
         }}
     ],
     "design_improvements": [
         {{
-            "area": "Specific page section (e.g., 'Hero section', 'Above the fold')",
-            "recommendation": "Exact change to make",
-            "impact": "Expected conversion impact (e.g., 'Improves clarity', 'Reduces friction')"
+            "area": "Specific page section (e.g., 'Hero section', 'Above the fold', 'Pricing table')",
+            "current_state": "What exists now that's problematic",
+            "recommendation": "Exact change to make with measurements/specs",
+            "example": "Concrete example: 'Change background from white to light gray (#F5F5F5), increase headline font from 32px to 48px, add 40px padding'",
+            "impact": "Expected conversion impact with reasoning"
+        }}
+    ],
+    "copy_improvements": [
+        {{
+            "section": "Which copy block needs work",
+            "current": "Current problematic text",
+            "improved": "Recommended replacement text (full rewrite)",
+            "why": "Specific reason this improves conversion"
         }}
     ],
     "trust_elements_missing": [
         {{
-            "element": "Specific trust element needed (e.g., 'Client testimonials with photos', 'Money-back guarantee badge')",
-            "why": "How this builds trust and improves conversion"
+            "element": "Specific trust element needed with full details",
+            "example": "Concrete example: 'Add testimonial from John Smith, CEO of TechCorp: Quote about 300% revenue increase, include headshot photo'",
+            "placement": "Where to place it on the page",
+            "why": "How this specific element builds trust and improves conversion"
         }}
     ],
     "ab_test_priority": {{
         "element": "The single highest-priority element to A/B test",
-        "control": "Current version",
-        "variant": "Recommended test variant",
-        "expected_lift": "Estimated percentage improvement (e.g., '10-15%')",
-        "reasoning": "Why this test is the priority"
+        "control": "Current version (exact copy/design)",
+        "variant_1": "First test variant with full details",
+        "variant_2": "Second test variant with different approach",
+        "variant_3": "Third test variant (optional)",
+        "expected_lift": "Estimated percentage improvement (e.g., '15-25% based on similar tests')",
+        "reasoning": "Why this test is the priority with conversion psychology rationale",
+        "implementation": "Step-by-step how to implement this test"
     }},
     "priority_alerts": [
         {{

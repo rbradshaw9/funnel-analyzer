@@ -114,8 +114,15 @@ export interface PageAnalysis {
   screenshot_url?: string
   screenshot_storage_key?: string
   headline_recommendation?: string
+  headline_alternatives?: string[]  // 3-5 alternative headline options
   cta_recommendations?: CTARecommendation[]
   design_improvements?: DesignImprovement[]
+  copy_improvements?: Array<{
+    section: string
+    current: string
+    improved: string
+    why: string
+  }>
   trust_elements_missing?: TrustElementRecommendation[]
   ab_test_priority?: ABTestPlan
   priority_alerts?: PriorityAlert[]
