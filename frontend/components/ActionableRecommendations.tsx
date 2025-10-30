@@ -1,16 +1,23 @@
-'use client'
+"use client"
 
 import { motion } from 'framer-motion'
-import { FiCheckCircle, FiAlertTriangle, FiZap, FiTrendingUp, FiImage, FiCheck } from 'react-icons/fi'
-import { AnalysisResult } from '@/types'
+import { FiCheckCircle, FiAlertTriangle, FiZap, FiTrendingUp, FiCheck, FiExternalLink } from 'react-icons/fi'
+import {
+  AnalysisResult,
+  AnnotatedScreenshot,
+  ScreenshotHotspot,
+  ScreenshotHotspotPosition,
+  ScreenshotHotspotTheme,
+} from '@/types'
 import Image from 'next/image'
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getRecommendationCompletions, updateRecommendationCompletion } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
 import confetti from 'canvas-confetti'
+import ScreenshotCallout from './ScreenshotCallout'
 
 interface ActionItem {
-  id: string  // Added unique ID for tracking
+  id: string
   priority: 'critical' | 'high' | 'medium' | 'low'
   category: string
   title: string
@@ -20,16 +27,97 @@ interface ActionItem {
   steps: string[]
   pageUrl?: string
   screenshotUrl?: string
+  screenshotHotspot?: ScreenshotHotspot | null
+  screenshotCaption?: string | null
 }
 
 interface Props {
   analysis: AnalysisResult
 }
 
+interface ScreenshotSelection {
+  imageUrl: string
+  alt: string
+}
+
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  'Headline Optimization': ['headline', 'hero', 'above the fold', 'title'],
+  'Call-to-Action': ['cta', 'call to action', 'button'],
+  'Trust Building': ['trust', 'social proof', 'testimonial', 'credibility'],
+  'A/B Testing': ['experiment', 'test', 'variant'],
+  'Visual Design': ['design', 'layout', 'visual'],
+  'Funnel Flow': ['flow', 'journey', 'step'],
+  'Copywriting': ['copy', 'messaging', 'offer'],
+  'Page Speed': ['performance', 'speed', 'load'],
+  'Video Content': ['video'],
+  'Critical Issue': ['issue', 'warning', 'critical'],
+}
+
+const HOTSPOT_CATEGORY_PRESETS: Record<string, { position: ScreenshotHotspotPosition; theme: ScreenshotHotspotTheme }> = {
+  'Headline Optimization': { position: 'top', theme: 'emerald' },
+  'Call-to-Action': { position: 'bottom-right', theme: 'violet' },
+  'Trust Building': { position: 'top-right', theme: 'sky' },
+  'A/B Testing': { position: 'center', theme: 'amber' },
+  'Visual Design': { position: 'left', theme: 'sky' },
+  'Funnel Flow': { position: 'bottom-left', theme: 'rose' },
+  'Copywriting': { position: 'top-left', theme: 'emerald' },
+  'Page Speed': { position: 'right', theme: 'violet' },
+  'Video Content': { position: 'bottom', theme: 'amber' },
+  'Critical Issue': { position: 'center', theme: 'rose' },
+}
+
+const HOTSPOT_FALLBACKS: Array<{ position: ScreenshotHotspotPosition; theme: ScreenshotHotspotTheme }> = [
+  { position: 'top-left', theme: 'emerald' },
+  { position: 'top-right', theme: 'sky' },
+  { position: 'bottom-left', theme: 'violet' },
+  { position: 'bottom-right', theme: 'amber' },
+  { position: 'center', theme: 'rose' },
+  { position: 'left', theme: 'emerald' },
+  { position: 'right', theme: 'sky' },
+  { position: 'bottom', theme: 'violet' },
+  { position: 'top', theme: 'amber' },
+]
+
+const truncate = (value?: string, limit = 96) => {
+  if (!value) return value
+  return value.length > limit ? `${value.slice(0, limit - 1).trim()}…` : value
+}
+
+const sanitizeStep = (value?: string) => {
+  if (!value) return value
+  return value.replace(/^[-•\d\.\s]+/, '').trim()
+}
+
+const findAnnotatedScreenshot = (shots: AnnotatedScreenshot[] | undefined, category: string) => {
+  if (!shots || shots.length === 0) return undefined
+  const keywords = CATEGORY_KEYWORDS[category]
+  if (!keywords) return shots[0]
+
+  const match = shots.find((shot) => {
+    const haystack = `${shot.headline ?? ''} ${shot.description ?? ''}`.toLowerCase()
+    return keywords.some((keyword) => haystack.includes(keyword))
+  })
+
+  return match ?? shots[0]
+}
+
+const buildHotspot = (category: string, title: string, steps: string[], index: number): ScreenshotHotspot => {
+  const preset = HOTSPOT_CATEGORY_PRESETS[category] ?? HOTSPOT_FALLBACKS[index % HOTSPOT_FALLBACKS.length]
+  const primaryStep = sanitizeStep(steps.find((step) => step && step.trim().length > 0))
+
+  return {
+    id: `hotspot-${index}`,
+    label: truncate(title, 56) || category,
+    description: primaryStep ? truncate(primaryStep, 140) : undefined,
+    position: preset.position,
+    theme: preset.theme,
+  }
+}
+
 export default function ActionableRecommendations({ analysis }: Props) {
   const [completions, setCompletions] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
-  const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null)
+  const [selectedScreenshot, setSelectedScreenshot] = useState<ScreenshotSelection | null>(null)
   const userId = useAuthStore((state) => state.auth?.user_id)
 
   // Load completion status on mount
@@ -75,12 +163,41 @@ export default function ActionableRecommendations({ analysis }: Props) {
   }
 
   // Generate actionable items from the analysis
-  const generateActionItems = (): ActionItem[] => {
+  const actionItems = useMemo(() => {
     const items: ActionItem[] = []
+    let hotspotIndex = 0
 
-    // Process each page's recommendations
     analysis.pages.forEach((page, pageIndex) => {
       const pageLabel = `Page ${pageIndex + 1}${page.title ? ` (${page.title})` : ''}`
+      const annotatedScreens = page.annotated_screenshots ?? []
+      const baseScreenshot = page.screenshot_url ?? undefined
+
+      const selectScreenshot = (category: string) => {
+        const annotated = findAnnotatedScreenshot(annotatedScreens, category)
+        return annotated?.image_url ?? baseScreenshot
+      }
+
+      const registerItem = (
+        item: Omit<ActionItem, 'screenshotHotspot' | 'screenshotCaption' | 'screenshotUrl'> & {
+          screenshotUrl?: string | null
+          screenshotCaption?: string | null
+        }
+      ) => {
+        const screenshotUrl = item.screenshotUrl ?? selectScreenshot(item.category)
+        let hotspot: ScreenshotHotspot | null = null
+
+        if (screenshotUrl) {
+          hotspot = buildHotspot(item.category, item.title, item.steps, hotspotIndex)
+          hotspotIndex += 1
+        }
+
+        items.push({
+          ...item,
+          screenshotUrl: screenshotUrl ?? undefined,
+          screenshotHotspot: hotspot,
+          screenshotCaption: item.screenshotCaption ?? (screenshotUrl ? pageLabel : null),
+        })
+      }
 
       // Priority Alerts (Critical)
       if (page.priority_alerts && page.priority_alerts.length > 0) {
@@ -89,7 +206,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
           const priority = severity === 'high' || severity === 'critical' ? 'critical' : 
                           severity === 'medium' ? 'high' : 'medium'
           
-          items.push({
+          registerItem({
             id: `page${pageIndex}-alert${alertIndex}`,
             priority,
             category: 'Critical Issue',
@@ -99,7 +216,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
             effort: 'Quick Win',
             steps: alert.fix ? [alert.fix] : ['Review and address this issue immediately'],
             pageUrl: page.url,
-            screenshotUrl: page.screenshot_url
+            screenshotCaption: `${pageLabel} • Critical issue focus`,
           })
         })
       }
@@ -125,7 +242,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
         steps.push('Run test for minimum 1000 visitors')
         steps.push('Implement winning variation')
         
-        items.push({
+        registerItem({
           id: `page${pageIndex}-headline`,
           priority: 'high',
           category: 'Headline Optimization',
@@ -135,14 +252,14 @@ export default function ActionableRecommendations({ analysis }: Props) {
           effort: 'Quick Win',
           steps,
           pageUrl: page.url,
-          screenshotUrl: page.screenshot_url
+          screenshotCaption: `${pageLabel} • Hero headline`,
         })
       }
 
       // A/B Test Priorities (High)
       if (page.ab_test_priority) {
         const test = page.ab_test_priority
-        items.push({
+        registerItem({
           id: `page${pageIndex}-abtest`,
           priority: 'high',
           category: 'A/B Testing',
@@ -158,13 +275,13 @@ export default function ActionableRecommendations({ analysis }: Props) {
             'Analyze results and implement winner'
           ],
           pageUrl: page.url,
-          screenshotUrl: page.screenshot_url
+          screenshotCaption: `${pageLabel} • Experiment setup`,
         })
       }
 
       // Trust Elements (High Priority)
       if (page.trust_elements_missing && page.trust_elements_missing.length > 0) {
-        items.push({
+        registerItem({
           id: `page${pageIndex}-trust`,
           priority: 'high',
           category: 'Trust Building',
@@ -176,13 +293,13 @@ export default function ActionableRecommendations({ analysis }: Props) {
             `Add: ${elem.element}${elem.why ? ` - ${elem.why}` : ''}`
           ),
           pageUrl: page.url,
-          screenshotUrl: page.screenshot_url
+          screenshotCaption: `${pageLabel} • Trust gaps`,
         })
       }
 
       // CTA Improvements (High)
       if (page.cta_recommendations && page.cta_recommendations.length > 0) {
-        items.push({
+        registerItem({
           id: `page${pageIndex}-cta`,
           priority: 'high',
           category: 'Call-to-Action',
@@ -194,13 +311,13 @@ export default function ActionableRecommendations({ analysis }: Props) {
             `${cta.location ? `${cta.location}: ` : ''}"${cta.copy}"${cta.reason ? ` - ${cta.reason}` : ''}`
           ),
           pageUrl: page.url,
-          screenshotUrl: page.screenshot_url
+          screenshotCaption: `${pageLabel} • CTA placement`,
         })
       }
 
       // Design Improvements (Medium)
       if (page.design_improvements && page.design_improvements.length > 0) {
-        items.push({
+        registerItem({
           id: `page${pageIndex}-design`,
           priority: 'medium',
           category: 'Visual Design',
@@ -212,13 +329,13 @@ export default function ActionableRecommendations({ analysis }: Props) {
             `${improvement.area ? `${improvement.area}: ` : ''}${improvement.recommendation}`
           ),
           pageUrl: page.url,
-          screenshotUrl: page.screenshot_url
+          screenshotCaption: `${pageLabel} • Visual hierarchy`,
         })
       }
 
       // Funnel Flow Gaps (High)
       if (page.funnel_flow_gaps && page.funnel_flow_gaps.length > 0) {
-        items.push({
+        registerItem({
           id: `page${pageIndex}-flow`,
           priority: 'high',
           category: 'Funnel Flow',
@@ -230,7 +347,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
             `${gap.step ? `${gap.step}: ` : ''}${gap.issue}${gap.fix ? ` → ${gap.fix}` : ''}`
           ),
           pageUrl: page.url,
-          screenshotUrl: page.screenshot_url
+          screenshotCaption: `${pageLabel} • Funnel continuity`,
         })
       }
 
@@ -244,7 +361,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
         if (diag.objections) copyIssues.push(`Objections: ${diag.objections}`)
         
         if (copyIssues.length > 0) {
-          items.push({
+          registerItem({
             id: `page${pageIndex}-copy`,
             priority: 'medium',
             category: 'Copywriting',
@@ -254,14 +371,14 @@ export default function ActionableRecommendations({ analysis }: Props) {
             effort: 'Medium Effort',
             steps: copyIssues,
             pageUrl: page.url,
-            screenshotUrl: page.screenshot_url
+            screenshotCaption: `${pageLabel} • Messaging gaps`,
           })
         }
       }
 
       // Video Recommendations (Medium)
       if (page.video_recommendations && page.video_recommendations.length > 0) {
-        items.push({
+        registerItem({
           id: `page${pageIndex}-video`,
           priority: 'medium',
           category: 'Video Content',
@@ -273,7 +390,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
             `${video.context ? `${video.context}: ` : ''}${video.recommendation}`
           ),
           pageUrl: page.url,
-          screenshotUrl: page.screenshot_url
+          screenshotCaption: `${pageLabel} • Video opportunity`,
         })
       }
 
@@ -281,7 +398,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
       if (page.performance_data && page.performance_data.performance_score && page.performance_data.performance_score < 70) {
         const opportunities = page.performance_data.opportunities || []
         if (opportunities.length > 0) {
-          items.push({
+          registerItem({
             id: `page${pageIndex}-performance`,
             priority: 'medium',
             category: 'Page Speed',
@@ -291,7 +408,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
             effort: 'Medium Effort',
             steps: opportunities.slice(0, 5),
             pageUrl: page.url,
-            screenshotUrl: page.screenshot_url
+            screenshotCaption: `${pageLabel} • Performance improvements`,
           })
         }
       }
@@ -300,9 +417,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
     // Sort by priority
     const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 }
     return items.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
-  }
-
-  const actionItems = generateActionItems()
+  }, [analysis])
   
   // Calculate completion stats
   const totalCount = actionItems.length
@@ -348,16 +463,16 @@ export default function ActionableRecommendations({ analysis }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-xl p-6 border border-primary-200">
+      <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-xl p-6 border border-primary-200 shadow-sm">
         <h2 className="text-2xl font-bold text-slate-900 mb-2">Your Action Plan</h2>
-        <p className="text-slate-700 mb-4">
+        <p className="text-slate-700 mb-4 max-w-3xl">
           We&apos;ve identified {actionItems.length} specific improvements you can make to increase conversions.
           Start with the highest priority items for maximum impact.
         </p>
         
         {/* Progress Bar */}
         {!loading && totalCount > 0 && (
-          <div className="mb-4 bg-white rounded-lg p-4 border border-primary-200">
+          <div className="mb-4 bg-white rounded-lg p-4 border border-primary-200 shadow-inner">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <FiCheck className="w-5 h-5 text-green-600" />
@@ -383,7 +498,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
           </div>
         )}
         
-        <div className="flex gap-4 text-sm">
+        <div className="flex flex-wrap gap-4 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-red-500 rounded-full"></div>
             <span className="text-slate-600">Critical ({actionItems.filter(i => i.priority === 'critical').length})</span>
@@ -405,85 +520,80 @@ export default function ActionableRecommendations({ analysis }: Props) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: index * 0.05 }}
-          className={`bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-md transition-all ${
-            completions[item.id] ? 'border-green-300 bg-green-50/30' : 'border-slate-200'
+          className={`bg-white rounded-xl shadow-sm border transition-all ${
+            completions[item.id] ? 'border-green-300 bg-green-50/30' : 'border-slate-200 hover:border-primary-200'
           }`}
         >
-          <div className="p-6">
-            <div className="flex items-start gap-6 mb-4">
-              {/* Checkbox */}
-              <div className="flex-shrink-0 pt-1">
-                <button
-                  onClick={() => handleToggleCompletion(item.id)}
-                  className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${
-                    completions[item.id]
-                      ? 'bg-green-500 border-green-500'
-                      : 'border-slate-300 hover:border-primary-500'
-                  }`}
-                  title={completions[item.id] ? 'Mark as incomplete' : 'Mark as complete'}
-                >
-                  {completions[item.id] && <FiCheck className="w-4 h-4 text-white" />}
-                </button>
-              </div>
-              
-              {/* Screenshot Thumbnail */}
-              {item.screenshotUrl && (
-                <div className="flex-shrink-0">
-                  <div 
-                    className="relative w-32 h-24 rounded-lg overflow-hidden border border-slate-200 shadow-sm group cursor-pointer hover:border-blue-400 transition-all"
-                    onClick={() => setSelectedScreenshot(item.screenshotUrl || null)}
-                    title="Click to enlarge screenshot"
+          <div className="p-5 lg:p-6">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+              <div className="flex flex-1 gap-4">
+                <div className="flex-shrink-0 pt-1">
+                  <button
+                    onClick={() => handleToggleCompletion(item.id)}
+                    className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${
+                      completions[item.id]
+                        ? 'bg-green-500 border-green-500'
+                        : 'border-slate-300 hover:border-primary-500'
+                    }`}
+                    title={completions[item.id] ? 'Mark as incomplete' : 'Mark as complete'}
+                    type="button"
                   >
-                    <Image
-                      src={item.screenshotUrl}
-                      alt={`Screenshot of ${item.pageUrl || 'page'}`}
-                      fill
-                      className="object-cover object-top"
-                      sizes="128px"
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all flex items-center justify-center">
-                      <FiImage className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
+                    {completions[item.id] && <FiCheck className="w-4 h-4 text-white" />}
+                  </button>
+                </div>
+                <div className="flex-1 space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 ${getPriorityColor(item.priority)}`}>
+                      {getPriorityIcon(item.priority)}
+                      {item.priority.toUpperCase()}
+                    </span>
+                    <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
+                      {item.category}
+                    </span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getEffortColor(item.effort)}`}>
+                      {item.effort}
+                    </span>
                   </div>
-                  {item.pageUrl && (
-                    <p className="text-xs text-slate-500 mt-1 truncate max-w-[128px]" title={item.pageUrl}>
-                      {(() => {
-                        try {
-                          const url = new URL(item.pageUrl)
-                          const path = url.pathname === '/' ? url.hostname : url.pathname
-                          return path
-                        } catch {
-                          return item.pageUrl
-                        }
-                      })()}
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900 leading-tight mb-1.5">{item.title}</h3>
+                    <p className="text-slate-600 text-sm leading-relaxed">{item.description}</p>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
+                    <p className="text-sm font-semibold text-blue-900 flex items-center gap-2">
+                      <FiTrendingUp className="w-4 h-4" />
+                      Expected Impact: {item.impact}
                     </p>
+                  </div>
+                </div>
+              </div>
+
+              {item.screenshotUrl && (
+                <div className="w-full sm:max-w-xs lg:w-52">
+                  <ScreenshotCallout
+                    imageUrl={item.screenshotUrl}
+                    alt={item.pageUrl ? `Screenshot of ${item.pageUrl}` : 'Recommendation screenshot'}
+                    caption={item.screenshotCaption ?? undefined}
+                    hotspot={item.screenshotHotspot ?? undefined}
+                    onOpenFull={() =>
+                      setSelectedScreenshot({
+                        imageUrl: item.screenshotUrl!,
+                        alt: item.pageUrl ? `Screenshot of ${item.pageUrl}` : 'Recommendation screenshot',
+                      })
+                    }
+                  />
+                  {item.pageUrl && (
+                    <a
+                      href={item.pageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700"
+                    >
+                      View page
+                      <FiExternalLink className="w-3.5 h-3.5" />
+                    </a>
                   )}
                 </div>
               )}
-              
-              {/* Content */}
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 ${getPriorityColor(item.priority)}`}>
-                    {getPriorityIcon(item.priority)}
-                    {item.priority.toUpperCase()}
-                  </span>
-                  <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-medium">
-                    {item.category}
-                  </span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getEffortColor(item.effort)}`}>
-                    {item.effort}
-                  </span>
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">{item.title}</h3>
-                <p className="text-slate-600 mb-3">{item.description}</p>
-                <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
-                  <p className="text-sm font-semibold text-blue-900 flex items-center gap-2">
-                    <FiTrendingUp className="w-4 h-4" />
-                    Expected Impact: {item.impact}
-                  </p>
-                </div>
-              </div>
             </div>
 
             <div className="mt-4">
@@ -534,8 +644,8 @@ export default function ActionableRecommendations({ analysis }: Props) {
             </button>
             <div className="relative w-full h-full flex items-center justify-center">
               <Image
-                src={selectedScreenshot}
-                alt="Full screenshot"
+                src={selectedScreenshot.imageUrl}
+                alt={selectedScreenshot.alt}
                 fill
                 className="object-contain"
                 sizes="100vw"
