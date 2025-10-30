@@ -43,7 +43,7 @@ export default function RerunCTA({ lastRunDate, urls, position = 'top' }: RerunC
             Last analysis was <span className="font-semibold">{daysSinceRun} day{daysSinceRun !== 1 ? 's' : ''} ago</span>.
             {daysSinceRun >= 7 && (
               <span className="ml-1">
-                Let's see how your improvements have impacted your scores!
+                Let&apos;s see how your improvements have impacted your scores!
               </span>
             )}
             {daysSinceRun < 7 && (
