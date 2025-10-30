@@ -1,8 +1,9 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { FiCheckCircle, FiAlertTriangle, FiZap, FiTrendingUp } from 'react-icons/fi'
+import { FiCheckCircle, FiAlertTriangle, FiZap, FiTrendingUp, FiImage } from 'react-icons/fi'
 import { AnalysisResult } from '@/types'
+import Image from 'next/image'
 
 interface ActionItem {
   priority: 'critical' | 'high' | 'medium' | 'low'
@@ -12,6 +13,8 @@ interface ActionItem {
   impact: string
   effort: 'Quick Win' | 'Medium Effort' | 'Major Project'
   steps: string[]
+  pageUrl?: string
+  screenshotUrl?: string
 }
 
 interface Props {
@@ -41,7 +44,9 @@ export default function ActionableRecommendations({ analysis }: Props) {
             description: alert.impact || 'This issue may be hurting your conversion rates',
             impact: alert.impact || 'Potential conversion loss',
             effort: 'Quick Win',
-            steps: alert.fix ? [alert.fix] : ['Review and address this issue immediately']
+            steps: alert.fix ? [alert.fix] : ['Review and address this issue immediately'],
+            pageUrl: page.url,
+            screenshotUrl: page.screenshot_url
           })
         })
       }
@@ -60,7 +65,9 @@ export default function ActionableRecommendations({ analysis }: Props) {
             'A/B test the new headline against current',
             'Measure click-through and scroll depth improvements',
             'Implement winning variation'
-          ]
+          ],
+          pageUrl: page.url,
+          screenshotUrl: page.screenshot_url
         })
       }
 
@@ -80,7 +87,9 @@ export default function ActionableRecommendations({ analysis }: Props) {
             'Set up A/B test with 50/50 traffic split',
             'Run for minimum 2 weeks or 1000 conversions',
             'Analyze results and implement winner'
-          ]
+          ],
+          pageUrl: page.url,
+          screenshotUrl: page.screenshot_url
         })
       }
 
@@ -95,7 +104,9 @@ export default function ActionableRecommendations({ analysis }: Props) {
           effort: 'Medium Effort',
           steps: page.trust_elements_missing.map(elem => 
             `Add: ${elem.element}${elem.why ? ` - ${elem.why}` : ''}`
-          )
+          ),
+          pageUrl: page.url,
+          screenshotUrl: page.screenshot_url
         })
       }
 
@@ -110,7 +121,9 @@ export default function ActionableRecommendations({ analysis }: Props) {
           effort: 'Quick Win',
           steps: page.cta_recommendations.map(cta => 
             `${cta.location ? `${cta.location}: ` : ''}"${cta.copy}"${cta.reason ? ` - ${cta.reason}` : ''}`
-          )
+          ),
+          pageUrl: page.url,
+          screenshotUrl: page.screenshot_url
         })
       }
 
@@ -125,7 +138,9 @@ export default function ActionableRecommendations({ analysis }: Props) {
           effort: 'Medium Effort',
           steps: page.design_improvements.map(improvement => 
             `${improvement.area ? `${improvement.area}: ` : ''}${improvement.recommendation}`
-          )
+          ),
+          pageUrl: page.url,
+          screenshotUrl: page.screenshot_url
         })
       }
 
@@ -140,7 +155,9 @@ export default function ActionableRecommendations({ analysis }: Props) {
           effort: 'Medium Effort',
           steps: page.funnel_flow_gaps.map(gap => 
             `${gap.step ? `${gap.step}: ` : ''}${gap.issue}${gap.fix ? ` → ${gap.fix}` : ''}`
-          )
+          ),
+          pageUrl: page.url,
+          screenshotUrl: page.screenshot_url
         })
       }
 
@@ -161,7 +178,9 @@ export default function ActionableRecommendations({ analysis }: Props) {
             description: 'Strengthen your messaging and value proposition',
             impact: 'Better copy directly impacts conversion rates',
             effort: 'Medium Effort',
-            steps: copyIssues
+            steps: copyIssues,
+            pageUrl: page.url,
+            screenshotUrl: page.screenshot_url
           })
         }
       }
@@ -177,7 +196,9 @@ export default function ActionableRecommendations({ analysis }: Props) {
           effort: 'Major Project',
           steps: page.video_recommendations.map(video => 
             `${video.context ? `${video.context}: ` : ''}${video.recommendation}`
-          )
+          ),
+          pageUrl: page.url,
+          screenshotUrl: page.screenshot_url
         })
       }
 
@@ -192,7 +213,9 @@ export default function ActionableRecommendations({ analysis }: Props) {
             description: `Current score: ${page.performance_data.performance_score}/100`,
             impact: '1 second delay can reduce conversions by 7%',
             effort: 'Medium Effort',
-            steps: opportunities.slice(0, 5)
+            steps: opportunities.slice(0, 5),
+            pageUrl: page.url,
+            screenshotUrl: page.screenshot_url
           })
         }
       }
@@ -275,7 +298,31 @@ export default function ActionableRecommendations({ analysis }: Props) {
           className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow"
         >
           <div className="p-6">
-            <div className="flex items-start justify-between mb-4">
+            <div className="flex items-start gap-6 mb-4">
+              {/* Screenshot Thumbnail */}
+              {item.screenshotUrl && (
+                <div className="flex-shrink-0">
+                  <div className="relative w-32 h-24 rounded-lg overflow-hidden border border-slate-200 shadow-sm group">
+                    <Image
+                      src={item.screenshotUrl}
+                      alt={`Screenshot of ${item.pageUrl || 'page'}`}
+                      fill
+                      className="object-cover object-top"
+                      sizes="128px"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all flex items-center justify-center">
+                      <FiImage className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </div>
+                  {item.pageUrl && (
+                    <p className="text-xs text-slate-500 mt-1 truncate max-w-[128px]" title={item.pageUrl}>
+                      {new URL(item.pageUrl).pathname || '/'}
+                    </p>
+                  )}
+                </div>
+              )}
+              
+              {/* Content */}
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 ${getPriorityColor(item.priority)}`}>
