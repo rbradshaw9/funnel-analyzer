@@ -72,9 +72,30 @@ export default function PageAnalysisCard({ page, index }: Props) {
             className="object-cover object-top"
             sizes="(max-width: 768px) 100vw, 50vw"
             priority={index === 0}
+            onLoad={() => {
+              console.log(`✅ Screenshot loaded successfully:`, page.screenshot_url)
+            }}
             onError={(e) => {
-              console.error('Failed to load screenshot:', page.screenshot_url)
-              console.log('Screenshot URL:', page.screenshot_url)
+              console.error('❌ Failed to load screenshot:', page.screenshot_url)
+              console.error('Image element:', e.currentTarget)
+              console.error('Error event:', e)
+              
+              // Try to fetch the URL to see the actual HTTP response
+              if (page.screenshot_url) {
+                fetch(page.screenshot_url)
+                  .then(res => {
+                    console.error('Fetch response status:', res.status)
+                    console.error('Fetch response headers:', Object.fromEntries(res.headers.entries()))
+                    return res.text()
+                  })
+                  .then(text => {
+                    console.error('Response body preview:', text.substring(0, 200))
+                  })
+                  .catch(err => {
+                    console.error('Fetch error:', err)
+                  })
+              }
+              
               // Show fallback message instead of hiding
               const container = e.currentTarget.parentElement
               if (container) {
@@ -86,6 +107,7 @@ export default function PageAnalysisCard({ page, index }: Props) {
                       </svg>
                       <p class="mt-2 text-sm text-slate-500">Screenshot not available</p>
                       <p class="text-xs text-slate-400">${page.url}</p>
+                      <p class="text-xs text-red-500 mt-2">Check browser console for details</p>
                     </div>
                   </div>
                 `

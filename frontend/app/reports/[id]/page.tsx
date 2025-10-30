@@ -59,6 +59,12 @@ export default function ReportPage() {
         const data = await getReportDetail(analysisId, userId ? { userId } : {})
         
         console.log('[ReportPage] Report loaded successfully:', data.analysis_id)
+        console.log('[ReportPage] Pages array:', data.pages)
+        console.log('[ReportPage] Screenshots:', data.pages?.map((p: any) => ({ 
+          url: p.url, 
+          screenshot_url: p.screenshot_url,
+          has_screenshot: Boolean(p.screenshot_url)
+        })))
         setReport(data)
       } catch (err: any) {
         console.error('[ReportPage] Failed to load report:', err)
