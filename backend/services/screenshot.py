@@ -172,17 +172,41 @@ class ScreenshotService:
                 # Wait for initial render
                 await page.wait_for_timeout(2000)
                 
-                # Scroll to trigger lazy-loaded content
+                # Force-show hidden elements with opacity:0 or display:none animations
+                # This captures elements that animate in via JS (Framer Motion, Intersection Observer, etc.)
+                await page.evaluate("""
+                    () => {
+                        // Find all elements with opacity:0 inline styles (animation targets)
+                        const hiddenElements = document.querySelectorAll('[style*="opacity:0"], [style*="opacity: 0"]');
+                        hiddenElements.forEach(el => {
+                            el.style.opacity = '1';
+                            el.style.transform = 'none';
+                            el.style.visibility = 'visible';
+                        });
+                        
+                        // Also check for elements with transform animations
+                        const transformedElements = document.querySelectorAll('[style*="transform"], [style*="translateX"], [style*="translateY"], [style*="scale"]');
+                        transformedElements.forEach(el => {
+                            if (el.style.opacity === '0' || parseFloat(window.getComputedStyle(el).opacity) < 0.1) {
+                                el.style.opacity = '1';
+                                el.style.transform = 'none';
+                            }
+                        });
+                    }
+                """)
+                
+                # Scroll to trigger lazy-loaded content and intersection observers
                 await page.evaluate("""
                     async () => {
-                        // Scroll down in steps to trigger lazy loading
+                        // Scroll down in steps to trigger lazy loading and IntersectionObserver animations
                         const scrollHeight = document.body.scrollHeight;
                         const viewportHeight = window.innerHeight;
                         const steps = Math.ceil(scrollHeight / viewportHeight);
                         
                         for (let i = 0; i < steps; i++) {
                             window.scrollTo(0, i * viewportHeight);
-                            await new Promise(resolve => setTimeout(resolve, 500));
+                            // Wait for intersection observers to fire
+                            await new Promise(resolve => setTimeout(resolve, 800));
                         }
                         
                         // Scroll back to top for screenshot
@@ -191,7 +215,18 @@ class ScreenshotService:
                     }
                 """)
                 
-                # Additional wait for any final lazy-loaded content
+                // Force-show hidden elements AGAIN after scrolling (some might animate on scroll)
+                await page.evaluate("""
+                    () => {
+                        const hiddenElements = document.querySelectorAll('[style*="opacity:0"], [style*="opacity: 0"]');
+                        hiddenElements.forEach(el => {
+                            el.style.opacity = '1';
+                            el.style.transform = 'none';
+                        });
+                    }
+                """)
+                
+                # Final wait for animations to settle
                 await page.wait_for_timeout(1000)
                 
                 # Capture FULL PAGE screenshot (entire scrollable content)
