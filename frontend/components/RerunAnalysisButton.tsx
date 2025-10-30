@@ -80,7 +80,7 @@ export default function RerunAnalysisButton({ analysisId, userId, userToken }: R
       
       {isRunning && (
         <p className="text-sm text-slate-600 mt-2">
-          This may take a few minutes. You'll be redirected when complete.
+          This may take a few minutes. You&apos;ll be redirected when complete.
         </p>
       )}
     </div>

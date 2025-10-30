@@ -18,12 +18,6 @@ export default function VersionHistory({ analysisId, currentScore, userId }: Ver
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (isOpen && versions.length === 0) {
-      loadVersions()
-    }
-  }, [isOpen])
-
   const loadVersions = async () => {
     setLoading(true)
     setError(null)
@@ -37,6 +31,13 @@ export default function VersionHistory({ analysisId, currentScore, userId }: Ver
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (isOpen && versions.length === 0) {
+      loadVersions()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-600'
