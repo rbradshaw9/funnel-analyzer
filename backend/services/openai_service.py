@@ -472,16 +472,16 @@ INDIVIDUAL PAGE PERFORMANCE:
 
 EXECUTIVE SUMMARY REQUIREMENTS:
 
-Provide a professional 5-8 sentence summary covering:
+{"For this SINGLE-PAGE analysis, provide a professional 4-6 sentence summary covering:" if len(page_results) == 1 else "For this MULTI-PAGE funnel, provide a professional 5-8 sentence summary covering:"}
 
-1. **Overall Assessment**: Current funnel performance and conversion effectiveness
-2. **Congruence Analysis** (multi-page funnels only): How well do the pages flow together? Are there design, messaging, or trust inconsistencies?
-3. **Key Strengths**: What's working well that should be maintained or amplified
-4. **Primary Opportunity**: The single highest-impact improvement opportunity (be specific - which page, which element, expected impact)
-5. **Quick Wins**: 2-3 actionable changes that can be implemented immediately
-6. **Strategic Recommendation**: One broader strategic consideration for long-term optimization
+1. **Overall Assessment**: Current {"page" if len(page_results) == 1 else "funnel"} performance and conversion effectiveness
+{"2. **Congruence Analysis**: How well do the pages flow together? Are there design, messaging, or trust inconsistencies?" if len(page_results) > 1 else ""}
+{"3" if len(page_results) > 1 else "2"}. **Key Strengths**: What's working well that should be maintained or amplified
+{"4" if len(page_results) > 1 else "3"}. **Primary Opportunity**: The single highest-impact improvement opportunity (be specific - which {"page" if len(page_results) > 1 else "element"}, which change, expected impact)
+{"5" if len(page_results) > 1 else "4"}. **Quick Wins**: 2-3 actionable changes that can be implemented immediately
+{"6" if len(page_results) > 1 else "5"}. **Strategic Recommendation**: One broader strategic consideration for long-term optimization
 
-For multi-page funnels, MUST address: Does page 1 set proper expectations for page 2? Do the pages feel like parts of the same experience?
+{"IMPORTANT: This is a MULTI-PAGE funnel. You MUST address page-to-page flow: Does page 1 set proper expectations for page 2? Do the pages feel like parts of the same experience?" if len(page_results) > 1 else "IMPORTANT: This is a SINGLE-PAGE analysis. Do NOT mention page-to-page congruence, flow between pages, or multi-step considerations. Focus solely on this one page's conversion effectiveness."}
 
 Focus on specific, actionable insights. Avoid generic advice. Use professional marketing language appropriate for this industry."""
     
