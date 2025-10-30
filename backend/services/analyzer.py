@@ -217,7 +217,7 @@ async def analyze_funnel(
         
         screenshot_base64 = None
         visual_elements = None  # Will store extracted CTAs, images, etc.
-        screenshot_timeout_seconds = 8
+        screenshot_timeout_seconds = 15  # Increased from 8s to accommodate Framer Motion animations
         screenshot_task: asyncio.Task[str | None] | None = None
         screenshot_captured = False
         screenshot_uploaded = False
