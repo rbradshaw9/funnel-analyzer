@@ -76,6 +76,8 @@ class StorageService:
         # Ensure prefix ends with / if provided
         normalized_prefix = prefix.rstrip("/") + "/" if prefix else ""
         key = f"{normalized_prefix}{uuid.uuid4().hex}{extension}"
+        
+        logger.info(f"🔍 Storage debug - prefix: '{prefix}' → normalized: '{normalized_prefix}' → key: '{key}'")
 
         loop = asyncio.get_running_loop()
 
@@ -86,6 +88,7 @@ class StorageService:
             return None
 
         url = self._build_public_url(key)
+        logger.info(f"🔍 Built URL: '{url}' from key: '{key}'")
         return StoredObject(key=key, url=url) if url else None
 
     def _put_object_sync(self, key: str, body: bytes, content_type: str) -> None:
