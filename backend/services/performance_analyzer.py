@@ -131,6 +131,26 @@ class PerformanceAnalyzer:
         
         # Sort opportunities by potential savings
         opportunities.sort(key=lambda x: x["savings_ms"], reverse=True)
+
+        top_opportunities = opportunities[:5]
+        opportunity_summaries: List[str] = []
+        for item in top_opportunities:
+            title = item.get("title", "").strip()
+            savings_ms = item.get("savings_ms")
+            description = item.get("description", "").strip()
+
+            summary_parts = []
+            if title:
+                summary_parts.append(title)
+            if savings_ms:
+                summary_parts.append(f"(save ≈{int(savings_ms)}ms)")
+
+            summary = " ".join(summary_parts).strip()
+            if description:
+                summary = f"{summary} — {description}" if summary else description
+
+            if summary:
+                opportunity_summaries.append(summary)
         
         return {
             "url": url,
@@ -139,7 +159,13 @@ class PerformanceAnalyzer:
             "best_practices_score": int((best_practices_score or 0) * 100),
             "seo_score": int((seo_score or 0) * 100),
             "core_web_vitals": core_web_vitals,
-            "opportunities": opportunities[:5],  # Top 5 opportunities
+            "lcp": core_web_vitals.get("lcp", {}).get("value"),
+            "fcp": core_web_vitals.get("fcp", {}).get("value"),
+            "cls": core_web_vitals.get("cls", {}).get("value"),
+            "fid": core_web_vitals.get("fid_proxy", {}).get("value"),
+            "speed_index": core_web_vitals.get("speed_index", {}).get("value"),
+            "opportunities": opportunity_summaries,
+            "opportunity_details": top_opportunities,
             "analysis_timestamp": lighthouse_result.get("fetchTime", ""),
         }
     

@@ -3,7 +3,7 @@ Pydantic schemas for request/response validation.
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional, Literal
+from typing import Any, Dict, List, Optional, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, field_validator
 
@@ -139,7 +139,14 @@ class PerformanceData(BaseModel):
     fcp: Optional[float] = None  # First Contentful Paint
     speed_index: Optional[float] = None
     performance_score: Optional[int] = Field(default=None, ge=0, le=100)
+    accessibility_score: Optional[int] = Field(default=None, ge=0, le=100)
+    best_practices_score: Optional[int] = Field(default=None, ge=0, le=100)
+    seo_score: Optional[int] = Field(default=None, ge=0, le=100)
     opportunities: Optional[List[str]] = None
+    opportunity_details: Optional[List[Dict[str, Any]]] = None
+    core_web_vitals: Optional[Dict[str, Dict[str, Any]]] = None
+    analysis_timestamp: Optional[str] = None
+    url: Optional[str] = None
     
 
 class SourceAnalysis(BaseModel):

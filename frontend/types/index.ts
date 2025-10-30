@@ -12,6 +12,28 @@ export interface CTARecommendation {
   reason?: string
 }
 
+export type ScreenshotHotspotPosition = 'top' | 'bottom' | 'left' | 'right' | 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+
+export type ScreenshotHotspotTheme = 'emerald' | 'sky' | 'violet' | 'amber' | 'rose'
+
+export interface ScreenshotHotspot {
+  id: string
+  label: string
+  description?: string
+  position?: ScreenshotHotspotPosition
+  theme?: ScreenshotHotspotTheme
+}
+
+export interface AnnotatedScreenshot {
+  id: string
+  viewport: 'desktop' | 'mobile'
+  image_url: string
+  thumbnail_url?: string
+  headline?: string
+  description?: string
+  hotspots?: ScreenshotHotspot[]
+}
+
 export interface DesignImprovement {
   area?: string
   recommendation: string
@@ -65,6 +87,28 @@ export interface VideoRecommendation {
   recommendation: string
 }
 
+export interface PerformanceOpportunity {
+  title?: string
+  description?: string
+  savings_ms?: number
+  score?: number
+}
+
+export interface WebVitalMetric {
+  value?: number | null
+  displayValue?: string | null
+  score?: number | null
+}
+
+export interface CoreWebVitals {
+  lcp?: WebVitalMetric | null
+  fid_proxy?: WebVitalMetric | null
+  cls?: WebVitalMetric | null
+  fcp?: WebVitalMetric | null
+  speed_index?: WebVitalMetric | null
+  [key: string]: WebVitalMetric | null | undefined
+}
+
 export interface PerformanceData {
   lcp?: number | null  // Largest Contentful Paint
   fid?: number | null  // First Input Delay (or TBT)
@@ -72,7 +116,14 @@ export interface PerformanceData {
   fcp?: number | null  // First Contentful Paint
   speed_index?: number | null
   performance_score?: number | null  // 0-100
+  accessibility_score?: number | null
+  best_practices_score?: number | null
+  seo_score?: number | null
   opportunities?: string[] | null
+  opportunity_details?: PerformanceOpportunity[] | null
+  core_web_vitals?: CoreWebVitals | null
+  analysis_timestamp?: string | null
+  url?: string | null
 }
 
 export interface SourceAnalysis {
@@ -133,6 +184,7 @@ export interface PageAnalysis {
   email_capture_recommendations?: string[]
   performance_data?: PerformanceData
   source_analysis?: SourceAnalysis
+  annotated_screenshots?: AnnotatedScreenshot[]
 }
 
 export interface AnalysisResult {

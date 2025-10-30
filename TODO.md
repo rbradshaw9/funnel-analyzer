@@ -49,6 +49,7 @@ Transform the report from "a static readout" → "an interactive improvement das
   - Update recommendation cards structure
   - Add collapsible "Why this matters" section
   - Add step-by-step "How to fix" guide
+  - ⚙️ _In progress (Oct 30 2025): redesigning actionable card layout and acceptance criteria_
   
 - [ ] **Progress Metrics per Category**
   - Track completion by type (Copy, Design, Trust, Flow)
@@ -93,6 +94,7 @@ Transform the report from "a static readout" → "an interactive improvement das
   - Clickable annotation pins
   - Tooltip with issue description
   - Integration with recommendations
+  - ⚙️ _In progress (Oct 30 2025): adding category-based overlays and CTA highlight helper_
 
 ---
 

@@ -119,3 +119,67 @@ def test_analysis_response_accepts_pipeline_metrics() -> None:
     assert response.pipeline_metrics.stage_timings.scrape_seconds == 1.234
     assert response.pipeline_metrics.screenshot is not None
     assert response.pipeline_metrics.screenshot.uploaded == 1
+
+
+def test_performance_data_accepts_opportunity_details() -> None:
+    payload = {
+        "analysis_id": 3,
+        "overall_score": 85,
+        "scores": {
+            "clarity": 85,
+            "value": 83,
+            "proof": 84,
+            "design": 82,
+            "flow": 86,
+        },
+        "summary": "Performance data test",
+        "pages": [
+            {
+                "url": "https://example.com",
+                "page_type": "landing_page",
+                "scores": {
+                    "clarity": 85,
+                    "value": 83,
+                    "proof": 84,
+                    "design": 82,
+                    "flow": 86,
+                },
+                "feedback": "Performance looks solid.",
+                "performance_data": {
+                    "performance_score": 72,
+                    "lcp": 3.42,
+                    "fid": 185,
+                    "cls": 0.09,
+                    "fcp": 1.95,
+                    "speed_index": 4.12,
+                    "opportunities": [
+                        "Eliminate render-blocking resources (save ≈950ms) — Consider deferring non-critical JS.",
+                        "Reduce initial server response time (save ≈620ms) — Optimize backend processing.",
+                    ],
+                    "opportunity_details": [
+                        {
+                            "title": "Eliminate render-blocking resources",
+                            "description": "Consider deferring non-critical JS.",
+                            "savings_ms": 950,
+                            "score": 0.2,
+                        }
+                    ],
+                    "core_web_vitals": {
+                        "lcp": {"value": 3.42, "displayValue": "3.4 s", "score": 0.6},
+                        "fid_proxy": {"value": 185, "displayValue": "185 ms", "score": 0.75},
+                    },
+                    "analysis_timestamp": "2024-05-01T12:00:00.000Z",
+                    "url": "https://example.com",
+                },
+            }
+        ],
+        "created_at": datetime.utcnow().isoformat(),
+    }
+
+    response = AnalysisResponse.model_validate(payload)
+    page = response.pages[0]
+
+    assert page.performance_data is not None
+    assert page.performance_data.performance_score == 72
+    assert page.performance_data.opportunity_details is not None
+    assert page.performance_data.opportunity_details[0]["title"] == "Eliminate render-blocking resources"
