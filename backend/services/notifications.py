@@ -24,6 +24,10 @@ def _get_merge_data(recipient_email: str, analysis: AnalysisResponse) -> dict:
         else:
             user_name = local_part.capitalize()
     
+    # Direct link to this specific analysis report
+    report_url = f'https://funnelanalyzerpro.com/reports/{analysis.analysis_id}'
+    dashboard_url = 'https://funnelanalyzerpro.com/dashboard'
+    
     return {
         'user_name': user_name,
         'user_email': recipient_email,
@@ -33,8 +37,9 @@ def _get_merge_data(recipient_email: str, analysis: AnalysisResponse) -> dict:
         'first_page_url': analysis.pages[0].url if analysis.pages else '',
         'company_name': 'Funnel Analyzer Pro',
         'support_email': 'ryan@funnelanalyzerpro.com',
-        'dashboard_url': 'https://funnelanalyzerpro.com/dashboard',
-        'report_url': f'https://funnelanalyzerpro.com/reports/{analysis.analysis_id}' if hasattr(analysis, 'analysis_id') else 'https://funnelanalyzerpro.com/dashboard'
+        'dashboard_url': dashboard_url,
+        'report_url': report_url,  # Direct link to THIS specific report
+        'analysis_id': analysis.analysis_id
     }
 
 
@@ -149,8 +154,8 @@ async def send_analysis_email(*, recipient_email: str, analysis: AnalysisRespons
                             <td style="padding: 0 32px 32px 32px; text-align: center;">
                                 <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 8px; padding: 24px;">
                                     <h3 style="margin: 0 0 12px 0; color: white; font-size: 18px;">Ready to optimize your funnel, {{{{user_name}}}}?</h3>
-                                    <p style="margin: 0 0 16px 0; color: #e0e7ff;">Get detailed recommendations, A/B testing priorities, and implementation guides in your dashboard.</p>
-                                    <a href="{{{{dashboard_url}}}}" style="display: inline-block; background-color: white; color: #6366f1; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px;">View Full Report →</a>
+                                    <p style="margin: 0 0 16px 0; color: #e0e7ff;">Get detailed recommendations, A/B testing priorities, and implementation guides in your full report.</p>
+                                    <a href="{{{{report_url}}}}" style="display: inline-block; background-color: white; color: #6366f1; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px;">View Full Report →</a>
                                 </div>
                             </td>
                         </tr>

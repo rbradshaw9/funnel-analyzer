@@ -260,3 +260,35 @@ async def ensure_user_additional_columns(conn: AsyncConnection) -> None:
     if dialect != "sqlite":
         await conn.exec_driver_sql("ALTER TABLE users ALTER COLUMN status SET DEFAULT 'active'")
         await conn.exec_driver_sql("ALTER TABLE users ALTER COLUMN status_last_updated SET DEFAULT NOW()")
+
+
+async def ensure_analysis_naming_columns(conn: AsyncConnection) -> None:
+    """Ensure analysis naming and versioning columns exist."""
+    dialect = conn.dialect.name
+    
+    columns = (
+        # (column_name, postgres_def, sqlite_def)
+        ("name", "VARCHAR(255)", "VARCHAR(255)"),
+        ("parent_analysis_id", "INTEGER", "INTEGER"),
+    )
+    
+    for name, pg_def, sqlite_def in columns:
+        if dialect == "sqlite":
+            newly_added = await _add_sqlite_column_if_missing(conn, "analyses", name, sqlite_def)
+        else:
+            exists = await _postgres_column_exists(conn, "analyses", name)
+            if not exists:
+                await _add_postgres_column_if_missing(conn, "analyses", name, pg_def)
+            newly_added = not exists
+        
+        if newly_added:
+            logger.info("Ensured analyses.%s column exists", name)
+    
+    # Add index on parent_analysis_id for faster lookups
+    if dialect == "postgresql":
+        try:
+            await conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS idx_analyses_parent_analysis_id ON analyses(parent_analysis_id)"
+            )
+        except Exception:  # noqa: BLE001
+            pass  # Index may already exist

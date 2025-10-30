@@ -91,18 +91,6 @@ async def root():
     }
 
 
-@app.get("/health")
-async def health():
-    """Detailed health check with system status."""
-    openai_status = "configured" if (settings.OPENAI_API_KEY or "").strip() else "not_configured"
-
-    return {
-        "status": "healthy",
-        "database": "connected",
-        "openai": openai_status,
-    }
-
-
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(

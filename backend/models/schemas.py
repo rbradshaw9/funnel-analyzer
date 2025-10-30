@@ -26,6 +26,8 @@ class AnalysisRequest(BaseModel):
     urls: List[HttpUrl] = Field(..., min_length=1, max_length=10, description="List of funnel URLs to analyze")
     email: Optional[EmailStr] = Field(default=None, description="Optional email to receive the report")
     industry: Optional[IndustryType] = Field(default="other", description="Industry type for tailored recommendations")
+    name: Optional[str] = Field(default=None, max_length=255, description="Optional name for this analysis")
+    parent_analysis_id: Optional[int] = Field(default=None, description="ID of original analysis if this is a re-run")
     
     @field_validator('urls')
     @classmethod
@@ -191,6 +193,9 @@ class AnalysisResponse(BaseModel):
     pipeline_metrics: Optional[PipelineTelemetry] = None
     is_limited: Optional[bool] = None  # Whether content is limited by plan
     upgrade_message: Optional[str] = None  # Upgrade prompt message
+    name: Optional[str] = None  # Optional user-provided name
+    parent_analysis_id: Optional[int] = None  # For tracking re-runs
+    urls: Optional[List[str]] = None  # Store URLs for re-run functionality
     
 
 class AnalysisEmailRequest(BaseModel):

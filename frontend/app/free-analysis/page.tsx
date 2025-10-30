@@ -320,15 +320,32 @@ function FreeAnalysisContent() {
     try {
       setUrl(sanitizedUrl);
       
-      // Set up progress tracking with onProgress callback
+      // Simulate progress based on estimated stage percentages
+      let currentStageIndex = 0;
+      
+      const progressInterval = setInterval(() => {
+        if (currentStageIndex >= progressStages.length) {
+          clearInterval(progressInterval);
+          return;
+        }
+        
+        const currentStage = progressStages[currentStageIndex];
+        
+        setProgress(currentStage.percent);
+        setProgressMessage(currentStage.message);
+        
+        // Move to next stage
+        currentStageIndex++;
+      }, 2000); // Update every 2 seconds for smooth transitions
+      
+      // Start the actual analysis (this blocks until complete)
       const analysis = await analyzeFunnel([sanitizedUrl], {
         userId: typeof userId === 'number' ? userId : undefined,
         token: authToken ?? undefined,
-        onProgress: (progressUpdate) => {
-          setProgress(progressUpdate.progress_percent);
-          setProgressMessage(progressUpdate.message);
-        },
       });
+      
+      // Clean up progress simulator
+      clearInterval(progressInterval);
       
       setResult(analysis);
       setProgress(100);

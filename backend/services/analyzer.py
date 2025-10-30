@@ -87,6 +87,8 @@ async def analyze_funnel(
     recipient_email: Optional[str] = None,
     analysis_id: Optional[str] = None,
     industry: Optional[str] = None,
+    name: Optional[str] = None,
+    parent_analysis_id: Optional[int] = None,
 ) -> AnalysisResponse:
     """Generate analysis results, persist them, and return a response payload."""
     
@@ -446,6 +448,8 @@ async def analyze_funnel(
         pipeline_metrics=pipeline_metrics,
         analysis_duration_seconds=analysis_result.get("analysis_duration_seconds"),
         recipient_email=recipient_email,
+        name=name,
+        parent_analysis_id=parent_analysis_id,
     )
 
     analysis.pages = [

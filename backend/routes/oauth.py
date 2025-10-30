@@ -23,7 +23,7 @@ router = APIRouter(prefix="/auth/oauth", tags=["oauth"])
 
 
 @router.get("/google")
-async def google_login(request: Request, return_to: str = "/dashboard"):
+async def google_login(request: Request):
     """Initiate Google OAuth flow."""
     validate_oauth_config("google")
     
@@ -32,9 +32,8 @@ async def google_login(request: Request, return_to: str = "/dashboard"):
         raise HTTPException(status_code=500, detail="OAuth redirect URI not configured")
     
     # Use exact redirect URI registered with Google
-    # Provider and return URL are encoded in the state parameter
-    state = f"provider:google:return:{return_to}"
-    return await oauth.google.authorize_redirect(request, redirect_uri, state=state)
+    # Provider is determined from the state parameter or URL path
+    return await oauth.google.authorize_redirect(request, redirect_uri, state="provider:google")
 
 
 @router.get("/github")
@@ -136,10 +135,10 @@ async def oauth_callback(
         
         if user:
             # Link existing account with OAuth provider
-            user.oauth_provider = provider
-            user.oauth_provider_id = provider_id
+            user.oauth_provider = provider  # type: ignore[assignment]
+            user.oauth_provider_id = provider_id  # type: ignore[assignment]
             if user_info.get("picture"):
-                user.avatar_url = user_info["picture"]
+                user.avatar_url = user_info["picture"]  # type: ignore[assignment]
             logger.info(f"Linked existing user {email} with {provider} OAuth")
         else:
             # Create new user account
@@ -165,17 +164,9 @@ async def oauth_callback(
     await db.refresh(user)
     
     # Generate JWT access token
-    access_token = await create_jwt_token(user.id, user.email)
-    
-    # Extract return URL from state if present
-    # State format: "provider:google:return:/free-analysis" or just "provider:google"
-    return_path = "/dashboard"  # default
-    if state and ":" in state:
-        parts = state.split(":")
-        if len(parts) >= 4 and parts[2] == "return":
-            return_path = ":".join(parts[3:])  # Handle URLs with colons
+    # Type ignore needed because SQLAlchemy Column types vs runtime values
+    access_token = await create_jwt_token(int(user.id), str(user.email))  # type: ignore[arg-type]
     
     # Redirect to frontend with token
     frontend_url = settings.FRONTEND_URL or "http://localhost:3001"
-    redirect_url = f"{frontend_url}/auth/success?token={access_token}&returnTo={return_path}"
-    return RedirectResponse(redirect_url)
+    return RedirectResponse(f"{frontend_url}/auth/success?token={access_token}")

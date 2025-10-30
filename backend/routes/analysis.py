@@ -62,12 +62,13 @@ async def analyze_funnel_endpoint(
         client_ip = raw_request.client.host if raw_request.client else "unknown"
 
         try:
-            await analysis_rate_limiter.check(
-                {
-                    "ip": f"ip:{client_ip}",
-                    "user": f"user:{user_id}" if user_id is not None else None,
-                }
-            )
+            rate_limit_keys: dict[str, str] = {
+                "ip": f"ip:{client_ip}",
+            }
+            if user_id is not None:
+                rate_limit_keys["user"] = f"user:{user_id}"
+            
+            await analysis_rate_limiter.check(rate_limit_keys)
         except RateLimitExceeded as exc:  # pragma: no cover - trivial guard
             retry_after = max(int(exc.retry_after), 1)
             raise HTTPException(
@@ -91,14 +92,17 @@ async def analyze_funnel_endpoint(
             recipient_email=request.email,
             analysis_id=analysis_id,
             industry=request.industry,
+            name=request.name,
+            parent_analysis_id=request.parent_analysis_id,
         )
 
         # Get user plan for filtering
-        user_plan = None
+        user_plan: str | None = None
         if user_id:
             user = await session.get(User, user_id)
             if user:
-                user_plan = user.plan
+                # Type assertion: user.plan is a str at runtime even though it's Column[str] in the model
+                user_plan = str(user.plan)  # type: ignore[arg-type]
         
         # Filter analysis based on plan
         filtered_result = filter_analysis_by_plan(result, user_plan)
@@ -153,7 +157,8 @@ async def resend_analysis_email(
     if not sent:
         raise HTTPException(status_code=503, detail="Email service unavailable or failed to send")
 
-    analysis.recipient_email = payload.email
+    # Update the analysis record with the recipient email
+    analysis.recipient_email = str(payload.email)  # type: ignore[assignment]
     session.add(analysis)
     await session.commit()
 

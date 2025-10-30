@@ -27,6 +27,8 @@ interface AnalyzeFunnelOptions {
   userId?: number | null
   token?: string | null
   industry?: string
+  name?: string
+  parentAnalysisId?: number
   onProgress?: (progress: ProgressUpdate) => void
 }
 
@@ -52,6 +54,14 @@ export async function analyzeFunnel(urls: string[], options: AnalyzeFunnelOption
       payload.industry = options.industry
     }
 
+    if (options.name) {
+      payload.name = options.name
+    }
+
+    if (options.parentAnalysisId) {
+      payload.parent_analysis_id = options.parentAnalysisId
+    }
+
     const params: Record<string, number> = {}
     if (typeof options.userId === 'number') {
       params.user_id = options.userId
@@ -62,48 +72,13 @@ export async function analyzeFunnel(urls: string[], options: AnalyzeFunnelOption
       headers.Authorization = `Bearer ${options.token}`
     }
 
-    // Start the analysis request (this will return immediately with an analysis_id we can poll)
-    const analysisPromise = api.post<AnalysisResult>('/api/analyze', payload, {
+    // Start the analysis request
+    // Note: This is a blocking call that won't return until analysis is complete
+    const response = await api.post<AnalysisResult>('/api/analyze', payload, {
       params,
       headers: Object.keys(headers).length > 0 ? headers : undefined,
     })
 
-    // If onProgress callback provided, poll for progress updates
-    let progressInterval: NodeJS.Timeout | null = null
-    if (options.onProgress) {
-      // Generate temporary analysis ID for progress tracking
-      // The backend will return the real one, but we need to start polling
-      // We'll extract it from the response headers if available
-      analysisPromise.then((response) => {
-        // Extract analysis ID from response if needed
-        // For now, we'll poll using a generic approach
-        const analysisId = (response.data as any).analysis_id
-        if (analysisId) {
-          progressInterval = setInterval(async () => {
-            try {
-              const progress = await getAnalysisProgress(analysisId)
-              if (progress && options.onProgress) {
-                options.onProgress(progress)
-                
-                // Stop polling when complete
-                if (progress.stage === 'complete' || progress.progress_percent >= 100) {
-                  if (progressInterval) clearInterval(progressInterval)
-                }
-              }
-            } catch (err) {
-              // Progress might not be available yet or expired
-              console.debug('Progress polling error:', err)
-            }
-          }, 1000) // Poll every second
-        }
-      }).catch(() => {
-        if (progressInterval) clearInterval(progressInterval)
-      })
-    }
-
-    const response = await analysisPromise
-    if (progressInterval) clearInterval(progressInterval)
-    
     return response.data
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to analyze funnel')
@@ -319,5 +294,66 @@ export async function getPublicStats(): Promise<PublicStatsResponse> {
     return response.data
   } catch (error: any) {
     throw new Error(error.response?.data?.detail || 'Failed to load public stats')
+  }
+}
+
+// Analysis naming and versioning
+export async function renameAnalysis(analysisId: number, name: string, userId?: number): Promise<{ status: string; analysis_id: number; name: string }> {
+  try {
+    const params: Record<string, number> = {}
+    if (typeof userId === 'number') {
+      params.user_id = userId
+    }
+
+    const response = await api.patch(`/api/reports/detail/${analysisId}/rename`, 
+      { name },
+      { params }
+    )
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to rename analysis')
+  }
+}
+
+export interface AnalysisVersion {
+  analysis_id: number
+  version: number
+  name?: string
+  overall_score: number
+  created_at: string
+  is_current: boolean
+  parent_analysis_id?: number
+}
+
+export interface AnalysisVersionsResponse {
+  versions: AnalysisVersion[]
+  count: number
+}
+
+export async function getAnalysisVersions(analysisId: number, userId?: number): Promise<AnalysisVersionsResponse> {
+  try {
+    const params: Record<string, number> = {}
+    if (typeof userId === 'number') {
+      params.user_id = userId
+    }
+
+    const response = await api.get<AnalysisVersionsResponse>(`/api/reports/detail/${analysisId}/versions`, { params })
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to fetch analysis versions')
+  }
+}
+
+export async function initiateRerun(analysisId: number, userId?: number): Promise<{ status: string; urls: string[]; parent_analysis_id: number }> {
+  try {
+    const params: Record<string, number> = {}
+    if (typeof userId === 'number') {
+      params.user_id = userId
+    }
+
+    const response = await api.post(`/api/reports/detail/${analysisId}/rerun`, {}, { params })
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to initiate rerun')
   }
 }

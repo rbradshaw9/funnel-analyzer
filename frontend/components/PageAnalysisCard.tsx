@@ -122,6 +122,72 @@ export default function PageAnalysisCard({ page, index }: Props) {
         </div>
       </div>
 
+      {/* Performance Metrics */}
+      {page.performance_data && (
+        <div className="mb-4 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-lg p-4 border border-emerald-200">
+          <h4 className="text-sm font-semibold text-emerald-900 mb-3 flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Core Web Vitals & Performance
+          </h4>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+            {page.performance_data.performance_score !== null && page.performance_data.performance_score !== undefined && (
+              <div className="bg-white rounded p-2">
+                <div className="text-slate-600 mb-1">Performance Score</div>
+                <div className={`font-bold text-lg ${
+                  page.performance_data.performance_score >= 90 ? 'text-green-600' :
+                  page.performance_data.performance_score >= 50 ? 'text-amber-600' :
+                  'text-red-600'
+                }`}>
+                  {page.performance_data.performance_score}/100
+                </div>
+              </div>
+            )}
+            {page.performance_data.lcp !== null && page.performance_data.lcp !== undefined && (
+              <div className="bg-white rounded p-2">
+                <div className="text-slate-600 mb-1">LCP</div>
+                <div className="font-semibold text-slate-900">{page.performance_data.lcp.toFixed(2)}s</div>
+              </div>
+            )}
+            {page.performance_data.fcp !== null && page.performance_data.fcp !== undefined && (
+              <div className="bg-white rounded p-2">
+                <div className="text-slate-600 mb-1">FCP</div>
+                <div className="font-semibold text-slate-900">{page.performance_data.fcp.toFixed(2)}s</div>
+              </div>
+            )}
+            {page.performance_data.cls !== null && page.performance_data.cls !== undefined && (
+              <div className="bg-white rounded p-2">
+                <div className="text-slate-600 mb-1">CLS</div>
+                <div className="font-semibold text-slate-900">{page.performance_data.cls.toFixed(3)}</div>
+              </div>
+            )}
+            {page.performance_data.fid !== null && page.performance_data.fid !== undefined && (
+              <div className="bg-white rounded p-2">
+                <div className="text-slate-600 mb-1">FID</div>
+                <div className="font-semibold text-slate-900">{page.performance_data.fid.toFixed(0)}ms</div>
+              </div>
+            )}
+            {page.performance_data.speed_index !== null && page.performance_data.speed_index !== undefined && (
+              <div className="bg-white rounded p-2">
+                <div className="text-slate-600 mb-1">Speed Index</div>
+                <div className="font-semibold text-slate-900">{page.performance_data.speed_index.toFixed(2)}s</div>
+              </div>
+            )}
+          </div>
+          {page.performance_data.opportunities && page.performance_data.opportunities.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-emerald-200">
+              <div className="text-xs font-semibold text-emerald-900 mb-2">Performance Opportunities:</div>
+              <ul className="text-xs space-y-1">
+                {page.performance_data.opportunities.map((opp, idx) => (
+                  <li key={idx} className="text-slate-700">• {opp}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Page Feedback */}
       <div className="bg-slate-50 rounded-lg p-4">
         <h4 className="text-sm font-semibold text-slate-900 mb-2">Analysis</h4>

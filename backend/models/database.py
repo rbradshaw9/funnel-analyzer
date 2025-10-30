@@ -61,6 +61,10 @@ class Analysis(Base):
     # Input data
     urls = Column(JSON, nullable=False)  # List of URLs analyzed
     
+    # Analysis naming and versioning
+    name = Column(String(255), nullable=True)  # Optional user-provided name
+    parent_analysis_id = Column(Integer, ForeignKey("analyses.id"), nullable=True, index=True)  # For re-runs
+    
     # Analysis results
     scores = Column(JSON, nullable=False)  # {clarity: 85, value: 90, proof: 75, design: 88, flow: 82}
     overall_score = Column(Integer, nullable=False)  # Average or weighted score
@@ -79,6 +83,9 @@ class Analysis(Base):
 
     user = relationship("User", back_populates="analyses")
     pages = relationship("AnalysisPage", back_populates="analysis", cascade="all, delete-orphan")
+    
+    # Self-referential relationship for re-run tracking
+    parent_analysis = relationship("Analysis", remote_side=[id], backref="child_analyses")
     
     def __repr__(self):
         return f"<Analysis {self.id} - Score: {self.overall_score}>"

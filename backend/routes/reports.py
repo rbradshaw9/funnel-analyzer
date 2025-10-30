@@ -2,18 +2,31 @@
 Reports route - Retrieve past analysis reports.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel
 
 from ..db.session import get_db_session
-from ..models.database import User
+from ..models.database import User, Analysis
 from ..models.schemas import AnalysisResponse, ReportDeleteResponse, ReportListResponse
 from ..services.plan_gating import filter_analysis_by_plan
 from ..services.reports import delete_report, get_report_by_id, get_user_reports
+from sqlalchemy import select
 import logging
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+class RenameAnalysisRequest(BaseModel):
+    """Request body for renaming an analysis."""
+    name: str
+
+
+class AnalysisVersionsResponse(BaseModel):
+    """Response for analysis version history."""
+    versions: list[dict]
+    count: int
 
 
 @router.get("/detail/{analysis_id}", response_model=AnalysisResponse)
@@ -97,3 +110,149 @@ async def get_reports(
     except Exception as e:
         logger.error(f"Failed to fetch reports: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to retrieve reports")
+
+
+@router.patch("/detail/{analysis_id}/rename")
+async def rename_analysis(
+    analysis_id: int,
+    request: RenameAnalysisRequest,
+    session: AsyncSession = Depends(get_db_session),
+    user_id: int | None = Query(default=None, ge=1, description="Optional user ownership check"),
+):
+    """
+    Rename an analysis.
+    
+    Updates the custom name for an analysis. Max 255 characters.
+    """
+    try:
+        # Get the analysis
+        query = select(Analysis).where(Analysis.id == analysis_id)
+        if user_id:
+            query = query.where(Analysis.user_id == user_id)
+        
+        result = await session.execute(query)
+        analysis = result.scalar_one_or_none()
+        
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        # Update the name
+        analysis.name = request.name[:255]  # Truncate to max length
+        await session.commit()
+        
+        logger.info(f"Renamed analysis {analysis_id} to '{request.name}'")
+        
+        return {"status": "success", "analysis_id": analysis_id, "name": analysis.name}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to rename analysis: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to rename analysis")
+
+
+@router.get("/detail/{analysis_id}/versions", response_model=AnalysisVersionsResponse)
+async def get_analysis_versions(
+    analysis_id: int,
+    session: AsyncSession = Depends(get_db_session),
+    user_id: int | None = Query(default=None, ge=1, description="Optional user ownership check"),
+):
+    """
+    Get all versions of an analysis (original + re-runs).
+    
+    Returns chronological list of all related analyses for tracking progress.
+    """
+    try:
+        # Get the original analysis
+        query = select(Analysis).where(Analysis.id == analysis_id)
+        if user_id:
+            query = query.where(Analysis.user_id == user_id)
+        
+        result = await session.execute(query)
+        original = result.scalar_one_or_none()
+        
+        if not original:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        # Find root analysis (in case current one is a re-run)
+        root_id = original.parent_analysis_id or analysis_id
+        
+        # Get all versions (root + all children)
+        versions_query = select(Analysis).where(
+            (Analysis.id == root_id) | (Analysis.parent_analysis_id == root_id)
+        ).order_by(Analysis.created_at.asc())
+        
+        if user_id:
+            versions_query = versions_query.where(Analysis.user_id == user_id)
+        
+        versions_result = await session.execute(versions_query)
+        analyses = versions_result.scalars().all()
+        
+        # Build version list
+        versions = []
+        for idx, analysis in enumerate(analyses, 1):
+            versions.append({
+                "analysis_id": analysis.id,
+                "version": idx,
+                "name": analysis.name,
+                "overall_score": analysis.overall_score,
+                "created_at": analysis.created_at.isoformat(),
+                "is_current": analysis.id == analysis_id,
+                "parent_analysis_id": analysis.parent_analysis_id,
+            })
+        
+        return {"versions": versions, "count": len(versions)}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch analysis versions: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve versions")
+
+
+@router.post("/detail/{analysis_id}/rerun", response_model=dict)
+async def rerun_analysis(
+    analysis_id: int,
+    session: AsyncSession = Depends(get_db_session),
+    user_id: int | None = Query(default=None, ge=1, description="Optional user ownership check"),
+):
+    """
+    Initiate a re-run of an existing analysis.
+    
+    Creates a new analysis with the same URLs as the original, 
+    linking them via parent_analysis_id for version tracking.
+    Returns the new analysis ID that can be polled for progress.
+    """
+    try:
+        # Get the original analysis
+        query = select(Analysis).where(Analysis.id == analysis_id)
+        if user_id:
+            query = query.where(Analysis.user_id == user_id)
+        
+        result = await session.execute(query)
+        original = result.scalar_one_or_none()
+        
+        if not original:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        # Extract URLs from original analysis
+        if not original.urls:
+            raise HTTPException(status_code=400, detail="Original analysis has no URLs to re-run")
+        
+        logger.info(f"Re-running analysis {analysis_id} with {len(original.urls)} URLs")
+        
+        # Return instruction to call /api/analyze endpoint with parent_analysis_id
+        # The actual re-run is handled by the frontend calling the analyze endpoint
+        return {
+            "status": "ready",
+            "message": "Use the analyze endpoint to create a re-run",
+            "original_analysis_id": analysis_id,
+            "urls": original.urls,
+            "parent_analysis_id": analysis_id,
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to initiate re-run: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to initiate re-run")

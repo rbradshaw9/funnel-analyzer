@@ -311,23 +311,34 @@ function DashboardContent() {
                 <ul className="mt-6 space-y-4">
                   {reports.map((report) => {
                     const additionalPages = Math.max(report.urls.length - 1, 0)
+                    const displayName = report.name || `Analysis #${report.analysis_id}`
+                    const isRerun = report.parent_analysis_id !== null && report.parent_analysis_id !== undefined
+                    
                     return (
                       <li
                         key={report.analysis_id}
                         className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md"
                       >
                         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                          <div>
-                            <div className="flex items-center gap-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
                               <span className="text-3xl font-bold text-slate-900">{report.overall_score}</span>
                               <span className="text-sm text-slate-500">overall score</span>
+                              {isRerun && (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                                  Re-run
+                                </span>
+                              )}
                             </div>
                             <div className="mt-2 text-sm text-slate-600">
-                              <div className="font-medium text-slate-800 truncate" title={report.urls[0]}>
+                              <div className="font-semibold text-slate-900 mb-1">
+                                {displayName}
+                              </div>
+                              <div className="font-medium text-slate-600 truncate text-xs" title={report.urls[0]}>
                                 {report.urls[0]}
                               </div>
                               {additionalPages > 0 && (
-                                <div>{`+${additionalPages} more page${additionalPages > 1 ? 's' : ''}`}</div>
+                                <div className="text-xs">{`+${additionalPages} more page${additionalPages > 1 ? 's' : ''}`}</div>
                               )}
                               <div className="text-xs text-slate-500 mt-1">
                                 {formatTimestamp(report.created_at)}

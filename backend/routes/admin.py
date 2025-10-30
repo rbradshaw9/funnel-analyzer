@@ -83,6 +83,63 @@ class UserStats(BaseModel):
     analyses_today: int
 
 
+def _user_to_list_item(user: User, analysis_count: int = 0) -> UserListItem:
+    """Convert User ORM object to UserListItem response model."""
+    return UserListItem(
+        id=int(user.id),  # type: ignore[arg-type]
+        email=str(user.email),  # type: ignore[arg-type]
+        full_name=str(user.full_name) if user.full_name else None,  # type: ignore[arg-type]
+        plan=str(user.plan),  # type: ignore[arg-type]
+        status=str(user.status),  # type: ignore[arg-type]
+        role=str(user.role),  # type: ignore[arg-type]
+        created_at=user.created_at,  # type: ignore[arg-type]
+        last_magic_link_sent_at=user.last_magic_link_sent_at,  # type: ignore[arg-type]
+        analysis_count=analysis_count,
+        oauth_provider=str(user.oauth_provider) if user.oauth_provider else None,  # type: ignore[arg-type]
+    )
+
+
+def _user_to_detail(user: User, analysis_count: int = 0) -> UserDetail:
+    """Convert User ORM object to UserDetail response model."""
+    return UserDetail(
+        id=int(user.id),  # type: ignore[arg-type]
+        email=str(user.email),  # type: ignore[arg-type]
+        full_name=str(user.full_name) if user.full_name else None,  # type: ignore[arg-type]
+        plan=str(user.plan),  # type: ignore[arg-type]
+        status=str(user.status),  # type: ignore[arg-type]
+        role=str(user.role),  # type: ignore[arg-type]
+        status_reason=str(user.status_reason) if user.status_reason else None,  # type: ignore[arg-type]
+        subscription_id=str(user.subscription_id) if user.subscription_id else None,  # type: ignore[arg-type]
+        thrivecart_customer_id=str(user.thrivecart_customer_id) if user.thrivecart_customer_id else None,  # type: ignore[arg-type]
+        access_expires_at=user.access_expires_at,  # type: ignore[arg-type]
+        created_at=user.created_at,  # type: ignore[arg-type]
+        updated_at=user.updated_at,  # type: ignore[arg-type]
+        last_magic_link_sent_at=user.last_magic_link_sent_at,  # type: ignore[arg-type]
+        oauth_provider=str(user.oauth_provider) if user.oauth_provider else None,  # type: ignore[arg-type]
+        oauth_provider_id=str(user.oauth_provider_id) if user.oauth_provider_id else None,  # type: ignore[arg-type]
+        company=str(user.company) if user.company else None,  # type: ignore[arg-type]
+        job_title=str(user.job_title) if user.job_title else None,  # type: ignore[arg-type]
+        avatar_url=str(user.avatar_url) if user.avatar_url else None,  # type: ignore[arg-type]
+        onboarding_completed=bool(user.onboarding_completed),  # type: ignore[arg-type]
+        analysis_count=analysis_count,
+    )
+
+
+def _template_to_schema(template: EmailTemplate) -> "EmailTemplateSchema":
+    """Convert EmailTemplate ORM object to EmailTemplateSchema response model."""
+    return EmailTemplateSchema(
+        id=int(template.id),  # type: ignore[arg-type]
+        name=str(template.name),  # type: ignore[arg-type]
+        subject=str(template.subject),  # type: ignore[arg-type]
+        html_content=str(template.html_content),  # type: ignore[arg-type]
+        text_content=str(template.text_content),  # type: ignore[arg-type]
+        description=str(template.description) if template.description else None,  # type: ignore[arg-type]
+        is_custom=bool(template.is_custom),  # type: ignore[arg-type]
+        created_at=template.created_at,  # type: ignore[arg-type]
+        updated_at=template.updated_at,  # type: ignore[arg-type]
+    )
+
+
 async def require_admin(
     authorization: str = Header(None),
     session: AsyncSession = Depends(get_db_session),
@@ -105,7 +162,8 @@ async def require_admin(
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     
-    if user.role != "admin":
+    # Type ignore needed for SQLAlchemy Column comparison
+    if str(user.role) != "admin":  # type: ignore[arg-type]
         raise HTTPException(status_code=403, detail="Admin access required")
     
     return user
@@ -210,18 +268,7 @@ async def list_users(
         )
         analysis_count = count_result.scalar() or 0
         
-        user_items.append(UserListItem(
-            id=user.id,
-            email=user.email,
-            full_name=user.full_name,
-            plan=user.plan,
-            status=user.status,
-            role=user.role,
-            created_at=user.created_at,
-            last_magic_link_sent_at=user.last_magic_link_sent_at,
-            analysis_count=analysis_count,
-            oauth_provider=user.oauth_provider,
-        ))
+        user_items.append(_user_to_list_item(user, analysis_count))
     
     return user_items
 
@@ -244,28 +291,7 @@ async def get_user(
     )
     analysis_count = count_result.scalar() or 0
     
-    return UserDetail(
-        id=user.id,
-        email=user.email,
-        full_name=user.full_name,
-        plan=user.plan,
-        status=user.status,
-        role=user.role,
-        status_reason=user.status_reason,
-        subscription_id=user.subscription_id,
-        thrivecart_customer_id=user.thrivecart_customer_id,
-        access_expires_at=user.access_expires_at,
-        created_at=user.created_at,
-        updated_at=user.updated_at,
-        last_magic_link_sent_at=user.last_magic_link_sent_at,
-        oauth_provider=user.oauth_provider,
-        oauth_provider_id=user.oauth_provider_id,
-        company=user.company,
-        job_title=user.job_title,
-        avatar_url=user.avatar_url,
-        onboarding_completed=bool(user.onboarding_completed),
-        analysis_count=analysis_count,
-    )
+    return _user_to_detail(user, analysis_count)
 
 
 @router.patch("/users/{user_id}", response_model=UserDetail)
@@ -286,7 +312,7 @@ async def update_user(
     for field, value in update_dict.items():
         setattr(user, field, value)
     
-    user.updated_at = datetime.now(timezone.utc)
+    user.updated_at = datetime.now(timezone.utc)  # type: ignore[assignment]
     
     await session.commit()
     await session.refresh(user)
@@ -299,28 +325,7 @@ async def update_user(
     )
     analysis_count = count_result.scalar() or 0
     
-    return UserDetail(
-        id=user.id,
-        email=user.email,
-        full_name=user.full_name,
-        plan=user.plan,
-        status=user.status,
-        role=user.role,
-        status_reason=user.status_reason,
-        subscription_id=user.subscription_id,
-        thrivecart_customer_id=user.thrivecart_customer_id,
-        access_expires_at=user.access_expires_at,
-        created_at=user.created_at,
-        updated_at=user.updated_at,
-        last_magic_link_sent_at=user.last_magic_link_sent_at,
-        oauth_provider=user.oauth_provider,
-        oauth_provider_id=user.oauth_provider_id,
-        company=user.company,
-        job_title=user.job_title,
-        avatar_url=user.avatar_url,
-        onboarding_completed=bool(user.onboarding_completed),
-        analysis_count=analysis_count,
-    )
+    return _user_to_detail(user, analysis_count)
 
 
 @router.delete("/users/{user_id}")
@@ -335,15 +340,15 @@ async def delete_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Prevent deleting yourself
-    if user.id == admin.id:
+    # Prevent deleting yourself (type ignore for SQLAlchemy Column comparison)
+    if int(user.id) == int(admin.id):  # type: ignore[arg-type]
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
     
     # Prevent deleting other admins
-    if user.role == "admin":
+    if str(user.role) == "admin":  # type: ignore[arg-type]
         raise HTTPException(status_code=400, detail="Cannot delete admin users")
     
-    user_email = user.email
+    user_email = str(user.email)  # type: ignore[arg-type]
     
     # Delete screenshots from S3 before deleting user
     # TODO: Re-enable screenshot cleanup once async version is implemented
@@ -379,9 +384,9 @@ async def reset_user_password(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Hash and set new password
-    user.password_hash = hash_password(new_password)
-    user.updated_at = datetime.now(timezone.utc)
+    # Hash and set new password (type ignore for SQLAlchemy Column assignment)
+    user.password_hash = hash_password(new_password)  # type: ignore[assignment]
+    user.updated_at = datetime.now(timezone.utc)  # type: ignore[assignment]
     
     await session.commit()
     
@@ -457,20 +462,7 @@ async def list_email_templates(
     result = await session.execute(select(EmailTemplate).order_by(EmailTemplate.name))
     templates = result.scalars().all()
     
-    return [
-        EmailTemplateSchema(
-            id=t.id,
-            name=t.name,
-            subject=t.subject,
-            html_content=t.html_content,
-            text_content=t.text_content,
-            description=t.description,
-            is_custom=bool(t.is_custom),
-            created_at=t.created_at,
-            updated_at=t.updated_at,
-        )
-        for t in templates
-    ]
+    return [_template_to_schema(t) for t in templates]
 
 
 @router.get("/email-templates/{template_name}", response_model=EmailTemplateSchema)
@@ -543,17 +535,7 @@ async def get_email_template(
             updated_at=None,
         )
     
-    return EmailTemplateSchema(
-        id=template.id,
-        name=template.name,
-        subject=template.subject,
-        html_content=template.html_content,
-        text_content=template.text_content,
-        description=template.description,
-        is_custom=bool(template.is_custom),
-        created_at=template.created_at,
-        updated_at=template.updated_at,
-    )
+    return _template_to_schema(template)
 
 
 @router.put("/email-templates/{template_name}", response_model=EmailTemplateSchema)
@@ -571,13 +553,13 @@ async def update_email_template(
     template = result.scalar_one_or_none()
     
     if template:
-        # Update existing
-        template.subject = update_data.subject
-        template.html_content = update_data.html_content
-        template.text_content = update_data.text_content
-        template.description = update_data.description
-        template.is_custom = 1
-        template.updated_at = datetime.now(timezone.utc)
+        # Update existing (type ignores for SQLAlchemy Column assignment)
+        template.subject = update_data.subject  # type: ignore[assignment]
+        template.html_content = update_data.html_content  # type: ignore[assignment]
+        template.text_content = update_data.text_content  # type: ignore[assignment]
+        template.description = update_data.description  # type: ignore[assignment]
+        template.is_custom = 1  # type: ignore[assignment]
+        template.updated_at = datetime.now(timezone.utc)  # type: ignore[assignment]
     else:
         # Create new
         template = EmailTemplate(
@@ -595,17 +577,7 @@ async def update_email_template(
     
     logger.info(f"Admin {admin.email} updated email template {template_name}")
     
-    return EmailTemplateSchema(
-        id=template.id,
-        name=template.name,
-        subject=template.subject,
-        html_content=template.html_content,
-        text_content=template.text_content,
-        description=template.description,
-        is_custom=bool(template.is_custom),
-        created_at=template.created_at,
-        updated_at=template.updated_at,
-    )
+    return _template_to_schema(template)
 
 
 @router.delete("/email-templates/{template_name}")

@@ -65,6 +65,24 @@ export interface VideoRecommendation {
   recommendation: string
 }
 
+export interface PerformanceData {
+  lcp?: number | null  // Largest Contentful Paint
+  fid?: number | null  // First Input Delay (or TBT)
+  cls?: number | null  // Cumulative Layout Shift
+  fcp?: number | null  // First Contentful Paint
+  speed_index?: number | null
+  performance_score?: number | null  // 0-100
+  opportunities?: string[] | null
+}
+
+export interface SourceAnalysis {
+  tracking_pixels?: string[] | null
+  structured_data?: string[] | null
+  technical_score?: number | null  // 0-100
+  seo_issues?: string[] | null
+  conversion_tracking?: string[] | null
+}
+
 export interface PipelineStageTimings {
   scrape_seconds?: number
   analysis_seconds?: number
@@ -106,6 +124,8 @@ export interface PageAnalysis {
   visual_diagnostics?: VisualDiagnostics
   video_recommendations?: VideoRecommendation[]
   email_capture_recommendations?: string[]
+  performance_data?: PerformanceData
+  source_analysis?: SourceAnalysis
 }
 
 export interface AnalysisResult {
@@ -120,6 +140,9 @@ export interface AnalysisResult {
   pipeline_metrics?: PipelineTelemetry
   is_limited?: boolean
   upgrade_message?: string
+  name?: string
+  parent_analysis_id?: number
+  urls?: string[]
 }
 
 export interface ReportListItem {
@@ -127,6 +150,8 @@ export interface ReportListItem {
   overall_score: number
   urls: string[]
   created_at: string
+  name?: string
+  parent_analysis_id?: number
 }
 
 export interface ReportListResponse {
