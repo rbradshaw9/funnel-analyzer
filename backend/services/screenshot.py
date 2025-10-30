@@ -215,7 +215,7 @@ class ScreenshotService:
                     }
                 """)
                 
-                // Force-show hidden elements AGAIN after scrolling (some might animate on scroll)
+                # Force-show hidden elements AGAIN after scrolling (some might animate on scroll)
                 await page.evaluate("""
                     () => {
                         const hiddenElements = document.querySelectorAll('[style*="opacity:0"], [style*="opacity: 0"]');
