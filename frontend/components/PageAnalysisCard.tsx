@@ -11,6 +11,13 @@ interface Props {
 }
 
 export default function PageAnalysisCard({ page, index }: Props) {
+  // Debug screenshot URL
+  console.log(`[PageAnalysisCard] Page ${index + 1}:`, {
+    url: page.url,
+    screenshot_url: page.screenshot_url,
+    has_screenshot: Boolean(page.screenshot_url)
+  })
+
   const hasInsights = Boolean(
     page.headline_recommendation ||
       (page.cta_recommendations && page.cta_recommendations.length > 0) ||

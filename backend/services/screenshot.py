@@ -168,7 +168,31 @@ class ScreenshotService:
             
             try:
                 await page.goto(url, wait_until='networkidle', timeout=30000)
+                
+                # Wait for initial render
                 await page.wait_for_timeout(2000)
+                
+                # Scroll to trigger lazy-loaded content
+                await page.evaluate("""
+                    async () => {
+                        // Scroll down in steps to trigger lazy loading
+                        const scrollHeight = document.body.scrollHeight;
+                        const viewportHeight = window.innerHeight;
+                        const steps = Math.ceil(scrollHeight / viewportHeight);
+                        
+                        for (let i = 0; i < steps; i++) {
+                            window.scrollTo(0, i * viewportHeight);
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                        }
+                        
+                        // Scroll back to top for screenshot
+                        window.scrollTo(0, 0);
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                """)
+                
+                # Additional wait for any final lazy-loaded content
+                await page.wait_for_timeout(1000)
                 
                 # Capture FULL PAGE screenshot (entire scrollable content)
                 screenshot_bytes = await page.screenshot(
