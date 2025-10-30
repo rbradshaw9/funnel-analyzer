@@ -7,6 +7,7 @@ import { FiPlus, FiX } from 'react-icons/fi'
 import { useAnalysisStore } from '@/store/analysisStore'
 import { analyzeFunnel, getAnalysisProgress } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
+import AnalysisProgressModal from '@/components/AnalysisProgressModal'
 import type { ProgressUpdate } from '@/lib/api'
 
 const LOCK_MESSAGE = 'Your membership is inactive. Update billing to run a new analysis.'
@@ -21,108 +22,16 @@ export default function URLInputForm({ isLocked = false }: URLInputFormProps) {
   const [error, setError] = useState<string>('')
   const [recipientEmail, setRecipientEmail] = useState<string>('')
   const [industry, setIndustry] = useState<string>('other')
-  const [progress, setProgress] = useState(0)
-  const [progressMessage, setProgressMessage] = useState('')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [elapsedSeconds, setElapsedSeconds] = useState(0)
-  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const elapsedIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const { setAnalyzing } = useAnalysisStore()
   const auth = useAuthStore((state) => state.auth)
   const token = useAuthStore((state) => state.token)
-
-  // Progress stages with estimated percentages
-  const progressStages = [
-    { percent: 10, message: 'Validating URLs and checking accessibility...', duration: 2 },
-    { percent: 20, message: 'Extracting content from pages...', duration: 3 },
-    { percent: 35, message: 'Capturing screenshots and analyzing visual elements...', duration: 5 },
-    { percent: 55, message: 'Evaluating copy, design, and proof elements...', duration: 8 },
-    { percent: 75, message: 'Analyzing conversion optimization opportunities...', duration: 6 },
-    { percent: 90, message: 'Preparing executive summary and recommendations...', duration: 3 },
-  ]
 
   useEffect(() => {
     if (!isLocked && error === LOCK_MESSAGE) {
       setError('')
     }
   }, [isLocked, error])
-
-  // Cleanup progress polling on unmount
-  useEffect(() => {
-    return () => {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current)
-      }
-      if (elapsedIntervalRef.current) {
-        clearInterval(elapsedIntervalRef.current)
-      }
-    }
-  }, [])
-
-  // Manage progress simulation during analysis
-  useEffect(() => {
-    if (!isAnalyzing) {
-      setProgress(0)
-      setProgressMessage('')
-      setElapsedSeconds(0)
-      return
-    }
-
-    // Start elapsed time counter
-    elapsedIntervalRef.current = setInterval(() => {
-      setElapsedSeconds(prev => prev + 1)
-    }, 1000)
-
-    // Simulate progress through stages
-    let currentStageIndex = 0
-    let stageStartTime = Date.now()
-
-    const updateProgress = () => {
-      if (currentStageIndex >= progressStages.length) {
-        // Stay at last stage
-        return
-      }
-
-      const currentStage = progressStages[currentStageIndex]
-      const elapsed = (Date.now() - stageStartTime) / 1000
-
-      if (elapsed >= currentStage.duration) {
-        // Move to next stage
-        currentStageIndex++
-        stageStartTime = Date.now()
-        
-        if (currentStageIndex < progressStages.length) {
-          const nextStage = progressStages[currentStageIndex]
-          setProgress(nextStage.percent)
-          setProgressMessage(nextStage.message)
-        }
-      } else {
-        // Interpolate within current stage
-        const stageProgress = elapsed / currentStage.duration
-        if (currentStageIndex > 0) {
-          const prevPercent = progressStages[currentStageIndex - 1].percent
-          const currentPercent = currentStage.percent
-          const interpolated = prevPercent + (currentPercent - prevPercent) * stageProgress
-          setProgress(Math.round(interpolated))
-        }
-      }
-    }
-
-    // Start with first stage
-    setProgress(progressStages[0].percent)
-    setProgressMessage(progressStages[0].message)
-
-    progressIntervalRef.current = setInterval(updateProgress, 500)
-
-    return () => {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current)
-      }
-      if (elapsedIntervalRef.current) {
-        clearInterval(elapsedIntervalRef.current)
-      }
-    }
-  }, [isAnalyzing])
 
   const addUrlField = () => {
     if (urls.length < 10) {
@@ -186,12 +95,6 @@ export default function URLInputForm({ isLocked = false }: URLInputFormProps) {
         token: token ?? undefined,
         industry: industry,
       })
-      
-      setProgress(100)
-      setProgressMessage('Analysis complete!')
-      
-      // Brief delay to show completion message
-      await new Promise(resolve => setTimeout(resolve, 500))
       
       // Navigate to the report page
       router.push(`/reports/${result.analysis_id}`)
@@ -327,53 +230,17 @@ export default function URLInputForm({ isLocked = false }: URLInputFormProps) {
         </button>
       </form>
 
-      {/* Progress Bar */}
-      {isAnalyzing && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-          className="mt-6"
-        >
-          <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-lg p-5 border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-slate-900">{progressMessage}</span>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-500">{elapsedSeconds}s elapsed</span>
-                <span className="text-sm font-bold text-primary-600">{progress}%</span>
-              </div>
-            </div>
-            <div className="w-full bg-white rounded-full h-3 overflow-hidden shadow-inner border border-slate-200">
-              <motion.div
-                className="bg-gradient-to-r from-primary-500 via-primary-600 to-primary-500 h-3 rounded-full relative overflow-hidden"
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.5, ease: 'easeInOut' }}
-              >
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                  animate={{ x: ['-100%', '200%'] }}
-                  transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-                />
-              </motion.div>
-            </div>
-            <div className="flex items-center justify-between mt-3">
-              <p className="text-xs text-slate-600">
-                Analyzing {urls.filter(u => u.trim()).length} page{urls.filter(u => u.trim()).length > 1 ? 's' : ''}
-              </p>
-              <p className="text-xs text-slate-500">
-                Usually takes 15-45 seconds
-              </p>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
       {!isAnalyzing && (
         <div className="mt-6 text-center text-sm text-slate-500">
           <p>Analysis typically takes 15-45 seconds</p>
         </div>
       )}
+
+      {/* Progress Modal */}
+      <AnalysisProgressModal
+        isOpen={isAnalyzing}
+        totalPages={urls.filter(u => u.trim()).length}
+      />
     </motion.div>
   )
 }

@@ -4,7 +4,6 @@ import { Suspense, useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FiAlertTriangle, FiExternalLink, FiFileText, FiRefreshCw, FiTrash2 } from 'react-icons/fi'
 import URLInputForm from '@/components/URLInputForm'
-import LoadingAnimation from '@/components/LoadingAnimation'
 import { TopNav } from '@/components/TopNav'
 import { useAnalysisStore } from '@/store/analysisStore'
 import { useAuthValidation } from '@/hooks/useAuthValidation'
@@ -226,7 +225,17 @@ function DashboardContent() {
         )}
 
         {isAnalyzing ? (
-          <LoadingAnimation />
+          <div className="max-w-3xl mx-auto">
+            <div className="text-center mb-12">
+              <h1 className="text-4xl font-bold text-slate-900 mb-4">
+                Analyze Your Funnel
+              </h1>
+              <p className="text-lg text-slate-600">
+                Enter your funnel URLs below to get AI-powered insights
+              </p>
+            </div>
+            <URLInputForm isLocked={isLocked} />
+          </div>
         ) : (
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-12">
