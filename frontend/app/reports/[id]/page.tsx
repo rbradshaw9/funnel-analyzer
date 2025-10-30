@@ -10,6 +10,8 @@ import { TopNav } from '@/components/TopNav'
 import EditableAnalysisName from '@/components/EditableAnalysisName'
 import VersionHistory from '@/components/VersionHistory'
 import RerunAnalysisButton from '@/components/RerunAnalysisButton'
+import { useAuthStore } from '@/store/authStore'
+import { useAuthValidation } from '@/hooks/useAuthValidation'
 
 export default function ReportPage() {
   const params = useParams()
@@ -17,9 +19,30 @@ export default function ReportPage() {
   const [report, setReport] = useState<AnalysisResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Get auth info for re-run functionality
+  const auth = useAuthStore((state) => state.auth)
+  const token = useAuthStore((state) => state.token)
+  const { userId, loading: authLoading, accessGranted } = useAuthValidation()
+  
+  // If not logged in after auth check completes, redirect to login
+  useEffect(() => {
+    if (!authLoading && !token) {
+      // Store the intended destination
+      const returnUrl = `/reports/${params.id}`
+      sessionStorage.setItem('returnUrl', returnUrl)
+      router.push('/dashboard') // Dashboard will show login prompt
+    }
+  }, [authLoading, token, params.id, router])
 
   useEffect(() => {
     const loadReport = async () => {
+      // Wait for auth check to complete
+      if (authLoading) return
+      
+      // If not logged in, the redirect effect will handle it
+      if (!token) return
+      
       try {
         setLoading(true)
         setError(null)
@@ -30,20 +53,36 @@ export default function ReportPage() {
           return
         }
 
-        const data = await getReportDetail(analysisId)
+        console.log('[ReportPage] Loading report:', analysisId)
+        
+        // Pass userId to verify report ownership (only if logged in)
+        const data = await getReportDetail(analysisId, userId ? { userId } : {})
+        
+        console.log('[ReportPage] Report loaded successfully:', data.analysis_id)
         setReport(data)
       } catch (err: any) {
-        console.error('Failed to load report:', err)
-        setError(err.message || 'Failed to load report')
+        console.error('[ReportPage] Failed to load report:', err)
+        console.error('[ReportPage] Error details:', {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status
+        })
+        
+        // Better error message
+        const errorMsg = err.response?.status === 404 
+          ? 'Report not found. It may have been deleted or you may not have access to it.'
+          : err.response?.data?.detail || err.message || 'Failed to load report'
+        
+        setError(errorMsg)
       } finally {
         setLoading(false)
       }
     }
 
-    if (params.id) {
+    if (params.id && !authLoading) {
       void loadReport()
     }
-  }, [params.id])
+  }, [params.id, authLoading, token, userId])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -111,6 +150,8 @@ export default function ReportPage() {
                   />
                   <RerunAnalysisButton
                     analysisId={report.analysis_id}
+                    userId={userId ?? undefined}
+                    userToken={token || undefined}
                   />
                 </div>
               </div>

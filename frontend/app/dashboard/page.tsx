@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense, useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { FiAlertTriangle, FiExternalLink, FiFileText, FiRefreshCw, FiTrash2 } from 'react-icons/fi'
 import URLInputForm from '@/components/URLInputForm'
 import ResultsDashboard from '@/components/ResultsDashboard'
@@ -23,6 +24,7 @@ function formatTimestamp(value: string): string {
 }
 
 function DashboardContent() {
+  const router = useRouter()
   const {
     token,
     loading: authLoading,
@@ -49,6 +51,17 @@ function DashboardContent() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [viewingReportId, setViewingReportId] = useState<number | null>(null)
   const [deletingReportId, setDeletingReportId] = useState<number | null>(null)
+  
+  // Handle redirect to report after login
+  useEffect(() => {
+    if (!authLoading && token) {
+      const returnUrl = sessionStorage.getItem('returnUrl')
+      if (returnUrl) {
+        sessionStorage.removeItem('returnUrl')
+        router.push(returnUrl)
+      }
+    }
+  }, [authLoading, token, router])
   
   // Remove all modal interruptions - let users get to their analysis immediately
   // Password and profile setup can be done later in settings if needed
