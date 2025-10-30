@@ -20,6 +20,7 @@ from .migrations import (
     ensure_user_additional_columns,
     ensure_pipeline_metrics_column,
     ensure_analysis_naming_columns,
+    ensure_recommendation_completions_column,
     migration_lock,
 )
 from .migrations_oauth import ensure_user_oauth_columns
@@ -73,6 +74,7 @@ async def init_db() -> None:
             await ensure_pipeline_metrics_column(conn)
             await ensure_user_oauth_columns(conn)
             await ensure_analysis_naming_columns(conn)
+            await ensure_recommendation_completions_column(conn)
 
     async with AsyncSessionFactory() as session:
         default_email = (settings.DEFAULT_USER_EMAIL or "").strip().lower()

@@ -5,6 +5,7 @@ Reports route - Retrieve past analysis reports.
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
+import json
 
 from ..db.session import get_db_session
 from ..models.database import User, Analysis
@@ -256,3 +257,128 @@ async def rerun_analysis(
     except Exception as e:
         logger.error(f"Failed to initiate re-run: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to initiate re-run")
+
+
+class UpdateRecommendationCompletionRequest(BaseModel):
+    """Request body for updating recommendation completion status."""
+    recommendation_id: str
+    completed: bool
+
+
+@router.patch("/detail/{analysis_id}/recommendations")
+async def update_recommendation_completion(
+    analysis_id: int,
+    request: UpdateRecommendationCompletionRequest,
+    session: AsyncSession = Depends(get_db_session),
+    user_id: int | None = Query(default=None, ge=1, description="Optional user ownership check"),
+):
+    """
+    Update the completion status of a specific recommendation.
+    
+    Stores completion state in recommendation_completions JSONB column.
+    Format: {"rec_id_1": true, "rec_id_2": false, ...}
+    """
+    try:
+        # Get the analysis
+        query = select(Analysis).where(Analysis.id == analysis_id)
+        if user_id:
+            query = query.where(Analysis.user_id == user_id)
+        
+        result = await session.execute(query)
+        analysis = result.scalar_one_or_none()
+        
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        # Get current completions (handle both None and existing JSONB)
+        current_completions = {}
+        if analysis.recommendation_completions:
+            if isinstance(analysis.recommendation_completions, str):
+                current_completions = json.loads(analysis.recommendation_completions)
+            elif isinstance(analysis.recommendation_completions, dict):
+                current_completions = analysis.recommendation_completions
+        
+        # Update completion status
+        current_completions[request.recommendation_id] = request.completed
+        
+        # Save back to database
+        analysis.recommendation_completions = json.dumps(current_completions)
+        await session.commit()
+        
+        # Calculate completion percentage
+        total_count = len(current_completions)
+        completed_count = sum(1 for v in current_completions.values() if v)
+        completion_percentage = int((completed_count / total_count * 100)) if total_count > 0 else 0
+        
+        logger.info(
+            f"Updated recommendation {request.recommendation_id} completion to {request.completed} "
+            f"for analysis {analysis_id} ({completed_count}/{total_count} = {completion_percentage}%)"
+        )
+        
+        return {
+            "status": "success",
+            "analysis_id": analysis_id,
+            "recommendation_id": request.recommendation_id,
+            "completed": request.completed,
+            "completions": current_completions,
+            "completion_percentage": completion_percentage,
+            "completed_count": completed_count,
+            "total_count": total_count,
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update recommendation completion: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to update recommendation completion")
+
+
+@router.get("/detail/{analysis_id}/recommendations/completions")
+async def get_recommendation_completions(
+    analysis_id: int,
+    session: AsyncSession = Depends(get_db_session),
+    user_id: int | None = Query(default=None, ge=1, description="Optional user ownership check"),
+):
+    """
+    Get all recommendation completion statuses for an analysis.
+    
+    Returns the current completion state and statistics.
+    """
+    try:
+        # Get the analysis
+        query = select(Analysis).where(Analysis.id == analysis_id)
+        if user_id:
+            query = query.where(Analysis.user_id == user_id)
+        
+        result = await session.execute(query)
+        analysis = result.scalar_one_or_none()
+        
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        # Get current completions
+        current_completions = {}
+        if analysis.recommendation_completions:
+            if isinstance(analysis.recommendation_completions, str):
+                current_completions = json.loads(analysis.recommendation_completions)
+            elif isinstance(analysis.recommendation_completions, dict):
+                current_completions = analysis.recommendation_completions
+        
+        # Calculate stats
+        total_count = len(current_completions)
+        completed_count = sum(1 for v in current_completions.values() if v)
+        completion_percentage = int((completed_count / total_count * 100)) if total_count > 0 else 0
+        
+        return {
+            "analysis_id": analysis_id,
+            "completions": current_completions,
+            "completion_percentage": completion_percentage,
+            "completed_count": completed_count,
+            "total_count": total_count,
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get recommendation completions: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to retrieve recommendation completions")

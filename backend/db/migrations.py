@@ -292,3 +292,19 @@ async def ensure_analysis_naming_columns(conn: AsyncConnection) -> None:
             )
         except Exception:  # noqa: BLE001
             pass  # Index may already exist
+
+
+async def ensure_recommendation_completions_column(conn: AsyncConnection) -> None:
+    """Ensure the `recommendation_completions` column exists on analyses table."""
+    dialect = conn.dialect.name
+
+    if dialect == "sqlite":
+        added = await _add_sqlite_column_if_missing(conn, "analyses", "recommendation_completions", "TEXT DEFAULT '{}'")
+    else:
+        exists = await _postgres_column_exists(conn, "analyses", "recommendation_completions")
+        if not exists:
+            await _add_postgres_column_if_missing(conn, "analyses", "recommendation_completions", "JSONB DEFAULT '{}'::jsonb")
+        added = not exists
+
+    if added:
+        logger.info("Adding missing analyses.recommendation_completions column")

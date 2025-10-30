@@ -1,11 +1,15 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { FiCheckCircle, FiAlertTriangle, FiZap, FiTrendingUp, FiImage } from 'react-icons/fi'
+import { FiCheckCircle, FiAlertTriangle, FiZap, FiTrendingUp, FiImage, FiCheck } from 'react-icons/fi'
 import { AnalysisResult } from '@/types'
 import Image from 'next/image'
+import { useState, useEffect } from 'react'
+import { getRecommendationCompletions, updateRecommendationCompletion } from '@/lib/api'
+import { useAuthStore } from '@/store/authStore'
 
 interface ActionItem {
+  id: string  // Added unique ID for tracking
   priority: 'critical' | 'high' | 'medium' | 'low'
   category: string
   title: string
@@ -22,6 +26,42 @@ interface Props {
 }
 
 export default function ActionableRecommendations({ analysis }: Props) {
+  const [completions, setCompletions] = useState<Record<string, boolean>>({})
+  const [loading, setLoading] = useState(true)
+  const userId = useAuthStore((state) => state.auth?.user_id)
+
+  // Load completion status on mount
+  useEffect(() => {
+    const loadCompletions = async () => {
+      try {
+        const data = await getRecommendationCompletions(analysis.analysis_id, userId)
+        setCompletions(data.completions)
+      } catch (error) {
+        console.error('Failed to load recommendation completions:', error)
+        setCompletions({})
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadCompletions()
+  }, [analysis.analysis_id, userId])
+
+  // Handle checkbox toggle
+  const handleToggleCompletion = async (recommendationId: string) => {
+    const newValue = !completions[recommendationId]
+    
+    // Optimistic update
+    setCompletions(prev => ({ ...prev, [recommendationId]: newValue }))
+    
+    try {
+      await updateRecommendationCompletion(analysis.analysis_id, recommendationId, newValue, userId)
+    } catch (error) {
+      console.error('Failed to update completion:', error)
+      // Revert on error
+      setCompletions(prev => ({ ...prev, [recommendationId]: !newValue }))
+    }
+  }
+
   // Generate actionable items from the analysis
   const generateActionItems = (): ActionItem[] => {
     const items: ActionItem[] = []
@@ -32,12 +72,13 @@ export default function ActionableRecommendations({ analysis }: Props) {
 
       // Priority Alerts (Critical)
       if (page.priority_alerts && page.priority_alerts.length > 0) {
-        page.priority_alerts.forEach(alert => {
+        page.priority_alerts.forEach((alert, alertIndex) => {
           const severity = alert.severity?.toLowerCase() || 'medium'
           const priority = severity === 'high' || severity === 'critical' ? 'critical' : 
                           severity === 'medium' ? 'high' : 'medium'
           
           items.push({
+            id: `page${pageIndex}-alert${alertIndex}`,
             priority,
             category: 'Critical Issue',
             title: alert.issue,
@@ -54,6 +95,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
       // Headline Optimization (High Priority)
       if (page.headline_recommendation) {
         items.push({
+          id: `page${pageIndex}-headline`,
           priority: 'high',
           category: 'Headline Optimization',
           title: `Improve ${pageLabel} Headline`,
@@ -75,6 +117,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
       if (page.ab_test_priority) {
         const test = page.ab_test_priority
         items.push({
+          id: `page${pageIndex}-abtest`,
           priority: 'high',
           category: 'A/B Testing',
           title: `Test: ${test.element || 'Key Element'}`,
@@ -96,6 +139,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
       // Trust Elements (High Priority)
       if (page.trust_elements_missing && page.trust_elements_missing.length > 0) {
         items.push({
+          id: `page${pageIndex}-trust`,
           priority: 'high',
           category: 'Trust Building',
           title: `Add Trust Elements to ${pageLabel}`,
@@ -113,6 +157,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
       // CTA Improvements (High)
       if (page.cta_recommendations && page.cta_recommendations.length > 0) {
         items.push({
+          id: `page${pageIndex}-cta`,
           priority: 'high',
           category: 'Call-to-Action',
           title: `Optimize CTAs on ${pageLabel}`,
@@ -130,6 +175,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
       // Design Improvements (Medium)
       if (page.design_improvements && page.design_improvements.length > 0) {
         items.push({
+          id: `page${pageIndex}-design`,
           priority: 'medium',
           category: 'Visual Design',
           title: `Design Enhancements for ${pageLabel}`,
@@ -147,6 +193,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
       // Funnel Flow Gaps (High)
       if (page.funnel_flow_gaps && page.funnel_flow_gaps.length > 0) {
         items.push({
+          id: `page${pageIndex}-flow`,
           priority: 'high',
           category: 'Funnel Flow',
           title: `Fix Flow Issues on ${pageLabel}`,
@@ -172,6 +219,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
         
         if (copyIssues.length > 0) {
           items.push({
+            id: `page${pageIndex}-copy`,
             priority: 'medium',
             category: 'Copywriting',
             title: `Improve Copy on ${pageLabel}`,
@@ -188,6 +236,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
       // Video Recommendations (Medium)
       if (page.video_recommendations && page.video_recommendations.length > 0) {
         items.push({
+          id: `page${pageIndex}-video`,
           priority: 'medium',
           category: 'Video Content',
           title: `Add Video Content to ${pageLabel}`,
@@ -207,6 +256,7 @@ export default function ActionableRecommendations({ analysis }: Props) {
         const opportunities = page.performance_data.opportunities || []
         if (opportunities.length > 0) {
           items.push({
+            id: `page${pageIndex}-performance`,
             priority: 'medium',
             category: 'Page Speed',
             title: `Optimize Performance for ${pageLabel}`,
@@ -227,6 +277,11 @@ export default function ActionableRecommendations({ analysis }: Props) {
   }
 
   const actionItems = generateActionItems()
+  
+  // Calculate completion stats
+  const totalCount = actionItems.length
+  const completedCount = actionItems.filter(item => completions[item.id]).length
+  const completionPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -273,6 +328,35 @@ export default function ActionableRecommendations({ analysis }: Props) {
           We&apos;ve identified {actionItems.length} specific improvements you can make to increase conversions.
           Start with the highest priority items for maximum impact.
         </p>
+        
+        {/* Progress Bar */}
+        {!loading && totalCount > 0 && (
+          <div className="mb-4 bg-white rounded-lg p-4 border border-primary-200">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <FiCheck className="w-5 h-5 text-green-600" />
+                <span className="font-semibold text-slate-900">
+                  {completedCount} of {totalCount} completed
+                </span>
+              </div>
+              <span className="text-sm font-medium text-primary-600">{completionPercentage}%</span>
+            </div>
+            <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+              <motion.div
+                className="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${completionPercentage}%` }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+              />
+            </div>
+            {completionPercentage === 100 && (
+              <p className="text-sm text-green-700 mt-2 font-medium">
+                🎉 All recommendations completed! Consider re-running analysis to see improvements.
+              </p>
+            )}
+          </div>
+        )}
+        
         <div className="flex gap-4 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-red-500 rounded-full"></div>
@@ -291,14 +375,31 @@ export default function ActionableRecommendations({ analysis }: Props) {
 
       {actionItems.map((item, index) => (
         <motion.div
-          key={index}
+          key={item.id}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: index * 0.05 }}
-          className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow"
+          className={`bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-md transition-all ${
+            completions[item.id] ? 'border-green-300 bg-green-50/30' : 'border-slate-200'
+          }`}
         >
           <div className="p-6">
             <div className="flex items-start gap-6 mb-4">
+              {/* Checkbox */}
+              <div className="flex-shrink-0 pt-1">
+                <button
+                  onClick={() => handleToggleCompletion(item.id)}
+                  className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${
+                    completions[item.id]
+                      ? 'bg-green-500 border-green-500'
+                      : 'border-slate-300 hover:border-primary-500'
+                  }`}
+                  title={completions[item.id] ? 'Mark as incomplete' : 'Mark as complete'}
+                >
+                  {completions[item.id] && <FiCheck className="w-4 h-4 text-white" />}
+                </button>
+              </div>
+              
               {/* Screenshot Thumbnail */}
               {item.screenshotUrl && (
                 <div className="flex-shrink-0">

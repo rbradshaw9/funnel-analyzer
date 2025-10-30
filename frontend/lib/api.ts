@@ -357,3 +357,55 @@ export async function initiateRerun(analysisId: number, userId?: number): Promis
     throw new Error(error.response?.data?.detail || 'Failed to initiate rerun')
   }
 }
+
+// Recommendation completion tracking
+export interface RecommendationCompletionsResponse {
+  analysis_id: number
+  completions: Record<string, boolean>
+  completion_percentage: number
+  completed_count: number
+  total_count: number
+}
+
+export async function updateRecommendationCompletion(
+  analysisId: number,
+  recommendationId: string,
+  completed: boolean,
+  userId?: number
+): Promise<RecommendationCompletionsResponse> {
+  try {
+    const params: Record<string, number> = {}
+    if (typeof userId === 'number') {
+      params.user_id = userId
+    }
+
+    const response = await api.patch<RecommendationCompletionsResponse>(
+      `/api/reports/detail/${analysisId}/recommendations`,
+      { recommendation_id: recommendationId, completed },
+      { params }
+    )
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to update recommendation completion')
+  }
+}
+
+export async function getRecommendationCompletions(
+  analysisId: number,
+  userId?: number
+): Promise<RecommendationCompletionsResponse> {
+  try {
+    const params: Record<string, number> = {}
+    if (typeof userId === 'number') {
+      params.user_id = userId
+    }
+
+    const response = await api.get<RecommendationCompletionsResponse>(
+      `/api/reports/detail/${analysisId}/recommendations/completions`,
+      { params }
+    )
+    return response.data
+  } catch (error: any) {
+    throw new Error(error.response?.data?.detail || 'Failed to get recommendation completions')
+  }
+}
