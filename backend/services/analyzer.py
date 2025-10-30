@@ -325,6 +325,7 @@ async def analyze_funnel(
         llm_duration_total += time.perf_counter() - llm_timer_start
 
         screenshot_url = None
+        screenshot_asset = None
         if screenshot_base64 and storage_service:
             try:
                 screenshot_asset = await storage_service.upload_base64_image(
