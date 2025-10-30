@@ -7,6 +7,7 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import ScoreCard from '@/components/ScoreCard'
 import PageAnalysisCard from '@/components/PageAnalysisCard'
+import ActionableRecommendations from '@/components/ActionableRecommendations'
 import { AnalysisResult } from '@/types'
 
 interface Props {
@@ -275,13 +276,18 @@ export default function ResultsDashboard({ analysis }: Props) {
       </motion.div>
 
       {/* Individual Page Analyses */}
-      <div id="pages" className="space-y-6">
+      <div id="pages" className="space-y-6 mb-8">
         <h2 className="text-xl font-semibold text-slate-900">
           Page-by-Page Analysis
         </h2>
         {analysis.pages.map((page, index) => (
           <PageAnalysisCard key={index} page={page} index={index} />
         ))}
+      </div>
+
+      {/* Actionable Recommendations */}
+      <div id="recommendations">
+        <ActionableRecommendations analysis={analysis} />
       </div>
       </motion.div>
     </div>
