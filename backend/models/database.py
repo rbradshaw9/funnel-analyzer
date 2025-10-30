@@ -71,6 +71,7 @@ class Analysis(Base):
     summary = Column(Text, nullable=False)  # Executive summary from GPT-4o
     detailed_feedback = Column(JSON, nullable=False)  # Per-page feedback
     pipeline_metrics = Column(JSON, nullable=True)  # Telemetry for scrape/screenshot/LLM stages
+    recommendation_completions = Column(JSON, nullable=True)  # User completion tracking for recommendations
     
     # Metadata
     analysis_duration_seconds = Column(Integer, nullable=True)

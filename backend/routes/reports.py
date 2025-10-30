@@ -291,18 +291,20 @@ async def update_recommendation_completion(
             raise HTTPException(status_code=404, detail="Analysis not found")
         
         # Get current completions (handle both None and existing JSONB)
+        # Use getattr for backward compatibility with databases without the column
         current_completions = {}
-        if analysis.recommendation_completions:
-            if isinstance(analysis.recommendation_completions, str):
-                current_completions = json.loads(analysis.recommendation_completions)
-            elif isinstance(analysis.recommendation_completions, dict):
-                current_completions = analysis.recommendation_completions
+        recommendation_completions = getattr(analysis, 'recommendation_completions', None)
+        if recommendation_completions:
+            if isinstance(recommendation_completions, str):
+                current_completions = json.loads(recommendation_completions)
+            elif isinstance(recommendation_completions, dict):
+                current_completions = recommendation_completions
         
         # Update completion status
         current_completions[request.recommendation_id] = request.completed
         
-        # Save back to database
-        analysis.recommendation_completions = json.dumps(current_completions)
+        # Save back to database using setattr for backward compatibility
+        setattr(analysis, 'recommendation_completions', json.dumps(current_completions))
         await session.commit()
         
         # Calculate completion percentage
@@ -356,13 +358,14 @@ async def get_recommendation_completions(
         if not analysis:
             raise HTTPException(status_code=404, detail="Analysis not found")
         
-        # Get current completions
+        # Get current completions using getattr for backward compatibility
         current_completions = {}
-        if analysis.recommendation_completions:
-            if isinstance(analysis.recommendation_completions, str):
-                current_completions = json.loads(analysis.recommendation_completions)
-            elif isinstance(analysis.recommendation_completions, dict):
-                current_completions = analysis.recommendation_completions
+        recommendation_completions = getattr(analysis, 'recommendation_completions', None)
+        if recommendation_completions:
+            if isinstance(recommendation_completions, str):
+                current_completions = json.loads(recommendation_completions)
+            elif isinstance(recommendation_completions, dict):
+                current_completions = recommendation_completions
         
         # Calculate stats
         total_count = len(current_completions)
