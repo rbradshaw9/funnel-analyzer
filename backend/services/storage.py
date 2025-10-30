@@ -73,7 +73,9 @@ class StorageService:
             return None
 
         extension = mimetypes.guess_extension(content_type) or ".png"
-        key = f"{prefix}{uuid.uuid4().hex}{extension}"
+        # Ensure prefix ends with / if provided
+        normalized_prefix = prefix.rstrip("/") + "/" if prefix else ""
+        key = f"{normalized_prefix}{uuid.uuid4().hex}{extension}"
 
         loop = asyncio.get_running_loop()
 

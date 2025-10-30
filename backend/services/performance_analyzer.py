@@ -117,12 +117,16 @@ class PerformanceAnalyzer:
         # Performance opportunities (things to fix)
         opportunities = []
         for audit_key, audit_data in audits.items():
-            if audit_data.get("score", 1) < 0.9 and audit_data.get("details", {}).get("overallSavingsMs", 0) > 500:
+            score = audit_data.get("score")
+            savings_ms = audit_data.get("details", {}).get("overallSavingsMs", 0)
+            
+            # Only include if score is low and has significant savings
+            if score is not None and score < 0.9 and savings_ms and savings_ms > 500:
                 opportunities.append({
                     "title": audit_data.get("title", ""),
                     "description": audit_data.get("description", ""),
-                    "savings_ms": audit_data.get("details", {}).get("overallSavingsMs", 0),
-                    "score": audit_data.get("score", 0),
+                    "savings_ms": savings_ms,
+                    "score": score,
                 })
         
         # Sort opportunities by potential savings
