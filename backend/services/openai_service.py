@@ -311,7 +311,7 @@ ANALYSIS REQUIREMENTS:
 
 Return ONLY valid JSON with this structure:
 {{
-    "page_type": "sales_page | order_form | upsell | thank_you | landing | other",
+    "page_type": "Identify the ACTUAL page type based on content analysis, not just position. Options: sales_page (VSL or long-form sales letter), order_form (checkout/payment page), upsell (one-time offer/bump), downsell (alternative lower-priced offer), thank_you (confirmation/success), squeeze_page (email capture), webinar_registration, landing_page (lead capture), bridge_page (pre-sell), application_page (qualify leads), other",
     "scores": {{
         "clarity": 0-100,  // How clear is the value proposition?
         "value": 0-100,    // How compelling is the offer?
@@ -392,12 +392,13 @@ CRITICAL: If you identify CTA buttons (either visually or in the content), ackno
 Don't claim CTAs are missing if they're present - instead evaluate their effectiveness."""
     
     def _build_summary_prompt(self, page_results: List[Dict], overall_score: int, industry: Optional[str] = None) -> str:
-        """Build the prompt for generating executive summary."""
+        """Build the prompt for generating executive summary with congruence analysis for multi-page funnels."""
         summary_chunks: List[str] = []
 
         for index, page in enumerate(page_results, start=1):
             score = sum(page.get("scores", {}).values()) // 5 if page.get("scores") else 0
             headline = page.get("headline_recommendation", "N/A")
+            page_type = page.get("page_type", "unknown")
 
             ctas = page.get("cta_recommendations") or []
             if ctas:
@@ -414,12 +415,39 @@ Don't claim CTAs are missing if they're present - instead evaluate their effecti
                 top_cta = "N/A"
 
             summary_chunks.append(
-                f"Page {index} ({page.get('page_type', 'unknown')}): Score {score}/100\n"
+                f"Page {index} ({page_type}): Score {score}/100\n"
+                f"  URL: {page.get('url', 'N/A')}\n"
                 f"  Headline Suggestion: {headline}\n"
                 f"  Top CTA: {top_cta}"
             )
 
         pages_summary = "\n".join(summary_chunks)
+        
+        # Add multi-page congruence analysis requirements
+        congruence_requirements = ""
+        if len(page_results) > 1:
+            congruence_requirements = f"""
+
+MULTI-PAGE FUNNEL CONGRUENCE ANALYSIS (CRITICAL):
+
+This is a {len(page_results)}-page funnel. You MUST analyze:
+
+1. **Design Consistency**: Do all pages use similar colors, fonts, layouts, and branding? Are there jarring visual transitions?
+2. **Messaging Flow**: Does the value proposition carry through consistently? Does each page build on the previous one?
+3. **Offer Progression**: Does the funnel logically progress from awareness → interest → desire → action?
+4. **Trust Transfer**: Do trust elements (testimonials, guarantees, social proof) appear consistently?
+5. **CTA Alignment**: Do the calls-to-action logically connect from one page to the next?
+6. **Upsell Relevance**: If upsells exist, are they congruent with the initial offer? Do they feel like natural extensions?
+
+SPECIFIC CONGRUENCE ISSUES TO IDENTIFY:
+- Color scheme changes between pages
+- Font/typography inconsistencies
+- Tone of voice shifts (formal → casual, professional → salesy)
+- Branding discontinuity (different logos, missing brand elements)
+- Promise/expectation mismatches (page 1 promises X, page 2 delivers Y)
+- Friction points where flow breaks (confusing transitions, unclear next steps)
+
+Include congruence analysis in your executive summary. If pages feel disconnected, explain exactly how."""
         
         # Add industry-specific context for summary
         industry_context = ""
@@ -440,17 +468,20 @@ Don't claim CTAs are missing if they're present - instead evaluate their effecti
 
 INDIVIDUAL PAGE PERFORMANCE:
 
-{pages_summary}{industry_context}
+{pages_summary}{congruence_requirements}{industry_context}
 
 EXECUTIVE SUMMARY REQUIREMENTS:
 
-Provide a professional 4-6 sentence summary covering:
+Provide a professional 5-8 sentence summary covering:
 
 1. **Overall Assessment**: Current funnel performance and conversion effectiveness
-2. **Key Strengths**: What's working well that should be maintained or amplified
-3. **Primary Opportunity**: The single highest-impact improvement opportunity (be specific - which page, which element, expected impact)
-4. **Quick Wins**: 2-3 actionable changes that can be implemented immediately
-5. **Strategic Recommendation**: One broader strategic consideration for long-term optimization
+2. **Congruence Analysis** (multi-page funnels only): How well do the pages flow together? Are there design, messaging, or trust inconsistencies?
+3. **Key Strengths**: What's working well that should be maintained or amplified
+4. **Primary Opportunity**: The single highest-impact improvement opportunity (be specific - which page, which element, expected impact)
+5. **Quick Wins**: 2-3 actionable changes that can be implemented immediately
+6. **Strategic Recommendation**: One broader strategic consideration for long-term optimization
+
+For multi-page funnels, MUST address: Does page 1 set proper expectations for page 2? Do the pages feel like parts of the same experience?
 
 Focus on specific, actionable insights. Avoid generic advice. Use professional marketing language appropriate for this industry."""
     

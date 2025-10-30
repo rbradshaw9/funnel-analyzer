@@ -199,11 +199,18 @@ async def analyze_funnel(
         # Screenshots: 20-40%, Analysis: 40-85%
         screenshot_progress = 20 + (current_page - 1) * (20 / total_pages)
         
+        # Get page URL for display
+        page_url = page_content.url
+        # Shorten URL for display (remove protocol and www, truncate if needed)
+        display_url = page_url.replace('https://', '').replace('http://', '').replace('www.', '')
+        if len(display_url) > 50:
+            display_url = display_url[:47] + '...'
+        
         await progress.update(
             analysis_id=analysis_id,
             stage="screenshots",
             progress_percent=int(screenshot_progress),
-            message=f"Capturing screenshot and extracting elements from page {current_page}…",
+            message=f"Page {current_page}/{total_pages}: Capturing screenshot from {display_url}",
             current_page=current_page,
             total_pages=total_pages,
         )
@@ -265,7 +272,7 @@ async def analyze_funnel(
                     analysis_id=analysis_id,
                     stage="performance_analysis",
                     progress_percent=int(perf_progress),
-                    message=f"Analyzing page speed and Core Web Vitals for page {current_page}…",
+                    message=f"Page {current_page}/{total_pages}: Analyzing page speed for {display_url}",
                     current_page=current_page,
                     total_pages=total_pages,
                 )
@@ -283,7 +290,7 @@ async def analyze_funnel(
                     analysis_id=analysis_id,
                     stage="source_analysis",
                     progress_percent=int(source_progress),
-                    message=f"Analyzing technical SEO and tracking setup for page {current_page}…",
+                    message=f"Page {current_page}/{total_pages}: Analyzing technical SEO for {display_url}",
                     current_page=current_page,
                     total_pages=total_pages,
                 )
@@ -301,7 +308,7 @@ async def analyze_funnel(
             analysis_id=analysis_id,
             stage="ai_analysis",
             progress_percent=int(ai_progress),
-            message=f"AI analyzing page {current_page} for optimization insights…",
+            message=f"Page {current_page}/{total_pages}: AI analyzing {display_url} for insights…",
             current_page=current_page,
             total_pages=total_pages,
         )
