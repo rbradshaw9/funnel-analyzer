@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { getReportDetail } from '@/lib/api'
 import type { AnalysisResult } from '@/types'
-import ResultsDashboard from '@/components/ResultsDashboard'
+import EnhancedResultsDashboard from '@/components/EnhancedResultsDashboard'
 import LoadingAnimation from '@/components/LoadingAnimation'
 import { TopNav } from '@/components/TopNav'
 import EditableAnalysisName from '@/components/EditableAnalysisName'
@@ -163,7 +163,7 @@ export default function ReportPage() {
               </div>
             </div>
             
-            <ResultsDashboard analysis={report} />
+            <EnhancedResultsDashboard analysis={report} />
           </div>
         )}
       </main>

@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { getRecommendationCompletions, updateRecommendationCompletion } from '@/lib/api'
 import { useAuthStore } from '@/store/authStore'
+import confetti from 'canvas-confetti'
 
 interface ActionItem {
   id: string  // Added unique ID for tracking
@@ -53,6 +54,16 @@ export default function ActionableRecommendations({ analysis }: Props) {
     
     // Optimistic update
     setCompletions(prev => ({ ...prev, [recommendationId]: newValue }))
+    
+    // Fire confetti if marking as complete
+    if (newValue) {
+      confetti({
+        particleCount: 50,
+        spread: 60,
+        origin: { y: 0.6 },
+        colors: ['#10b981', '#34d399', '#6ee7b7'],
+      })
+    }
     
     try {
       await updateRecommendationCompletion(analysis.analysis_id, recommendationId, newValue, userId)

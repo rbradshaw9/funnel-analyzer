@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "axios": "^1.6.5",
+    "canvas-confetti": "^1.9.4",
     "chart.js": "^4.4.1",
     "framer-motion": "^11.0.3",
     "html2canvas": "^1.4.1",
@@ -24,6 +25,7 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
@@ -31,6 +33,7 @@
     "eslint": "^8",
     "eslint-config-next": "14.1.0",
     "postcss": "^8.4.33",
+    "recharts": "^3.3.0",
     "tailwindcss": "^3.4.1",
     "typescript": "5.3.3"
   }

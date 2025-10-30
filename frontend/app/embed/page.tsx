@@ -3,7 +3,7 @@
 import { Suspense } from 'react'
 import { FiAlertTriangle } from 'react-icons/fi'
 import URLInputForm from '@/components/URLInputForm'
-import ResultsDashboard from '@/components/ResultsDashboard'
+import EnhancedResultsDashboard from '@/components/EnhancedResultsDashboard'
 import LoadingAnimation from '@/components/LoadingAnimation'
 import { TopNav } from '@/components/TopNav'
 import { useAnalysisStore } from '@/store/analysisStore'
@@ -82,7 +82,7 @@ function EmbedContent() {
         {isAnalyzing ? (
           <LoadingAnimation />
         ) : currentAnalysis ? (
-          <ResultsDashboard analysis={currentAnalysis} />
+          <EnhancedResultsDashboard analysis={currentAnalysis} />
         ) : (
           <URLInputForm isLocked={isLocked} />
         )}
